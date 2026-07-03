@@ -1,0 +1,56 @@
+{
+  "name": "idea-gauntlet",
+  "version": "0.2.1",
+  "description": "Stress-test product ideas with adversarial agents, synthetic users, and court-style critique.",
+  "type": "module",
+  "bin": {
+    "idea-gauntlet": "dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli/index.js",
+      "types": "./dist/cli/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "postinstall": "node dist/postinstall.js",
+    "build": "tsup src/index.ts src/cli/index.ts src/postinstall.ts --format esm --dts --clean",
+    "dev": "tsx src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "product-discovery",
+    "validation",
+    "adversarial",
+    "startup",
+    "idea"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cac": "^6.7.14",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsup": "^8.2.0",
+    "tsx": "^4.16.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# Package artifacts
+*.tgz
+
+# IdeaGauntlet local workspace
+.idea-gauntlet/
+*.idea-gauntlet
+
+# CLI-generated integration files (project-local or global)
+.claude/
+.cursor/
+.codex/
+AGENTS.md
+
+# Internal planning and superpowers artifacts
+.superpowers/
+/docs/
+
+# Temp files
+tmp/
+temp/
+.cache/
+.turbo/
+.vite/
