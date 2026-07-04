@@ -4,9 +4,11 @@ import type {
   GauntletReport,
   CourtTurn,
   Verdict,
+  EnhancedCourtDebate,
 } from "../core/types.js";
 import { buildReport } from "../core/report.js";
-import { COURT_ROLES } from "../prompts/courtPrompt.js";
+import { courtWorkflow } from "../workflows/definitions/court.js";
+import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 
 export async function runCourtEngine(
   idea: IdeaInput,
@@ -15,38 +17,83 @@ export async function runCourtEngine(
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const transcript: CourtTurn[] = [];
-  const userMessage = `Product idea: ${idea.idea}\n\nProvide your argument in 2-3 paragraphs. Be specific and direct.`;
 
-  for (const role of COURT_ROLES) {
-    const response = await provider.complete(userMessage, {
-      system: role.system,
-      temperature: 0.4,
-      maxTokens: 512,
-    });
-    transcript.push({ role: role.name, argument: response.trim() });
-  }
+  // Single-call structured debate prompt
+  const systemPrompt = formatForCliPrompt(courtWorkflow, "court");
+  const structuredSystem = `You are the Court Mode analyst in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  let verdictText = "Court debate completed. See transcript for details.";
-  let unresolvedQuestions: string[] = [];
-  let reportVerdict: Verdict = "unclear";
+  const userMessage = [
+    `Product idea: ${idea.idea}`,
+    idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
+    idea.market ? `Market: ${idea.market}` : "",
+    idea.stage ? `Stage: ${idea.stage}` : "",
+    "",
+    "Analyze this idea across all roles and phases. Return a JSON object with these top-level keys:",
+    "ideaSnapshot (object with idea, targetUser, market, stage, keyPromise)",
+    "assumptionsMap (array of {assumption, riskLevel, whyItMatters})",
+    "roleArguments (array of {roleId, roleName, argument})",
+    "crossExamination (string)",
+    "evidenceAudit (string)",
+    "killTests (array of kill test objects with title, method, timeframe, successSignal, killSignal)",
+    "scoresDetailed (array of {dimension, score, reason} — score 0-10)",
+    "verdictDetail (string)",
+    "nextActions (array of string)",
+  ].filter(Boolean).join("\n");
+
+  let courtDebate: EnhancedCourtDebate | undefined;
+  const reportVerdict: Verdict = "unclear";
 
   try {
-    const judgeResponse = await provider.complete(
-      `Court transcript:\n${transcript.map((t) => `${t.role}: ${t.argument}`).join("\n\n")}\n\nSynthesize a verdict as JSON with verdict and unresolvedQuestions.`,
-      {
-        system:
-          "You are the Judge in IdeaGauntlet. Synthesize arguments into a conservative verdict.",
-        temperature: 0.3,
-        maxTokens: 512,
+    const response = await provider.complete(userMessage, {
+      system: structuredSystem,
+      temperature: 0.4,
+      maxTokens: 4096,
+    });
+
+    const parsed = JSON.parse(response);
+
+    // Build transcript for backward compatibility
+    if (parsed.roleArguments) {
+      for (const ra of parsed.roleArguments) {
+        transcript.push({ role: ra.roleName ?? ra.roleId, argument: ra.argument });
+      }
+    }
+
+    // Build enhanced court debate
+    courtDebate = {
+      ideaSnapshot: parsed.ideaSnapshot ?? {
+        idea: idea.idea,
+        targetUser: idea.targetUsers?.join(", ") ?? "",
+        market: idea.market ?? "",
+        stage: idea.stage ?? "",
+        keyPromise: "",
       },
-    );
-    const parsed = JSON.parse(judgeResponse);
-    verdictText = parsed.verdict ?? verdictText;
-    unresolvedQuestions = parsed.unresolvedQuestions ?? [];
-    reportVerdict = normalizeVerdict(parsed.reportVerdict ?? parsed.status ?? parsed.verdictType, reportVerdict);
+      assumptionsMap: parsed.assumptionsMap ?? [],
+      roleArguments: parsed.roleArguments ?? [],
+      crossExamination: parsed.crossExamination ?? "",
+      evidenceAudit: parsed.evidenceAudit ?? "",
+      verdictDetail: parsed.verdictDetail ?? "",
+      killTests: parsed.killTests ?? [],
+      scoresDetailed: parsed.scoresDetailed ?? [],
+      nextActions: parsed.nextActions ?? [],
+    };
   } catch {
-    // Use conservative defaults if judge parsing fails.
+    // On parse failure, return minimal report with empty enhanced fields
+    courtDebate = {
+      ideaSnapshot: { idea: idea.idea, targetUser: "", market: "", stage: "", keyPromise: "" },
+      assumptionsMap: [],
+      roleArguments: [],
+      crossExamination: "",
+      evidenceAudit: "",
+      verdictDetail: "Court debate encountered an error during analysis.",
+      killTests: [],
+      scoresDetailed: [],
+      nextActions: ["Retry the court analysis with a shorter idea description."],
+    };
   }
+
+  const verdictText = courtDebate.verdictDetail || "Court debate completed.";
+  const unresolvedQuestions: string[] = [];
 
   const report: GauntletReport = {
     id,
@@ -59,22 +106,9 @@ export async function runCourtEngine(
       verdict: verdictText,
       unresolvedQuestions,
     },
+    courtDebate,
     markdown: "",
   };
   report.markdown = buildReport(report);
   return report;
-}
-
-function normalizeVerdict(value: unknown, fallback: Verdict): Verdict {
-  const allowed: Verdict[] = [
-    "strong",
-    "promising_but_risky",
-    "unclear",
-    "weak",
-    "needs_real_evidence",
-    "pivot_recommended",
-  ];
-  return typeof value === "string" && allowed.includes(value as Verdict)
-    ? (value as Verdict)
-    : fallback;
 }
