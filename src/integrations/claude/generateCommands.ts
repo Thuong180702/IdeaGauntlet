@@ -34,6 +34,8 @@ description: Run an IdeaGauntlet court-style debate
 ---
 ${AGENT_NATIVE_PREAMBLE}
 
+Court mode includes an optional evidence research layer. If web/search tools are available, perform a brief evidence scan before the debate.
+
 ${court.purpose}
 
 Roles:
