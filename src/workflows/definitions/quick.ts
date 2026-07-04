@@ -1,0 +1,123 @@
+import type { WorkflowDefinition } from "../types.js";
+
+export const quickWorkflow: WorkflowDefinition = {
+  id: "quick",
+  name: "Quick Critique",
+  purpose: "Fast adversarial critique that identifies top risks, assumptions, and the fastest validation test — designed for early-stage ideas that need a quick sanity check.",
+  whenToUse: "You have a rough idea and want a fast, structured sanity check before spending time on deeper analysis.",
+  inputGuidance: [
+    "A clear description of the product idea",
+    "Target user segments (optional)",
+    "Market context (optional)",
+    "Idea stage: napkin / pre-mvp / mvp / growth (optional)",
+  ],
+  roles: [
+    {
+      id: "skeptic",
+      name: "Skeptic",
+      stance: "skeptic",
+      mandate: "Find the strongest reasons this idea may fail. Focus on hidden assumptions, user apathy, behavior-change cost, substitutes, distribution risk, retention risk, and monetization weakness.",
+      mustAddress: [
+        "What is the weakest assumption?",
+        "Why might users not care?",
+        "What substitutes already exist?",
+        "How does distribution fail?",
+        "Where does monetization break?",
+      ],
+    },
+    {
+      id: "defender",
+      name: "Defender",
+      stance: "defender",
+      mandate: "Make the strongest honest case for the idea. Identify the wedge, early adopters, and the narrow version most likely to work.",
+      mustAddress: [
+        "What is the real problem being solved?",
+        "Who needs this most?",
+        "What is the best possible version of this idea?",
+        "What is the most credible path to adoption?",
+      ],
+    },
+  ],
+  sections: [
+    {
+      id: "one-line-verdict",
+      heading: "One-Line Verdict",
+      purpose: "Single sentence summary of the assessment",
+      required: ["Verdict statement"],
+    },
+    {
+      id: "top-risks",
+      heading: "Top 5 Risks",
+      purpose: "Highest-severity risks that could kill the idea",
+      required: ["5 risks with severity and explanation"],
+    },
+    {
+      id: "top-assumptions",
+      heading: "Top 5 Assumptions",
+      purpose: "Most critical assumptions the idea depends on",
+      required: ["5 assumptions with confidence and how to test"],
+    },
+    {
+      id: "best-case",
+      heading: "Best-Case Version",
+      purpose: "The most optimistic credible version of the idea",
+      required: ["Description of best-case scenario"],
+    },
+    {
+      id: "worst-case",
+      heading: "Worst-Case Failure Path",
+      purpose: "The most likely failure scenario",
+      required: ["Description of failure path"],
+    },
+    {
+      id: "risk-breakdown",
+      heading: "Risk Breakdown",
+      purpose: "Distribution, monetization, and buildability risks",
+      required: ["Distribution risk", "Monetization risk", "Buildability risk"],
+    },
+    {
+      id: "fastest-test",
+      heading: "Fastest Validation Test",
+      purpose: "The single test that resolves the most important uncertainty",
+      required: ["Test description", "Method", "Timeline", "Success signal"],
+    },
+    {
+      id: "scores",
+      heading: "Scores",
+      purpose: "Quick diagnostic scores",
+      required: ["Clarity", "Pain", "Differentiation", "Buildability", "Distribution", "Monetization", "Evidence"],
+    },
+    {
+      id: "next-step",
+      heading: "Next Step",
+      purpose: "Single recommended action",
+      required: ["One concrete next step"],
+    },
+  ],
+  scoringDimensions: [
+    { id: "clarity", label: "Clarity", definition: "Is the idea specific and understandable?" },
+    { id: "pain", label: "Pain", definition: "Is there a real painful problem?" },
+    { id: "differentiation", label: "Differentiation", definition: "Is the approach meaningfully different?" },
+    { id: "buildability", label: "Buildability", definition: "Can a small team test it quickly?" },
+    { id: "distribution", label: "Distribution", definition: "Can it reach its target users?" },
+    { id: "monetization", label: "Monetization", definition: "Is there a credible path to revenue?" },
+    { id: "evidence", label: "Evidence", definition: "What real evidence supports the idea?" },
+  ],
+  outputRules: [
+    "Be fast and focused — this is a quick critique, not a full court debate",
+    "Identify the single riskiest assumption the idea depends on",
+    "Do not give generic startup advice — be specific to this idea",
+    "Be honest about uncertainty — use 'unknown' rather than assuming",
+  ],
+  requiredHeadings: [
+    "One-Line Verdict",
+    "Top 5 Risks",
+    "Top 5 Assumptions",
+    "Best-Case Version",
+    "Worst-Case Failure Path",
+    "Risk Breakdown",
+    "Fastest Validation Test",
+    "Scores",
+    "Next Step",
+  ],
+};
