@@ -17,6 +17,17 @@ export function generateCodexConfig(): IntegrationFile[] {
 
 ${AGENT_NATIVE_PREAMBLE}
 
+## Evidence research in court mode
+
+If web/search tools are available, perform a brief evidence scan before the court debate. Use citations or source names for factual market, competitor, pricing, regulatory, or trend claims. If web/search is unavailable, state that no live research was performed and continue as hypothesis-only analysis.
+
+Court research roles:
+- **Market Researcher**: Researches demand, market size, growth trends, and willingness-to-pay
+- **Competitor Researcher**: Researches alternatives, pricing, positioning, and user reviews
+- **Distribution Researcher**: Researches channels, communities, SEO, and sales paths
+- **User Behavior Researcher**: Researches user complaints, workarounds, and switching costs
+- **Privacy / Trust Researcher**: Researches privacy concerns, regulations, and trust issues
+
 ## Available workflows
 
 ### Quick Critique
