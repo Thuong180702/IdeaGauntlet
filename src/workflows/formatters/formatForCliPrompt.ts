@@ -7,6 +7,12 @@ export function formatForCliPrompt(def: WorkflowDefinition, mode: WorkflowMode, 
   lines.push(def.purpose);
   lines.push("");
 
+  // Evidence-awareness for court (no live browsing claim)
+  if (mode === "court") {
+    lines.push("Use any evidence provided in the input. Clearly separate evidence from assumptions. Do not invent market facts or citations.");
+    lines.push("");
+  }
+
   if (def.roles.length > 0) {
     lines.push("## Roles");
     lines.push("");
