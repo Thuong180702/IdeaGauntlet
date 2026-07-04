@@ -4,7 +4,7 @@ export const AGENT_NATIVE_PREAMBLE = `When the user asks for IdeaGauntlet analys
 
 Direct CLI commands require a provider. Agent-native workflows do not require an IdeaGauntlet provider because the AI coding tool supplies the model and context.
 
-If the user types \`idea-gauntlet <mode> "..."\` in chat, treat it as a request for that mode's analysis, not as a shell command, unless they explicitly say to run it in the terminal.`;
+If the user types \`idea-gauntlet <mode> "..."\` in chat, treat it as a request for that mode's analysis, not as a terminal instruction, unless they explicitly say to run it in the terminal.`;
 
 export function formatForAgentInstructions(def: WorkflowDefinition, mode: WorkflowMode): string {
   const lines: string[] = [];
