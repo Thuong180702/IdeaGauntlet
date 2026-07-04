@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveProvider } from "../../../src/providers/providerUtils.js";
+import { resolveProvider, formatNoProviderError, NoProviderError } from "../../../src/providers/providerUtils.js";
 
 describe("quick command", () => {
   it("can be imported and has expected shape", async () => {
@@ -29,5 +29,22 @@ describe("onboarding", () => {
   it("can be imported", async () => {
     const mod = await import("../../../src/cli/onboarding.js");
     expect(mod.showOnboardingMenu).toBeDefined();
+  });
+});
+
+describe("provider error message", () => {
+  it("formatNoProviderError contains helpful guidance", () => {
+    const msg = formatNoProviderError();
+    expect(msg).toContain("No provider configured");
+    expect(msg).toContain("IDEAGAUNTLET_API_KEY");
+    expect(msg).toContain("--api-key");
+    expect(msg).toContain("--ollama");
+    expect(msg).toContain("Claude Code, Codex, or Cursor");
+    expect(msg).toContain("do not run the CLI command directly");
+  });
+
+  it("NoProviderError uses the formatted message", () => {
+    const err = new NoProviderError();
+    expect(err.message).toContain("No provider configured");
   });
 });

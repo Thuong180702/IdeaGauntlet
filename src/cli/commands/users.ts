@@ -1,6 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
-import { resolveProvider } from "../../providers/providerUtils.js";
+import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
 import { runUserLab } from "../../engines/syntheticUserLab.js";
 import { buildReport } from "../../core/report.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
@@ -26,7 +26,7 @@ export async function usersCommand(
   });
 
   if (!providerRes) {
-    console.error("No provider available. Set IDEAGAUNTLET_API_KEY, pass --api-key, or use --ollama.");
+    console.error(formatNoProviderError());
     process.exit(2);
   }
 

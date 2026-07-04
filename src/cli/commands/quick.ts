@@ -1,6 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
-import { resolveProvider } from "../../providers/providerUtils.js";
+import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
 import { runImmuneEngine } from "../../engines/immuneEngine.js";
 import { buildReport } from "../../core/report.js";
 import { showOnboardingMenu } from "../onboarding.js";
@@ -48,7 +48,7 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
   }
 
   if (!providerRes) {
-    console.error("No provider available. Set IDEAGAUNTLET_API_KEY, pass --api-key, or use --ollama.");
+    console.error(formatNoProviderError());
     process.exit(2);
   }
 

@@ -57,9 +57,23 @@ export function getProvider(options?: {
   return resolved.provider;
 }
 
+export function formatNoProviderError(): string {
+  return [
+    "No provider configured for direct CLI analysis.",
+    "",
+    "Direct CLI commands need one of:",
+    "  - IDEAGAUNTLET_API_KEY with IDEAGAUNTLET_BASE_URL / IDEAGAUNTLET_MODEL",
+    "  - --api-key / --base-url / --model",
+    "  - --ollama --model <local-model>",
+    "",
+    "If you are using IdeaGauntlet inside Claude Code, Codex, or Cursor, do not run the CLI command directly. Ask naturally:",
+    '  Use IdeaGauntlet court mode to stress-test this idea: ...',
+  ].join("\n");
+}
+
 export class NoProviderError extends Error {
   constructor() {
-    super("No LLM provider configured. Set IDEAGAUNTLET_API_KEY, pass --api-key, or use --ollama.");
+    super(formatNoProviderError());
     this.name = "NoProviderError";
   }
 }
