@@ -24,8 +24,6 @@ export function generateCursorRules(): IntegrationFile[] {
 
 Court mode includes an optional evidence research layer. If web/search tools are available, perform a brief evidence scan before the debate. Use citations or source names for factual claims. If web/search is unavailable, state that no live research was performed.
 
-IdeaGauntlet agent-native mode does not require a runtime tool named \`IdeaGauntlet\`. These instructions are the workflow. Execute them directly.
-
 `;
     }
 

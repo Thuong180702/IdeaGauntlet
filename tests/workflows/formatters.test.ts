@@ -82,6 +82,15 @@ describe("formatForAgentInstructions", () => {
     expect(instructions).not.toMatch(/run the CLI first/i);
     expect(instructions).not.toMatch(/shell command idea-gauntlet/i);
   });
+
+  it("court instructions include research layer", () => {
+    const court = getWorkflow("court");
+    const instructions = formatForAgentInstructions(court, "court");
+    expect(instructions).toContain("Market Researcher");
+    expect(instructions).toContain("Research Plan");
+    expect(instructions).toContain("Evidence research");
+    expect(instructions).toContain("Citation discipline");
+  });
 });
 
 describe("formatForMcpDescription", () => {
@@ -104,6 +113,12 @@ describe("formatForMcpDescription", () => {
       "quick_critique",
       "run_court",
     ]);
+  });
+
+  it("court description includes evidence-aware prefix", () => {
+    const court = getWorkflow("court");
+    const desc = formatForMcpDescription(court);
+    expect(desc).toContain("Evidence-aware");
   });
 });
 

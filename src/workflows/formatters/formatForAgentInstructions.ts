@@ -1,4 +1,4 @@
-import type { WorkflowDefinition, WorkflowMode, WorkflowResearchRole } from "../types.js";
+import type { DebatePhase, WorkflowDefinition, WorkflowMode, WorkflowResearchRole } from "../types.js";
 
 export const AGENT_NATIVE_PREAMBLE = `When the user asks for IdeaGauntlet analysis inside this AI coding tool, execute the workflow natively using these instructions. Do not run the \`idea-gauntlet\` CLI first unless the user explicitly asks for terminal execution.
 
@@ -18,7 +18,7 @@ function renderResearchRoles(roles: WorkflowResearchRole[]): string[] {
   return lines;
 }
 
-function renderResearchPhases(phases: { id: string; name: string; instruction: string }[]): string[] {
+function renderResearchPhases(phases: DebatePhase[]): string[] {
   const lines: string[] = [];
   lines.push("### Research phases");
   for (const phase of phases) {
@@ -76,14 +76,6 @@ export function formatForAgentInstructions(def: WorkflowDefinition, mode: Workfl
     }
     lines.push("");
 
-    lines.push("### Citation discipline");
-    lines.push("- Cite sources when making factual market, competitor, pricing, regulatory, or trend claims");
-    lines.push("- Do not cite unsupported assumptions");
-    lines.push("- If search results are weak, say the evidence is weak");
-    lines.push("- Do not fabricate sources");
-    lines.push("- Do not overquote copyrighted text; summarize instead");
-    lines.push("- Separate fresh evidence from model knowledge");
-    lines.push("");
   }
 
   // Debate roles
@@ -110,6 +102,15 @@ export function formatForAgentInstructions(def: WorkflowDefinition, mode: Workfl
     }
     lines.push("");
   }
+
+    lines.push("### Citation discipline");
+    lines.push("- Cite sources when making factual market, competitor, pricing, regulatory, or trend claims");
+    lines.push("- Do not cite unsupported assumptions");
+    lines.push("- If search results are weak, say the evidence is weak");
+    lines.push("- Do not fabricate sources");
+    lines.push("- Do not overquote copyrighted text; summarize instead");
+    lines.push("- Separate fresh evidence from model knowledge");
+    lines.push("");
 
   if (def.scoringDimensions.length > 0) {
     lines.push("### Scoring dimensions (0-10)");
