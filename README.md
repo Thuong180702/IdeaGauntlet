@@ -52,13 +52,13 @@ See [Provider setup](#provider-setup).
 
 ## Core features
 
-| Workflow | What it does | Use it when |
-|---|---|---|
-| **Quick critique** | Fast adversarial review: top risks, assumptions, best/worst case, fastest test | You want a fast sanity check |
-| **Court mode** | Structured multi-role debate with 7 specialist roles and judge verdict | The idea needs deeper critique |
-| **Synthetic users** | Fictional personas with objections, switching costs, and interview questions | You want to prepare for real user research |
-| **MVP planning** | Ruthlessly minimal validation plan with kill criteria and pivot options | You want to test, not debate |
-| **Idea comparison** | Side-by-side scoring across 10 dimensions with per-idea kill tests | You need to choose what to validate |
+| Workflow | What it does | Use it when | Output |
+|---|---:|---|---|
+| **Quick critique** | Fast adversarial review: top risks, assumptions, best/worst case, fastest test | You want a fast sanity check | Risks, assumptions, scores, validation test |
+| **Court mode** | Structured multi-role debate with 7 specialist roles and judge verdict | The idea needs deeper critique | Role arguments, evidence audit, kill tests, scores, verdict |
+| **Synthetic users** | Fictional personas with objections, switching costs, and interview questions | You want to prepare for real user research | Persona cards, objections, interview questions |
+| **MVP planning** | Ruthlessly minimal validation plan with kill criteria and pivot options | You want to test, not debate | 14-day plan, experiments, kill criteria, pivot options |
+| **Idea comparison** | Side-by-side scoring across 10 dimensions with per-idea kill tests | You need to choose what to validate | Comparison matrix, tradeoffs, recommendation |
 
 Synthetic users are fictional — not research evidence. Scores are diagnostic signals, not predictions.
 
@@ -119,7 +119,7 @@ Direct CLI and MCP generation require a provider. Agent-native workflows do not.
 ```bash
 export IDEAGAUNTLET_API_KEY="your-key"
 export IDEAGAUNTLET_BASE_URL="https://api.openai.com/v1"
-export IDEAGAUNTLET_MODEL="gpt-5.5"
+export IDEAGAUNTLET_MODEL="<your-model>"
 ```
 
 **Local Ollama:**
@@ -145,9 +145,7 @@ Supports OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, LocalAI.
 | `idea-gauntlet init` | Scaffold workspace |
 | `idea-gauntlet doctor` | Check configuration |
 | `idea-gauntlet mcp` | Start MCP server |
-| `idea-gauntlet install` | (Re)run integration setup |
-| `idea-gauntlet uninstall` | Remove global integrations |
-| `idea-gauntlet status` | Show integration status |
+| `idea-gauntlet setup --all` | Generate integration files for Claude/Codex/Cursor/MCP |
 
 ### Common options
 
