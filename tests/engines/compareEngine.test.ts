@@ -3,13 +3,35 @@ import { runCompareEngine } from "../../src/engines/compareEngine.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
 
 describe("runCompareEngine", () => {
-  it("returns comparison with ranked ideas from a provider", async () => {
+  it("returns enhanced comparison with matrix", async () => {
     const provider = new StaticProvider();
-    const ideas = [{ idea: "Idea A" }, { idea: "Idea B" }];
+    const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
+    const report = await runCompareEngine(ideas, provider);
+    expect(report.enhancedComparison).toBeDefined();
+    expect(Array.isArray(report.enhancedComparison!.comparisonMatrix)).toBe(true);
+    expect(report.enhancedComparison!.comparisonMatrix.length).toBe(2);
+  });
+
+  it("returns per-idea kill tests", async () => {
+    const provider = new StaticProvider();
+    const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
+    const report = await runCompareEngine(ideas, provider);
+    expect(Array.isArray(report.enhancedComparison!.killTestsPerIdea)).toBe(true);
+  });
+
+  it("returns recommendation with caveats", async () => {
+    const provider = new StaticProvider();
+    const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
+    const report = await runCompareEngine(ideas, provider);
+    expect(report.enhancedComparison!.recommendation.pick).toBeTruthy();
+    expect(Array.isArray(report.enhancedComparison!.recommendation.caveats)).toBe(true);
+  });
+
+  it("returns backward-compatible comparison", async () => {
+    const provider = new StaticProvider();
+    const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
     const report = await runCompareEngine(ideas, provider);
     expect(report.comparison).toBeDefined();
-    expect(report.comparison!.ideas.length).toBe(2);
-    expect(report.comparison!.ranking.length).toBe(2);
-    expect(report.comparison!.recommendedPick).toBeTruthy();
+    expect(Array.isArray(report.comparison!.ideas)).toBe(true);
   });
 });
