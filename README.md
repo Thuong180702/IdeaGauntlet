@@ -2,7 +2,7 @@
 
 Stress-test product ideas before you build them.
 
-IdeaGauntlet is an open-source npm CLI that turns a raw product idea into adversarial critique, multi-agent debate, synthetic user objections, validation plans, and idea comparison.
+IdeaGauntlet is an open-source CLI and library that turns a raw product idea into adversarial critique, multi-role debate, synthetic user objections, validation plans, and idea comparison.
 
 Built for founders, indie hackers, and product engineers who want sharper pre-validation before spending weeks building the wrong thing.
 
@@ -12,29 +12,19 @@ Built for founders, indie hackers, and product engineers who want sharper pre-va
 
 ---
 
-## Why IdeaGauntlet?
-
-Most AI tools are optimists. You describe an idea and they tell you why it is great. That is useful for momentum but dangerous for judgment.
-
-IdeaGauntlet does the opposite: it looks for weak assumptions, unclear positioning, distribution traps, and buildability concerns _before_ you write a spec, build a prototype, or pitch an investor.
-
-It is not a market research oracle and not a replacement for real user interviews. It is a thinking and pre-validation tool — a structured way to ask "what am I missing?" before committing time.
-
----
-
 ## Install
 
 ```bash
 npm install -g idea-gauntlet
 ```
 
-That is the normal setup. On global install, IdeaGauntlet performs a best-effort integration setup for detected Claude Code, Codex, Cursor, and MCP-compatible clients. If a supported tool is detected, you can use IdeaGauntlet from that tool without a second command.
+On global install, IdeaGauntlet performs best-effort integration setup for detected Claude Code, Codex, Cursor, and MCP-compatible clients.
 
 ---
 
 ## Try it
 
-### In Claude Code / Codex / Cursor
+### Inside Claude Code / Codex / Cursor
 
 After installing, open your AI coding tool and ask:
 
@@ -44,115 +34,87 @@ Use IdeaGauntlet court mode to stress-test this idea:
 A focus-room app for remote workers that pairs people into silent 50-minute work sessions.
 ```
 
-No IdeaGauntlet API key is needed for agent-native use — the coding tool supplies the model and context. If postinstall did not detect your tool, run `idea-gauntlet install` later.
+**No IdeaGauntlet API key is needed.** The AI coding tool supplies the model and context. If postinstall did not detect your tool, run `idea-gauntlet install` later.
+
+> **Important:** Agent-native integrations execute workflows natively. They do not run the `idea-gauntlet` CLI first. If you type `idea-gauntlet court "..."` in chat, the assistant treats it as analysis intent, not a shell command.
 
 ### In the terminal
 
-Direct CLI generation:
+Direct CLI generation requires a provider:
 
 ```bash
 idea-gauntlet quick "A focus-room app for remote workers"
 ```
 
-This requires a provider configuration (see [Provider setup](#provider-setup)).
+See [Provider setup](#provider-setup).
 
 ---
 
-## What it can do
+## Core features
 
-| Workflow                   | What it does                                                                                                          | Use it when                                                         | Output                                                                       |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **Quick critique**         | Fast adversarial review of positioning, assumptions, users, distribution, monetization, and buildability              | You have a rough idea and want a fast sanity check                  | Risk summary, weak assumptions, scores, next tests                           |
-| **Court mode**             | Multi-agent debate: Skeptic attacks, Defender argues the best case, Judge gives verdict                               | The idea is important enough for deeper critique                    | Skeptic and defender arguments, verdict, objections, next steps              |
-| **Synthetic users**        | Generates fictional personas that react to the idea from different perspectives                                       | You want likely objections and use-case gaps you had not considered | Persona goals, objections, willingness-to-pay concerns, adoption blockers    |
-| **MVP planning**           | Converts the idea into a short validation sprint                                                                      | You want to stop debating and test the idea                         | Falsifiable assumptions, experiments, 14-day plan, success and kill criteria |
-| **Idea comparison**        | Compares multiple ideas across clarity, pain, differentiation, buildability, distribution, monetization, and evidence | You need to choose what to validate next                            | Side-by-side scoring, tradeoffs, recommendation                              |
-| **Agent-native workflows** | Adds IdeaGauntlet instructions to Claude Code, Codex, Cursor, and MCP clients                                         | You want critique inside your normal AI coding workflow             | Natural-language workflows inside supported tools                            |
+| Workflow | What it does | Use it when |
+|---|---|---|
+| **Quick critique** | Fast adversarial review: top risks, assumptions, best/worst case, fastest test | You want a fast sanity check |
+| **Court mode** | Structured multi-role debate with 7 specialist roles and judge verdict | The idea needs deeper critique |
+| **Synthetic users** | Fictional personas with objections, switching costs, and interview questions | You want to prepare for real user research |
+| **MVP planning** | Ruthlessly minimal validation plan with kill criteria and pivot options | You want to test, not debate |
+| **Idea comparison** | Side-by-side scoring across 10 dimensions with per-idea kill tests | You need to choose what to validate |
 
-Synthetic users are not research evidence. Scores are diagnostic signals, not predictions.
+Synthetic users are fictional — not research evidence. Scores are diagnostic signals, not predictions.
 
 ---
 
-## Usage examples
-
-### Quick critique
+## Quick start examples
 
 ```bash
+# Quick critique
 idea-gauntlet quick "A focus-room app for remote workers"
-```
 
-### Court mode
+# Court mode (save to file)
+idea-gauntlet court "Your idea" --output report.md
 
-```bash
-idea-gauntlet court "A focus-room app for remote workers" --output report.md
-```
+# Synthetic users
+idea-gauntlet users "Your idea" --personas 8
 
-Court mode runs three roles: the **Skeptic** attacks demand, distribution, defensibility, and execution risk; the **Defender** argues the strongest credible version of the idea; and the **Judge** produces the verdict with recommended next tests.
+# MVP plan
+idea-gauntlet mvp "Your idea"
 
-### Synthetic users
-
-```bash
-idea-gauntlet users "A focus-room app for remote workers" --personas 6
-```
-
-### MVP plan
-
-```bash
-idea-gauntlet mvp "A SaaS inbox that combines Facebook, Zalo, Shopee, and TikTok Shop messages for Vietnamese online sellers."
-```
-
-### Compare ideas
-
-```bash
-idea-gauntlet compare "A focus-room app for remote workers" "A SaaS inbox for Vietnamese online sellers"
+# Compare ideas
+idea-gauntlet compare "Idea A" "Idea B"
 ```
 
 ---
 
 ## Agent-native integrations
 
-IdeaGauntlet can install instructions for supported AI coding tools.
+IdeaGauntlet installs instructions for supported coding tools:
 
-| Tool                   | What IdeaGauntlet installs                                             |
-| ---------------------- | ---------------------------------------------------------------------- |
-| Claude Code            | Skills, agents, slash-command instructions, MCP config where available |
-| Codex                  | AGENTS.md / config bridge                                              |
-| Cursor                 | Rules                                                                  |
-| MCP-compatible clients | Standalone MCP config                                                  |
-
-Use natural language inside your AI coding tool:
-
-```text
-Use IdeaGauntlet quick mode to critique this idea:
-...
-
-Use IdeaGauntlet court mode and focus on distribution risk:
-...
-
-Use IdeaGauntlet to create a 14-day MVP validation plan:
-...
-```
-
-If postinstall skipped a tool, rerun integration setup:
+| Tool | What gets installed |
+|---|---|
+| Claude Code | Skills, agents, slash-commands, MCP config |
+| Codex | AGENTS.md / config bridge |
+| Cursor | Rules per workflow |
+| MCP clients | MCP server config |
 
 ```bash
+# Rerun integration setup if postinstall skipped a tool
 idea-gauntlet install
+```
+
+Use natural language:
+
+```text
+Use IdeaGauntlet court mode and focus on distribution risk:
+...
 ```
 
 ---
 
 ## Provider setup
 
-Direct CLI generation requires an LLM provider. IdeaGauntlet supports OpenAI-compatible APIs and local Ollama.
+Direct CLI and MCP generation require a provider. Agent-native workflows do not.
 
-| Workflow                                                | Provider required?                |
-| ------------------------------------------------------- | --------------------------------- |
-| Agent-native usage in Claude Code / Codex / Cursor      | No IdeaGauntlet provider required |
-| Direct CLI: `quick`, `court`, `users`, `mvp`, `compare` | Yes                               |
-| MCP generation tools                                    | Yes                               |
-| Project-local setup                                     | No                                |
-
-OpenAI-compatible provider:
+**OpenAI-compatible:**
 
 ```bash
 export IDEAGAUNTLET_API_KEY="your-key"
@@ -160,69 +122,45 @@ export IDEAGAUNTLET_BASE_URL="https://api.openai.com/v1"
 export IDEAGAUNTLET_MODEL="gpt-5.5"
 ```
 
-PowerShell:
-
-```powershell
-$env:IDEAGAUNTLET_API_KEY="your-key"
-$env:IDEAGAUNTLET_BASE_URL="https://api.openai.com/v1"
-$env:IDEAGAUNTLET_MODEL="gpt-5.5"
-```
-
-OpenAI-compatible providers include OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, and LocalAI.
-
-Local Ollama:
+**Local Ollama:**
 
 ```bash
 ollama serve
 idea-gauntlet quick "Your idea" --ollama --model llama3
 ```
 
+Supports OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, LocalAI.
+
 ---
 
 ## Command reference
 
-| Command                         | Purpose                                  |
-| ------------------------------- | ---------------------------------------- |
-| `idea-gauntlet quick "idea"`    | Fast adversarial critique                |
-| `idea-gauntlet court "idea"`    | Multi-agent debate and verdict           |
-| `idea-gauntlet users "idea"`    | Synthetic user objections                |
-| `idea-gauntlet mvp "idea"`      | Validation / MVP plan                    |
-| `idea-gauntlet compare "A" "B"` | Compare multiple ideas                   |
-| `idea-gauntlet init`            | Scaffold local workspace                 |
-| `idea-gauntlet doctor`          | Check environment and configuration      |
-| `idea-gauntlet mcp`             | Start MCP server                         |
-| `idea-gauntlet setup --all`     | Optional project-local integration files |
+| Command | Purpose |
+|---|---|
+| `idea-gauntlet quick "idea"` | Fast adversarial critique |
+| `idea-gauntlet court "idea"` | Structured multi-role debate |
+| `idea-gauntlet users "idea"` | Synthetic user personas |
+| `idea-gauntlet mvp "idea"` | Validation / MVP plan |
+| `idea-gauntlet compare "A" "B"` | Compare multiple ideas |
+| `idea-gauntlet init` | Scaffold workspace |
+| `idea-gauntlet doctor` | Check configuration |
+| `idea-gauntlet mcp` | Start MCP server |
+| `idea-gauntlet install` | (Re)run integration setup |
+| `idea-gauntlet uninstall` | Remove global integrations |
+| `idea-gauntlet status` | Show integration status |
 
-Common options:
+### Common options
 
-| Option                  | Applies to               | Purpose                                      |
-| ----------------------- | ------------------------ | -------------------------------------------- |
-| `--json`                | quick, court, users, mvp | Output JSON                                  |
-| `--output <file>`       | Most generation commands | Save report to file                          |
-| `--ollama`              | Generation commands      | Use local Ollama provider                    |
-| `--model <name>`        | Generation commands      | Override LLM model                           |
-| `--stage <stage>`       | quick, court, users, mvp | Idea maturity (napkin, pre-mvp, mvp, growth) |
-| `--target-users <list>` | quick, users             | Comma-separated target users                 |
-| `--personas <num>`      | users                    | Number of personas (default: 6)              |
-| `--market <market>`     | quick                    | Target market description                    |
-
----
-
-## Optional project-local setup
-
-Global install is the normal path. If you want to commit IdeaGauntlet instructions into a specific repository:
-
-```bash
-idea-gauntlet setup --all
-```
-
-This writes project-local integration files such as `.claude/`, `.cursor/`, `.codex/`, and `AGENTS.md`.
-
-Dry run:
-
-```bash
-idea-gauntlet setup --dry-run --all
-```
+| Option | Applies to | Purpose |
+|---|---|---|
+| `--json` | quick, court, users, mvp | Output JSON |
+| `--output <file>` | Most commands | Save to file |
+| `--ollama` | Generation commands | Use local Ollama |
+| `--model <name>` | Generation commands | Override LLM model |
+| `--stage <stage>` | quick, court, users, mvp | Idea maturity |
+| `--target-users <list>` | quick, users | Comma-separated target users |
+| `--personas <num>` | users | Number of personas |
+| `--market <market>` | quick | Market description |
 
 ---
 
@@ -238,7 +176,6 @@ const provider = new OpenAICompatibleProvider({
 
 const report = await runGauntlet({
   idea: "A focus-room app for remote workers",
-  targetUsers: ["remote workers", "students"],
   mode: "quick",
   provider,
 });
@@ -246,7 +183,7 @@ const report = await runGauntlet({
 console.log(report.markdown);
 ```
 
-Custom providers can implement the `LLMProvider` interface.
+Custom providers implement the `LLMProvider` interface.
 
 ---
 
@@ -254,42 +191,45 @@ Custom providers can implement the `LLMProvider` interface.
 
 Scores are diagnostic signals, not predictions.
 
-| Dimension       | What it checks                           |
-| --------------- | ---------------------------------------- |
-| Clarity         | Is the idea specific and understandable? |
-| Pain            | Is there a real painful problem?         |
-| Differentiation | Is the approach meaningfully different?  |
-| Buildability    | Can a small team test it quickly?        |
-| Distribution    | Can it reach its target users?           |
-| Monetization    | Is there a credible path to revenue?     |
-| Evidence        | What real evidence supports the idea?    |
+| Dimension | What it checks |
+|---|---|
+| Clarity | Is the idea specific and understandable? |
+| Pain | Is there a real painful problem? |
+| Differentiation | Is the approach meaningfully different? |
+| Buildability | Can a small team test it quickly? |
+| Distribution | Can it reach target users? |
+| Monetization | Is there a credible path to revenue? |
+| Evidence | What real evidence supports the idea? |
 
 Evidence scores stay low unless you provide real validation evidence.
 
 ---
 
+## Optional project-local setup
+
+Global install is the normal path. To commit IdeaGauntlet instructions into a specific repo:
+
+```bash
+idea-gauntlet setup --all
+```
+
+Dry run: `idea-gauntlet setup --dry-run --all`
+
+---
+
 ## Maintenance
 
-Inspect global integrations:
-
 ```bash
+# Check global install status
 idea-gauntlet status
-```
 
-Rerun global integration setup manually:
-
-```bash
+# Rerun integration setup
 idea-gauntlet install
-```
 
-Remove generated global integration files before uninstalling the npm package:
-
-```bash
+# Remove integrations before uninstalling
 idea-gauntlet uninstall
 npm uninstall -g idea-gauntlet
 ```
-
-Note: `npm uninstall -g idea-gauntlet` removes the npm package. It may not remove external files written to editor or agent config directories. Use `idea-gauntlet uninstall` first for a clean removal.
 
 ---
 
@@ -300,11 +240,6 @@ npm install
 npm run typecheck
 npm run test
 npm run build
-```
-
-Check the npm package contents:
-
-```bash
 npm pack --dry-run
 ```
 
