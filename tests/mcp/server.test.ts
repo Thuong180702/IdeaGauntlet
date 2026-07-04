@@ -15,6 +15,15 @@ describe("MCP server", () => {
     expect(toolDefinitions.length).toBe(6);
   });
 
+  it("court tool description mentions roles", async () => {
+    const { toolDefinitions } = await import("../../src/mcp/tools.js");
+    const courtTool = toolDefinitions.find((t: any) => t.name === "run_court");
+    expect(courtTool).toBeDefined();
+    expect(typeof courtTool.description).toBe("string");
+    expect(courtTool.description.length).toBeGreaterThan(50);
+    expect(courtTool.description).toContain("Judge");
+  });
+
   it("resources list has expected structure", async () => {
     const { listResources } = await import("../../src/mcp/resources.js");
     const result = listResources([]);

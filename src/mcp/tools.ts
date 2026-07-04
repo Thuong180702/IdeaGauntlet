@@ -7,6 +7,7 @@ import { runUserLab } from "../engines/syntheticUserLab.js";
 import { runMvpPlanner } from "../engines/mvpPlanner.js";
 import { runCompareEngine } from "../engines/compareEngine.js";
 import { resolveProvider } from "../providers/providerUtils.js";
+import { mcpToolDescriptions } from "../workflows/formatters/formatForMcpDescription.js";
 
 const reports = new Map<string, GauntletReport>();
 
@@ -88,7 +89,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
 export const toolDefinitions = [
   {
     name: "quick_critique",
-    description: "Run quick adversarial critique",
+    description: mcpToolDescriptions().quick_critique,
     inputSchema: {
       type: "object",
       properties: { idea: { type: "string" } },
@@ -97,7 +98,7 @@ export const toolDefinitions = [
   },
   {
     name: "run_court",
-    description: "Run court-style debate",
+    description: mcpToolDescriptions().run_court,
     inputSchema: {
       type: "object",
       properties: { idea: { type: "string" } },
@@ -106,7 +107,7 @@ export const toolDefinitions = [
   },
   {
     name: "generate_users",
-    description: "Generate synthetic user personas",
+    description: mcpToolDescriptions().generate_users,
     inputSchema: {
       type: "object",
       properties: {
@@ -118,7 +119,7 @@ export const toolDefinitions = [
   },
   {
     name: "plan_mvp",
-    description: "Generate MVP validation plan",
+    description: mcpToolDescriptions().plan_mvp,
     inputSchema: {
       type: "object",
       properties: { idea: { type: "string" } },
@@ -127,7 +128,7 @@ export const toolDefinitions = [
   },
   {
     name: "compare_ideas",
-    description: "Compare multiple ideas",
+    description: mcpToolDescriptions().compare_ideas,
     inputSchema: {
       type: "object",
       properties: {
