@@ -42,7 +42,7 @@ describe("globalSetup install", () => {
 
     // Claude files should exist
     expect(existsSync(join(claudeDir, "skills", "gauntlet-quick", "SKILL.md"))).toBe(true);
-    expect(existsSync(join(claudeDir, "agents", "skeptic.md"))).toBe(true);
+    expect(existsSync(join(claudeDir, "agents", "market-skeptic.md"))).toBe(true);
     expect(existsSync(join(claudeDir, "commands", "gauntlet-quick.md"))).toBe(true);
 
     // Codex files
