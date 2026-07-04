@@ -9,6 +9,14 @@ export type WorkflowRole = {
   mustAvoid?: string[];
 };
 
+export type WorkflowResearchRole = {
+  id: string;
+  name: string;
+  mandate: string;
+  searchQuestions: string[];
+  output: string[];
+};
+
 export type DebatePhase = {
   id: string;
   name: string;
@@ -36,6 +44,8 @@ export type WorkflowDefinition = {
   whenToUse: string;
   inputGuidance: string[];
   roles: WorkflowRole[];
+  researchRoles?: WorkflowResearchRole[];
+  researchPhases?: DebatePhase[];
   phases?: DebatePhase[];
   sections: WorkflowSection[];
   scoringDimensions: ScoringDimension[];

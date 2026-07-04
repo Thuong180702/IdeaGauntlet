@@ -6,7 +6,12 @@ export function formatForMcpDescription(def: WorkflowDefinition): string {
   const sectionCount = def.sections.length;
   const scoreCount = def.scoringDimensions.length;
 
-  let description = `${def.name}: ${def.purpose}`;
+  let purpose = def.purpose;
+  if (def.id === "court") {
+    purpose = "Evidence-aware " + purpose.charAt(0).toLowerCase() + purpose.slice(1);
+  }
+
+  let description = `${def.name}: ${purpose}`;
 
   if (roleCount > 0) {
     const roleNames = def.roles.map((r) => r.name).join(", ");

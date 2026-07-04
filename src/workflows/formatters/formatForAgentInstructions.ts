@@ -1,10 +1,32 @@
-import type { WorkflowDefinition, WorkflowMode } from "../types.js";
+import type { DebatePhase, WorkflowDefinition, WorkflowMode, WorkflowResearchRole } from "../types.js";
 
 export const AGENT_NATIVE_PREAMBLE = `When the user asks for IdeaGauntlet analysis inside this AI coding tool, execute the workflow natively using these instructions. Do not run the \`idea-gauntlet\` CLI first unless the user explicitly asks for terminal execution.
+
+IdeaGauntlet agent-native mode does not require a runtime tool named \`IdeaGauntlet\`. These instructions are the workflow. Execute them directly.
 
 Direct CLI commands require a provider. Agent-native workflows do not require an IdeaGauntlet provider because the AI coding tool supplies the model and context.
 
 If the user types \`idea-gauntlet <mode> "..."\` in chat, treat it as a request for that mode's analysis, not as a terminal instruction, unless they explicitly say to run it in the terminal.`;
+
+function renderResearchRoles(roles: WorkflowResearchRole[]): string[] {
+  const lines: string[] = [];
+  lines.push("### Research roles");
+  for (const role of roles) {
+    lines.push(`- **${role.name}**: ${role.mandate}`);
+  }
+  lines.push("");
+  return lines;
+}
+
+function renderResearchPhases(phases: DebatePhase[]): string[] {
+  const lines: string[] = [];
+  lines.push("### Research phases");
+  for (const phase of phases) {
+    lines.push(`- **${phase.name}**: ${phase.instruction}`);
+  }
+  lines.push("");
+  return lines;
+}
 
 export function formatForAgentInstructions(def: WorkflowDefinition, mode: WorkflowMode): string {
   const lines: string[] = [];
@@ -25,6 +47,38 @@ export function formatForAgentInstructions(def: WorkflowDefinition, mode: Workfl
     lines.push("");
   }
 
+  // Research layer (for court mode with research roles)
+  if (def.researchRoles && def.researchRoles.length > 0) {
+    lines.push("### Evidence research");
+    lines.push("");
+    lines.push("If web/search tools are available, perform a brief evidence scan before the court debate. Use citations or source names for factual market, competitor, pricing, regulatory, or trend claims. If web/search is unavailable, state that no live research was performed and continue as hypothesis-only analysis.");
+    lines.push("");
+
+    lines.push(...renderResearchRoles(def.researchRoles));
+
+    if (def.researchPhases && def.researchPhases.length > 0) {
+      lines.push(...renderResearchPhases(def.researchPhases));
+    }
+
+    lines.push("### Research output headings");
+    const researchHeadings = [
+      "Research Brief",
+      "Market Evidence",
+      "Competitor Landscape",
+      "Distribution Evidence",
+      "User Behavior Evidence",
+      "Privacy / Trust Evidence",
+      "Source Notes",
+      "Evidence Gaps",
+    ];
+    for (const h of researchHeadings) {
+      lines.push(`- ${h}`);
+    }
+    lines.push("");
+
+  }
+
+  // Debate roles
   if (def.roles.length > 0) {
     lines.push("### Roles");
     for (const role of def.roles) {
@@ -48,6 +102,15 @@ export function formatForAgentInstructions(def: WorkflowDefinition, mode: Workfl
     }
     lines.push("");
   }
+
+    lines.push("### Citation discipline");
+    lines.push("- Cite sources when making factual market, competitor, pricing, regulatory, or trend claims");
+    lines.push("- Do not cite unsupported assumptions");
+    lines.push("- If search results are weak, say the evidence is weak");
+    lines.push("- Do not fabricate sources");
+    lines.push("- Do not overquote copyrighted text; summarize instead");
+    lines.push("- Separate fresh evidence from model knowledge");
+    lines.push("");
 
   if (def.scoringDimensions.length > 0) {
     lines.push("### Scoring dimensions (0-10)");

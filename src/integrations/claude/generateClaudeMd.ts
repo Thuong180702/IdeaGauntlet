@@ -16,6 +16,10 @@ export function generateClaudeMd(): IntegrationFile[] {
 
 ${AGENT_NATIVE_PREAMBLE}
 
+### Court mode evidence research
+
+If web/search tools are available, court mode performs a brief evidence scan before the debate. Research roles examine market, competitor, distribution, user behavior, and privacy/trust evidence. The judge produces a research brief that separates evidence-backed claims from assumptions and unknowns.
+
 ### Available workflows
 
 - **Quick critique** — Fast adversarial review of positioning, assumptions, users, distribution, monetization, and buildability.

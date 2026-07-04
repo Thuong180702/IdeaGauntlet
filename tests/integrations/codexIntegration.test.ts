@@ -45,4 +45,31 @@ describe("Codex integration", () => {
     expect(agentsMd!.content).toContain("MVP Planning");
     expect(agentsMd!.content).toContain("Idea Comparison");
   });
+
+  it("includes no-tool-required clarification", () => {
+    const agentsMd = files.find((f) => f.path === "AGENTS.md");
+    expect(agentsMd!.content).toContain("does not require a runtime tool named");
+  });
+
+  it("includes research role names", () => {
+    const agentsMd = files.find((f) => f.path === "AGENTS.md");
+    expect(agentsMd!.content).toContain("Market Researcher");
+    expect(agentsMd!.content).toContain("Competitor Researcher");
+    expect(agentsMd!.content).toContain("Distribution Researcher");
+    expect(agentsMd!.content).toContain("User Behavior Researcher");
+    expect(agentsMd!.content).toContain("Privacy / Trust Researcher");
+  });
+
+  it("includes research layer wording", () => {
+    const agentsMd = files.find((f) => f.path === "AGENTS.md");
+    expect(agentsMd!.content).toContain("If web/search tools are available");
+    expect(agentsMd!.content).toContain("evidence scan");
+    expect(agentsMd!.content).toContain("no live research was performed");
+  });
+
+  it("does NOT contain misleading tool-not-installed wording", () => {
+    const agentsMd = files.find((f) => f.path === "AGENTS.md");
+    expect(agentsMd!.content).not.toMatch(/tool is not installed/i);
+    expect(agentsMd!.content).not.toMatch(/Không thấy tool IdeaGauntlet/i);
+  });
 });

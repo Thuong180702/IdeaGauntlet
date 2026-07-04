@@ -36,6 +36,21 @@ describe("formatForCliPrompt", () => {
     const prompt = formatForCliPrompt(quick, "quick");
     expect(prompt).not.toContain("Do not run the `idea-gauntlet` CLI");
   });
+
+  it("CLI court prompt does not claim live web browsing", () => {
+    const court = getWorkflow("court");
+    const prompt = formatForCliPrompt(court, "court");
+    expect(prompt).not.toMatch(/browse the web/i);
+    expect(prompt).not.toMatch(/live research/i);
+    expect(prompt).not.toMatch(/web search/i);
+  });
+
+  it("CLI court prompt includes evidence-awareness line", () => {
+    const court = getWorkflow("court");
+    const prompt = formatForCliPrompt(court, "court");
+    expect(prompt).toContain("separate evidence from assumptions");
+    expect(prompt).toContain("Do not invent market facts");
+  });
 });
 
 describe("formatForAgentInstructions", () => {
@@ -67,6 +82,15 @@ describe("formatForAgentInstructions", () => {
     expect(instructions).not.toMatch(/run the CLI first/i);
     expect(instructions).not.toMatch(/shell command idea-gauntlet/i);
   });
+
+  it("court instructions include research layer", () => {
+    const court = getWorkflow("court");
+    const instructions = formatForAgentInstructions(court, "court");
+    expect(instructions).toContain("Market Researcher");
+    expect(instructions).toContain("Research Plan");
+    expect(instructions).toContain("Evidence research");
+    expect(instructions).toContain("Citation discipline");
+  });
 });
 
 describe("formatForMcpDescription", () => {
@@ -89,6 +113,12 @@ describe("formatForMcpDescription", () => {
       "quick_critique",
       "run_court",
     ]);
+  });
+
+  it("court description includes evidence-aware prefix", () => {
+    const court = getWorkflow("court");
+    const desc = formatForMcpDescription(court);
+    expect(desc).toContain("Evidence-aware");
   });
 });
 

@@ -31,4 +31,17 @@ describe("Cursor integration", () => {
     expect(paths).toContain(".cursor/rules/idea-gauntlet-mvp.mdc");
     expect(paths).toContain(".cursor/rules/idea-gauntlet-compare.mdc");
   });
+
+  it("court rule includes research layer wording", () => {
+    const courtRule = files.find((f) => f.path.includes("court"));
+    expect(courtRule).toBeDefined();
+    expect(courtRule!.content).toContain("evidence scan");
+    expect(courtRule!.content).toContain("does not require a runtime tool named");
+  });
+
+  it("court rule includes citation discipline", () => {
+    const courtRule = files.find((f) => f.path.includes("court"));
+    expect(courtRule!.content).toContain("If web/search tools are available");
+    expect(courtRule!.content).toContain("no live research was performed");
+  });
 });

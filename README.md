@@ -108,6 +108,12 @@ Use IdeaGauntlet court mode and focus on distribution risk:
 ...
 ```
 
+### Evidence-aware analysis
+
+Inside tools that provide web/search access, IdeaGauntlet agent-native court mode may perform a brief market evidence scan before the debate. It uses this research to build a research brief, competitor landscape, evidence gaps, and source notes before the judge verdict.
+
+Terminal CLI mode does not guarantee live web browsing. It uses the configured provider and any context you provide.
+
 ---
 
 ## Provider setup
