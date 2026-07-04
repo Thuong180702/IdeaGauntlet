@@ -168,6 +168,147 @@ export interface GauntletReport {
   markdown: string;
 }
 
+// ─── Enhanced result types ────────────────────────────────────────
+
+export interface EnhancedCourtDebate {
+  ideaSnapshot: {
+    idea: string;
+    targetUser: string;
+    market: string;
+    stage: string;
+    keyPromise: string;
+  };
+  assumptionsMap: Array<{
+    assumption: string;
+    riskLevel: "low" | "medium" | "high" | "critical";
+    whyItMatters: string;
+  }>;
+  roleArguments: Array<{
+    roleId: string;
+    roleName: string;
+    argument: string;
+  }>;
+  crossExamination: string;
+  evidenceAudit: string;
+  verdictDetail: string;
+  killTests: KillTest[];
+  scoresDetailed: Array<{
+    dimension: string;
+    score: number;
+    reason: string;
+  }>;
+  nextActions: string[];
+}
+
+export interface EnhancedQuickReport {
+  oneLineVerdict: string;
+  topRisks: Risk[];
+  topAssumptions: Assumption[];
+  bestCase: string;
+  worstCase: string;
+  distributionRisk: string;
+  monetizationRisk: string;
+  buildabilityRisk: string;
+  fastestValidationTest: {
+    description: string;
+    method: string;
+    timeline: string;
+    successSignal: string;
+  };
+  quickScores: Scorecard;
+  nextStep: string;
+}
+
+export interface EnhancedPersona {
+  name: string;
+  archetype: string;
+  segmentDescription: string;
+  context: string;
+  currentWorkaround: string;
+  triggerEvent: string;
+  desiredOutcome: string;
+  primaryObjection: string;
+  switchingCost: string;
+  willingnessToPay: WillingnessToPay;
+  adoptionBlocker: string;
+  likelyChurnReason: string;
+  quote: string;
+  interviewQuestion: string;
+}
+
+export interface UserSynthesis {
+  recurringObjections: string[];
+  surprisingSegments: string[];
+  segmentsLikelyToCare: string[];
+  segmentsUnlikelyToCare: string[];
+  interviewQuestions: string[];
+  fakeDoorTestIdeas: string[];
+}
+
+export interface EnhancedMVPPlan {
+  coreHypothesis: string;
+  riskiestAssumptions: Array<{
+    assumption: string;
+    riskLevel: "low" | "medium" | "high" | "critical";
+  }>;
+  nonGoals: string[];
+  mvpWedge: string;
+  validationPlan: string[];
+  experimentBacklog: string[];
+  fakeDoorTest: string;
+  conciergeTest: string;
+  interviewScript: string[];
+  successMetrics: Array<{
+    metric: string;
+    target: string;
+  }>;
+  killCriteria: string[];
+  pivotOptions: string[];
+  recommendedScope: string;
+}
+
+export interface EnhancedComparisonResult {
+  comparisonMatrix: Array<{
+    ideaTitle: string;
+    criteria: Record<string, number>;
+  }>;
+  perIdeaStrengths: Array<{
+    ideaTitle: string;
+    strengths: string[];
+  }>;
+  perIdeaRisks: Array<{
+    ideaTitle: string;
+    risks: string[];
+  }>;
+  bestForFastValidation: {
+    ideaTitle: string;
+    reasoning: string;
+  };
+  bestForLongTermUpside: {
+    ideaTitle: string;
+    reasoning: string;
+  };
+  killTestsPerIdea: Array<{
+    ideaTitle: string;
+    killTests: string[];
+  }>;
+  recommendation: {
+    pick: string;
+    caveats: string[];
+    reasoning: string;
+  };
+}
+
+// Enhanced fields added via declaration merging — keeps original interface unchanged
+export interface GauntletReport {
+  courtDebate?: EnhancedCourtDebate;
+  quickReport?: EnhancedQuickReport;
+  enhancedSyntheticUsers?: EnhancedPersona[];
+  userSynthesis?: UserSynthesis;
+  enhancedMvpPlan?: EnhancedMVPPlan;
+  enhancedComparison?: EnhancedComparisonResult;
+}
+
 // ─── Provider types ────────────────────────────────────────────
 
 export interface CompletionOptions {
