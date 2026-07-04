@@ -1,21 +1,37 @@
 import type { IntegrationFile } from "../types.js";
+import { AGENT_NATIVE_PREAMBLE } from "../../workflows/formatters/formatForAgentInstructions.js";
+import { getWorkflow } from "../../workflows/definitions.js";
 
 export function generateCursorRules(): IntegrationFile[] {
-  return [
-    {
-      path: ".cursor/rules/idea-gauntlet-quick.mdc",
-      description: "Cursor rule for quick critique",
-      content: `---
-description: Run an IdeaGauntlet-style quick critique on product ideas
+  const court = getWorkflow("court");
+  const quick = getWorkflow("quick");
+  const users = getWorkflow("users");
+  const mvp = getWorkflow("mvp");
+  const compare = getWorkflow("compare");
+
+  const allWorkflows = [
+    { id: "quick", def: quick, description: "Run a quick adversarial critique" },
+    { id: "court", def: court, description: "Run a structured multi-role debate" },
+    { id: "users", def: users, description: "Generate synthetic user personas" },
+    { id: "mvp", def: mvp, description: "Generate an MVP validation plan" },
+    { id: "compare", def: compare, description: "Compare multiple product ideas" },
+  ];
+
+  return allWorkflows.map((wf) => ({
+    path: `.cursor/rules/idea-gauntlet-${wf.id}.mdc`,
+    description: `Cursor rule for ${wf.def.name}`,
+    content: `---
+description: ${wf.description}
 globs: *.md
 ---
-When asked to evaluate a product idea, use the IdeaGauntlet framework:
-1. Identify the core insight
-2. Find the weakest assumption
-3. List top failure modes
-4. Propose kill tests
-5. Suggest next actions
+${AGENT_NATIVE_PREAMBLE}
+
+## ${wf.def.name}
+
+${wf.def.purpose}
+
+### Required output headings:
+${wf.def.requiredHeadings.map((h) => `- ${h}`).join("\n")}
 `,
-    },
-  ];
+  }));
 }
