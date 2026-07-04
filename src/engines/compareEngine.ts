@@ -1,37 +1,88 @@
-import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, ComparedIdea, Verdict } from "../core/types.js";
+import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, ComparedIdea, Verdict, EnhancedComparisonResult } from "../core/types.js";
 import { buildReport } from "../core/report.js";
-import { runImmuneEngine } from "./immuneEngine.js";
+import { compareWorkflow } from "../workflows/definitions/compare.js";
+import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 
 export async function runCompareEngine(ideas: IdeaInput[], provider: LLMProvider): Promise<GauntletReport> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  const results: ComparedIdea[] = [];
-  for (const idea of ideas) {
-    const report = await runImmuneEngine(idea, provider);
-    results.push({
-      title: idea.title ?? idea.idea.slice(0, 40),
-      verdict: report.verdict,
-      score: report.scores ? Math.round((report.scores.clarity + report.scores.pain + report.scores.differentiation) / 3) : 5,
-      riskiestAssumption: report.weakestAssumption || "Unknown",
-      evidenceScore: report.scores?.evidence ?? 1,
-    });
-  }
+  const systemPrompt = formatForCliPrompt(compareWorkflow, "compare");
+  const structuredSystem = `You are the Comparison Analyst in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  results.sort((a, b) => b.score - a.score);
+  const ideasText = ideas.map((idea, i) =>
+    `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\nDescription: ${idea.idea}`
+  ).join("\n\n");
+
+  const userMessage = `${ideasText}\n\nCompare these ideas. Return JSON with: comparisonMatrix (array of {ideaTitle, criteria: {clarity, pain, urgency, marketAccessibility, distribution, monetization, differentiation, buildComplexity, timeToValidate, evidence}}), perIdeaStrengths (array of {ideaTitle, strengths}), perIdeaRisks (array of {ideaTitle, risks}), bestForFastValidation ({ideaTitle, reasoning}), bestForLongTermUpside ({ideaTitle, reasoning}), killTestsPerIdea (array of {ideaTitle, killTests}), recommendation ({pick, caveats, reasoning})`;
+
+  const results: ComparedIdea[] = [];
+  let enhancedComparison: EnhancedComparisonResult | undefined;
+
+  try {
+    const response = await provider.complete(userMessage, {
+      system: structuredSystem,
+      temperature: 0.4,
+      maxTokens: 4096,
+    });
+    const parsed = JSON.parse(response);
+
+    // Build ComparedIdea[] for backward compat
+    if (parsed.comparisonMatrix) {
+      for (const row of parsed.comparisonMatrix) {
+        const scores = row.criteria ?? {};
+        const clarity = scores.clarity ?? 5;
+        const pain = scores.pain ?? 5;
+        const diff = scores.differentiation ?? 5;
+        const evidence = scores.evidence ?? 1;
+        results.push({
+          title: row.ideaTitle ?? "Unknown",
+          verdict: "unclear" as Verdict,
+          score: Math.round((clarity + pain + diff) / 3),
+          riskiestAssumption: "",
+          evidenceScore: evidence,
+        });
+      }
+    }
+
+    // Sort by score descending
+    results.sort((a, b) => b.score - a.score);
+
+    enhancedComparison = {
+      comparisonMatrix: parsed.comparisonMatrix ?? [],
+      perIdeaStrengths: parsed.perIdeaStrengths ?? [],
+      perIdeaRisks: parsed.perIdeaRisks ?? [],
+      bestForFastValidation: parsed.bestForFastValidation ?? { ideaTitle: "", reasoning: "" },
+      bestForLongTermUpside: parsed.bestForLongTermUpside ?? { ideaTitle: "", reasoning: "" },
+      killTestsPerIdea: parsed.killTestsPerIdea ?? [],
+      recommendation: parsed.recommendation ?? { pick: "", caveats: [], reasoning: "" },
+    };
+  } catch {
+    // Minimal fallback
+    for (const idea of ideas) {
+      results.push({
+        title: idea.title ?? idea.idea.slice(0, 40),
+        verdict: "unclear" as Verdict,
+        score: 5,
+        riskiestAssumption: "",
+        evidenceScore: 1,
+      });
+    }
+  }
 
   const comparison: ComparisonResult = {
     ideas: results,
     ranking: results.map((r) => r.title),
-    fastestToValidate: results[0]?.title ?? "",
-    highestUpside: results[0]?.title ?? "",
-    recommendedPick: results[0]?.title ?? "",
+    fastestToValidate: enhancedComparison?.bestForFastValidation?.ideaTitle ?? results[0]?.title ?? "",
+    highestUpside: enhancedComparison?.bestForLongTermUpside?.ideaTitle ?? results[0]?.title ?? "",
+    recommendedPick: enhancedComparison?.recommendation?.pick ?? results[0]?.title ?? "",
   };
 
   const report: GauntletReport = {
     id, createdAt: now, mode: "compare", input: ideas[0],
     verdict: `Compared ${ideas.length} ideas. Top pick: ${comparison.recommendedPick}` as Verdict,
     comparison,
+    enhancedComparison,
     nextActions: [`Validate "${comparison.recommendedPick}" first`],
     markdown: "",
   };
