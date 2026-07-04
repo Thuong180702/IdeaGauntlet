@@ -1,6 +1,7 @@
-import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Verdict, Severity, Confidence } from "../core/types.js";
-import { skeptic } from "../agents/skeptic.js";
+import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Verdict, Severity, Confidence, Scorecard, EnhancedQuickReport } from "../core/types.js";
 import { calculateScores, medianScore } from "../core/scoring.js";
+import { quickWorkflow } from "../workflows/definitions/quick.js";
+import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 
 export async function runImmuneEngine(
   idea: IdeaInput,
@@ -9,11 +10,22 @@ export async function runImmuneEngine(
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  const skepticPrompt = skeptic(idea);
+  const systemPrompt = formatForCliPrompt(quickWorkflow, "quick");
+  const structuredSystem = `You are the Quick Critique analyst in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+
+  const userMessage = [
+    `Product idea: ${idea.idea}`,
+    idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
+    idea.market ? `Market: ${idea.market}` : "",
+    ".json",
+    "",
+    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), nextStep",
+  ].filter(Boolean).join("\n");
+
   let parsed: any = {};
   try {
-    const response = await provider.complete(skepticPrompt.userMessage, {
-      system: skepticPrompt.system,
+    const response = await provider.complete(userMessage, {
+      system: structuredSystem,
       temperature: 0.4,
       maxTokens: 2048,
     });
@@ -22,46 +34,65 @@ export async function runImmuneEngine(
     parsed = {};
   }
 
-  const risks: Risk[] = (parsed.risks ?? []).map((r: any) => ({
+  const risks: Risk[] = (parsed.topRisks ?? parsed.risks ?? []).map((r: any) => ({
     title: r.title ?? "Unknown risk",
     severity: (r.severity ?? "medium") as Severity,
     explanation: r.explanation ?? "",
     mitigation: r.mitigation,
   }));
 
-  const assumptions: Assumption[] = (parsed.assumptions ?? []).map((a: any) => ({
+  const assumptions: Assumption[] = (parsed.topAssumptions ?? parsed.assumptions ?? []).map((a: any) => ({
     title: a.title ?? "Unknown assumption",
     whyItMatters: a.whyItMatters ?? "",
     howToTest: a.howToTest ?? "",
     confidence: (a.confidence ?? "medium") as Confidence,
   }));
 
-  const killTests: KillTest[] = (parsed.killTests ?? []).map((k: any) => ({
-    title: k.title ?? "Unknown test",
-    method: k.method ?? "",
-    timeframe: k.timeframe ?? "",
-    successSignal: k.successSignal ?? "",
-    killSignal: k.killSignal ?? "",
-  }));
+  const killTests: KillTest[] = ([] as any[]).concat(
+    parsed.fastestValidationTest ? [{
+      title: "Fastest validation test",
+      method: parsed.fastestValidationTest.method ?? "",
+      timeframe: parsed.fastestValidationTest.timeline ?? "",
+      successSignal: parsed.fastestValidationTest.successSignal ?? "",
+      killSignal: "",
+    }] : [],
+  );
 
   const scoreOverrides = parsed.scores ?? {};
-  const scores = calculateScores({ hasEvidence: false, overrides: scoreOverrides });
+  const scores: Scorecard = calculateScores({ hasEvidence: false, overrides: scoreOverrides });
   const verdict = determineVerdict(scores);
+
+  const quickReport: EnhancedQuickReport = {
+    oneLineVerdict: parsed.oneLineVerdict ?? "",
+    topRisks: risks,
+    topAssumptions: assumptions,
+    bestCase: parsed.bestCase ?? "",
+    worstCase: parsed.worstCase ?? "",
+    distributionRisk: parsed.distributionRisk ?? "",
+    monetizationRisk: parsed.monetizationRisk ?? "",
+    buildabilityRisk: parsed.buildabilityRisk ?? "",
+    fastestValidationTest: parsed.fastestValidationTest ?? { description: "", method: "", timeline: "", successSignal: "" },
+    quickScores: scores,
+    nextStep: parsed.nextStep ?? "",
+  };
 
   return {
     id, createdAt: now, mode: "quick", input: idea,
     verdict,
     scores,
-    coreInsight: parsed.coreInsight ?? "Analysis complete.",
-    strongestCase: parsed.strongestCase ?? "",
-    weakestAssumption: parsed.weakestAssumption ?? "",
-    risks, assumptions, killTests,
-    nextActions: parsed.nextActions ?? [],
+    coreInsight: parsed.oneLineVerdict ?? "Analysis complete.",
+    strongestCase: parsed.bestCase ?? "",
+    weakestAssumption: assumptions[0]?.title ?? "",
+    risks,
+    assumptions,
+    killTests,
+    quickReport,
+    nextActions: parsed.nextStep ? [parsed.nextStep] : [],
     markdown: "",
   };
 }
 
-function determineVerdict(scores: ReturnType<typeof calculateScores>): Verdict {
+function determineVerdict(scores: Scorecard): Verdict {
   const median = medianScore(scores);
   if (median >= 8 && scores.evidence >= 5) return "strong";
   if (median >= 6) return "promising_but_risky";
