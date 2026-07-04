@@ -36,6 +36,21 @@ describe("formatForCliPrompt", () => {
     const prompt = formatForCliPrompt(quick, "quick");
     expect(prompt).not.toContain("Do not run the `idea-gauntlet` CLI");
   });
+
+  it("CLI court prompt does not claim live web browsing", () => {
+    const court = getWorkflow("court");
+    const prompt = formatForCliPrompt(court, "court");
+    expect(prompt).not.toMatch(/browse the web/i);
+    expect(prompt).not.toMatch(/live research/i);
+    expect(prompt).not.toMatch(/web search/i);
+  });
+
+  it("CLI court prompt includes evidence-awareness line", () => {
+    const court = getWorkflow("court");
+    const prompt = formatForCliPrompt(court, "court");
+    expect(prompt).toContain("separate evidence from assumptions");
+    expect(prompt).toContain("Do not invent market facts");
+  });
 });
 
 describe("formatForAgentInstructions", () => {

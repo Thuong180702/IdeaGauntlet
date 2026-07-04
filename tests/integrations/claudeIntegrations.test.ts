@@ -19,6 +19,17 @@ describe("Claude integration files", () => {
       // It may mention CLI as optional/advanced, but not as the default path
       expect(content).not.toMatch(/Run `idea-gauntlet court/);
     });
+
+    it("includes no-tool-required clarification", () => {
+      const content = files[0].content;
+      expect(content).toContain("does not require a runtime tool named");
+    });
+
+    it("includes court research layer wording", () => {
+      const content = files[0].content;
+      expect(content).toContain("evidence scan");
+      expect(content).toContain("research brief");
+    });
   });
 
   describe("generateClaudeSkills", () => {
@@ -84,6 +95,12 @@ describe("Claude integration files", () => {
     it("includes compare command", () => {
       const compareCmd = files.find((f) => f.path.includes("gauntlet-compare"));
       expect(compareCmd).toBeDefined();
+    });
+
+    it("court command includes research layer note", () => {
+      const courtCmd = files.find((f) => f.path.includes("gauntlet-court"));
+      expect(courtCmd).toBeDefined();
+      expect(courtCmd!.content).toContain("evidence scan");
     });
   });
 });

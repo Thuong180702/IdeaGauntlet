@@ -71,6 +71,56 @@ describe("workflow definitions", () => {
     expect(court.scoringDimensions.length).toBe(10);
   });
 
+  it("court workflow has 5 research roles", () => {
+    const court = getWorkflow("court");
+    expect(court.researchRoles).toBeDefined();
+    expect(court.researchRoles!.length).toBe(5);
+    const researchIds = court.researchRoles!.map((r) => r.id);
+    expect(researchIds).toContain("market-researcher");
+    expect(researchIds).toContain("competitor-researcher");
+    expect(researchIds).toContain("distribution-researcher");
+    expect(researchIds).toContain("user-behavior-researcher");
+    expect(researchIds).toContain("privacy-researcher");
+  });
+
+  it("court workflow has 7 research phases", () => {
+    const court = getWorkflow("court");
+    expect(court.researchPhases).toBeDefined();
+    expect(court.researchPhases!.length).toBe(7);
+    const phaseNames = court.researchPhases!.map((p) => p.name);
+    expect(phaseNames).toContain("Research Plan");
+    expect(phaseNames).toContain("Market Evidence Scan");
+    expect(phaseNames).toContain("Competitor Evidence Scan");
+    expect(phaseNames).toContain("Distribution Evidence Scan");
+    expect(phaseNames).toContain("User Behavior Evidence Scan");
+    expect(phaseNames).toContain("Privacy / Trust Evidence Scan");
+    expect(phaseNames).toContain("Research Brief");
+  });
+
+  it("court required headings include research sections", () => {
+    const court = getWorkflow("court");
+    expect(court.requiredHeadings).toContain("Research Brief");
+    expect(court.requiredHeadings).toContain("Market Evidence");
+    expect(court.requiredHeadings).toContain("Competitor Landscape");
+    expect(court.requiredHeadings).toContain("Distribution Evidence");
+    expect(court.requiredHeadings).toContain("User Behavior Evidence");
+    expect(court.requiredHeadings).toContain("Privacy / Trust Evidence");
+    expect(court.requiredHeadings).toContain("Source Notes");
+    expect(court.requiredHeadings).toContain("Evidence Gaps");
+  });
+
+  // Verify that roles.length is still 7 and phases.length is still 12
+  it("court workflow still has exactly 7 debate roles", () => {
+    const court = getWorkflow("court");
+    expect(court.roles.length).toBe(7);
+  });
+
+  it("court workflow still has exactly 12 debate phases", () => {
+    const court = getWorkflow("court");
+    expect(court.phases).toBeDefined();
+    expect(court.phases!.length).toBe(12);
+  });
+
   it("quick workflow has required headings", () => {
     const quick = getWorkflow("quick");
     expect(quick.requiredHeadings).toContain("One-Line Verdict");
