@@ -17,15 +17,26 @@ export function generateCursorRules(): IntegrationFile[] {
     { id: "compare", def: compare, description: "Compare multiple product ideas" },
   ];
 
-  return allWorkflows.map((wf) => ({
-    path: `.cursor/rules/idea-gauntlet-${wf.id}.mdc`,
-    description: `Cursor rule for ${wf.def.name}`,
-    content: `---
+  return allWorkflows.map((wf) => {
+    let researchLayer = "";
+    if (wf.id === "court") {
+      researchLayer = `
+
+Court mode includes an optional evidence research layer. If web/search tools are available, perform a brief evidence scan before the debate. Use citations or source names for factual claims. If web/search is unavailable, state that no live research was performed.
+
+IdeaGauntlet agent-native mode does not require a runtime tool named \`IdeaGauntlet\`. These instructions are the workflow. Execute them directly.
+
+`;
+    }
+
+    return {
+      path: `.cursor/rules/idea-gauntlet-${wf.id}.mdc`,
+      description: `Cursor rule for ${wf.def.name}`,
+      content: `---
 description: ${wf.description}
 globs: *.md
 ---
-${AGENT_NATIVE_PREAMBLE}
-
+${AGENT_NATIVE_PREAMBLE}${researchLayer}
 ## ${wf.def.name}
 
 ${wf.def.purpose}
@@ -33,5 +44,6 @@ ${wf.def.purpose}
 ### Required output headings:
 ${wf.def.requiredHeadings.map((h) => `- ${h}`).join("\n")}
 `,
-  }));
+    };
+  });
 }
