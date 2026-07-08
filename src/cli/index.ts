@@ -17,6 +17,7 @@ import { uninstallCommand } from "./commands/uninstall.js";
 import { statusCommand } from "./commands/status.js";
 import { batchCommand } from "./commands/batch.js";
 import { historyCommand } from "./commands/history.js";
+import { interactiveCommand } from "./interactive.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -43,6 +44,7 @@ providerOptions(
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
+    .option("--format <format>", "Output format: md, html (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => quickCommand(idea, options));
 
 providerOptions(
@@ -52,6 +54,7 @@ providerOptions(
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--roles <file>", "Load custom court roles from JSON file")
+    .option("--format <format>", "Output format: md, html (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => courtCommand(idea, options));
 
 providerOptions(
@@ -61,6 +64,7 @@ providerOptions(
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
+    .option("--format <format>", "Output format: md, html (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => usersCommand(idea, options));
 
 providerOptions(
@@ -69,12 +73,14 @@ providerOptions(
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
+    .option("--format <format>", "Output format: md, html (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => mvpCommand(idea, options));
 
 providerOptions(
   cli.command("compare <...ideas>", "Compare multiple product ideas")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
+    .option("--format <format>", "Output format: md, html (default: md)")
 ).action((ideas: string[], options: Record<string, unknown>) => compareCommand(ideas, options));
 
 cli.command("init [directory]", "Scaffold an IdeaGauntlet workspace template")
@@ -133,5 +139,8 @@ providerOptions(
 cli.command("history [id]", "View saved idea reports and track evolution")
   .option("--evolve <id>", "Compare against a saved report to see score delta")
   .action((id: string | undefined, options: Record<string, unknown>) => historyCommand(id, options));
+
+cli.command("interactive [idea]", "Interactive REPL — refine, re-run, drill-down")
+  .action((idea: string | undefined) => interactiveCommand(idea ?? ""));
 
 cli.parse();

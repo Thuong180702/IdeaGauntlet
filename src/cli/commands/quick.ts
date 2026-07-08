@@ -65,10 +65,17 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
     }
 
     const isJson = !!options.json;
+    const format = options.format as string | undefined;
     const output = options.output as string | undefined;
 
     if (isJson) {
       const r = safeWriteOutput(output, JSON.stringify(report, null, 2), "Report");
+      if (!r.ok) { console.error(r.message); process.exit(2); }
+    } else if (format === "html") {
+      const { generateHtmlReport } = await import("../../visualization/htmlReport.js");
+      const html = generateHtmlReport(report);
+      const htmlOutput = output?.replace(/\.md$/, ".html") ?? undefined;
+      const r = safeWriteOutput(htmlOutput, html, "Report");
       if (!r.ok) { console.error(r.message); process.exit(2); }
     } else {
       const r = safeWriteOutput(output, report.markdown, "Report");

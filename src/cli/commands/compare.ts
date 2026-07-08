@@ -24,6 +24,16 @@ export async function compareCommand(ideas: string[], rawOptions: Record<string,
   report.markdown = buildReport(report);
 
   const output = options.output as string | undefined;
-  const r = safeWriteOutput(output, report.markdown, "Report");
-  if (!r.ok) { console.error(r.message); process.exit(2); }
+  const format = options.format as string | undefined;
+
+  if (format === "html") {
+    const { generateHtmlReport } = await import("../../visualization/htmlReport.js");
+    const html = generateHtmlReport(report);
+    const htmlOutput = output?.replace(/\.md$/, ".html") ?? undefined;
+    const r = safeWriteOutput(htmlOutput, html, "Report");
+    if (!r.ok) { console.error(r.message); process.exit(2); }
+  } else {
+    const r = safeWriteOutput(output, report.markdown, "Report");
+    if (!r.ok) { console.error(r.message); process.exit(2); }
+  }
 }
