@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, ComparedIdea, Verdict, EnhancedComparisonResult } from "../core/types.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { compareWorkflow } from "../workflows/definitions/compare.js";
@@ -10,7 +11,7 @@ export async function runCompareEngine(
   provider: LLMProvider,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
 
   // Web research — always-on unless explicitly disabled

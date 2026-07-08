@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   LLMProvider,
   IdeaInput,
@@ -44,7 +45,7 @@ export async function runCourtEngine(
     customRoles?: RoleDefinition[];
   },
 ): Promise<GauntletReport> {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
   const transcript: CourtTurn[] = [];
 

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Verdict, Severity, Confidence, Scorecard, EnhancedQuickReport } from "../core/types.js";
 import { calculateScores, medianScore } from "../core/scoring.js";
 import { quickWorkflow } from "../workflows/definitions/quick.js";
@@ -11,7 +12,7 @@ export async function runImmuneEngine(
   provider: LLMProvider,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
 
   // Web research — always-on unless explicitly disabled

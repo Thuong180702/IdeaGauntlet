@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   LLMProvider,
   IdeaInput,
@@ -17,7 +18,7 @@ export async function runUserLab(
   count: number = 6,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
 
   // Web research — always-on unless explicitly disabled

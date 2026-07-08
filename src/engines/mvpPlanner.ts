@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { LLMProvider, IdeaInput, GauntletReport, MVPPlan, Verdict, EnhancedMVPPlan } from "../core/types.js";
 import { mvpWorkflow } from "../workflows/definitions/mvp.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
@@ -18,7 +19,7 @@ export async function runMvpPlanner(
   provider: LLMProvider,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
 
   // Web research — always-on unless explicitly disabled
