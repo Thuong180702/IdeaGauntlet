@@ -59,6 +59,11 @@ See [Provider setup](#provider-setup).
 | **Synthetic users** | Fictional personas with objections, switching costs, and interview questions | You want to prepare for real user research | Persona cards, objections, interview questions |
 | **MVP planning** | Ruthlessly minimal validation plan with kill criteria and pivot options | You want to test, not debate | 14-day plan, experiments, kill criteria, pivot options |
 | **Idea comparison** | Side-by-side scoring across 10 dimensions with per-idea kill tests | You need to choose what to validate | Comparison matrix, tradeoffs, recommendation |
+| **Batch mode** | Run critique on multiple ideas from a file | You have several ideas to screen | Bulk reports with scores + verdicts |
+| **History & evolution** | Save reports, track score deltas over time | You want to measure idea improvement | Saved reports, score deltas, evolution timeline |
+| **Interactive mode** | REPL for iterative refinement, drill-down, mode switching | You want to refine an idea live | Re-runs, benchmark, diagrams, exports |
+| **HTML export** | Styled dark-mode HTML report with radar chart + diagrams | You need shareable visual reports | Self-contained HTML page |
+| **Score benchmarking** | Compare scores against 50 real startup ideas | You want context for your scores | Percentile ranking, similar ideas |
 
 Synthetic users are fictional — not research evidence. Scores are diagnostic signals, not predictions.
 
@@ -81,6 +86,21 @@ idea-gauntlet mvp "Your idea"
 
 # Compare ideas
 idea-gauntlet compare "Idea A" "Idea B"
+
+# Export HTML report
+idea-gauntlet quick "Your idea" --format html --output report.html
+
+# Batch mode (one idea per line in file)
+idea-gauntlet batch ideas.txt --mode quick --output reports/
+
+# Interactive REPL
+idea-gauntlet interactive "Your idea"
+
+# History — view saved reports
+idea-gauntlet history
+
+# History — compare score delta
+idea-gauntlet history <id> --evolve <old-id>
 ```
 
 ---
@@ -148,6 +168,9 @@ Supports OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, LocalAI.
 | `idea-gauntlet users "idea"` | Synthetic user personas |
 | `idea-gauntlet mvp "idea"` | Validation / MVP plan |
 | `idea-gauntlet compare "A" "B"` | Compare multiple ideas |
+| `idea-gauntlet batch <file>` | Run critique on multiple ideas |
+| `idea-gauntlet interactive [idea]` | Interactive REPL — refine, drill-down |
+| `idea-gauntlet history [id]` | View saved reports, track evolution |
 | `idea-gauntlet init` | Scaffold workspace |
 | `idea-gauntlet doctor` | Check configuration |
 | `idea-gauntlet mcp` | Start MCP server |
@@ -158,6 +181,7 @@ Supports OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, LocalAI.
 | Option | Applies to | Purpose |
 |---|---|---|
 | `--json` | quick, court, users, mvp | Output JSON |
+| `--format html` | quick, court, users, mvp, compare | Output styled HTML report |
 | `--output <file>` | Most commands | Save to file |
 | `--ollama` | Generation commands | Use local Ollama |
 | `--model <name>` | Generation commands | Override LLM model |
@@ -165,6 +189,10 @@ Supports OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, LocalAI.
 | `--target-users <list>` | quick, users | Comma-separated target users |
 | `--personas <num>` | users | Number of personas |
 | `--market <market>` | quick | Market description |
+| `--save` | quick, court | Save report to history store |
+| `--no-search` | All generation commands | Disable web search before analysis |
+| `--roles <file>` | court | Load custom court roles from JSON |
+| `--evolve <id>` | history | Compare scores against a saved report |
 
 ---
 
@@ -206,6 +234,114 @@ Scores are diagnostic signals, not predictions.
 | Evidence | What real evidence supports the idea? |
 
 Evidence scores stay low unless you provide real validation evidence.
+
+---
+
+## Visualization and HTML export
+
+Generate a styled, self-contained HTML report with radar chart and Mermaid diagrams:
+
+```bash
+idea-gauntlet quick "Your idea" --format html -o report.html
+idea-gauntlet court "Your idea" --format html -o report.html
+```
+
+The HTML report includes:
+- **Radar chart** — 7-dimension score visualization (pure SVG, no dependencies)
+- **Mermaid diagrams** — MVP flowchart, timeline Gantt, court mindmap (rendered via CDN)
+- **Dark-mode design** — styled CSS, glassmorphism header, responsive layout
+
+---
+
+## Interactive mode
+
+Refine ideas iteratively in a REPL:
+
+```bash
+idea-gauntlet interactive "Your idea"
+```
+
+Commands:
+
+| Command | Purpose |
+|---|---|
+| `/idea <text>` | Update idea text |
+| `/mode <mode>` | Switch mode (quick, court, users, mvp, compare) |
+| `/run` | Run analysis with current idea + mode |
+| `/benchmark` | Compare scores to benchmark dataset |
+| `/diagram` | Generate Mermaid diagram (MVP mode only) |
+| `/save` | Save report to history store |
+| `/export html` | Export HTML report |
+| `/drill <n>` | Drill down into risk #n + optional court re-run |
+| `/help` | Show available commands |
+| `/quit` | Exit interactive mode |
+
+---
+
+## Score benchmarking
+
+Compare your scores against a dataset of 50 real startup ideas with known outcomes (success, failure, pivot).
+
+In interactive mode, run `/benchmark` after analysis to see:
+- Per-dimension percentile ranking
+- Overall percentile
+- Similar ideas from the benchmark dataset
+- Outcome distribution of similar ideas
+
+> Benchmark is a directional guide, not a prediction. Dataset is small and retrospective.
+
+---
+
+## Batch mode
+
+Run critique on multiple ideas from a text file (one idea per line):
+
+```bash
+idea-gauntlet batch ideas.txt --mode quick --output reports/
+```
+
+Outputs individual reports to the specified directory, or prints all to stdout.
+
+---
+
+## History and evolution tracking
+
+Save reports and track how scores change as you iterate:
+
+```bash
+# Save a report (use --save flag on any command)
+idea-gauntlet quick "Your idea" --save
+
+# List all saved reports
+idea-gauntlet history
+
+# View a specific report
+idea-gauntlet history <id>
+
+# Compare score deltas between two saved reports
+idea-gauntlet history <new-id> --evolve <old-id>
+```
+
+---
+
+## Custom court roles
+
+Load custom roles from a JSON file for court mode:
+
+```bash
+idea-gauntlet court "Your idea" --roles my-roles.json
+```
+
+Role file format:
+
+```json
+[
+  {
+    "roleName": " distribution skeptic",
+    "perspective": "Question how this reaches users without paid acquisition."
+  }
+]
+```
 
 ---
 
