@@ -13,6 +13,24 @@ function respond(id: any, result?: any, error?: any) {
   process.stdout.write(JSON.stringify(msg) + "\n");
 }
 
+function notify(method: string, params?: any) {
+  const msg: any = { jsonrpc: "2.0", method, params };
+  process.stdout.write(JSON.stringify(msg) + "\n");
+}
+
+/** MCP server capabilities. */
+const SERVER_CAPABILITIES = {
+  protocolVersion: "2024-11-05",
+  capabilities: {
+    tools: { listChanged: false },
+    resources: { listChanged: true, subscribe: false },
+  },
+  serverInfo: {
+    name: "idea-gauntlet",
+    version: "0.2.3",
+  },
+};
+
 function handleMessage(line: string): void {
   const trimmed = line.trim();
   if (!trimmed) return;
@@ -25,18 +43,30 @@ function handleMessage(line: string): void {
     return;
   }
 
-  if (msg.method === "tools/list") {
-    respond(msg.id, { tools: toolDefinitions });
-  } else if (msg.method === "tools/call") {
-    handleToolCall(msg.params.name, msg.params.arguments ?? {})
-      .then((result) => respond(msg.id, { content: [result] }))
-      .catch((err: any) =>
-        respond(msg.id, null, { code: -32000, message: err.message }),
-      );
-  } else if (msg.method === "resources/list") {
-    respond(msg.id, listResources(getReportIds()));
-  } else {
-    respond(msg.id, null, { code: -32601, message: "Method not found" });
+  // Bug E/F fix: handle initialize, notifications/initialized, ping
+  switch (msg.method) {
+    case "initialize":
+      respond(msg.id, SERVER_CAPABILITIES);
+      break;
+    case "notifications/initialized":
+      // No response needed per spec — just acknowledge
+      break;
+    case "ping":
+      respond(msg.id, {});
+      break;
+    case "tools/list":
+      respond(msg.id, { tools: toolDefinitions });
+      break;
+    case "tools/call":
+      handleToolCall(msg.params.name, msg.params.arguments ?? {})
+        .then((result) => respond(msg.id, { content: [result] }))
+        .catch((err: any) => respond(msg.id, null, { code: -32000, message: err.message }));
+      break;
+    case "resources/list":
+      respond(msg.id, listResources(getReportIds()));
+      break;
+    default:
+      respond(msg.id, null, { code: -32601, message: "Method not found" });
   }
 }
 
@@ -69,4 +99,12 @@ export function startMcpServer(): void {
   // Ensure flowing mode (stdin is ordinarily paused until a listener
   // is attached, but "data" listeners should already trigger this).
   process.stdin.resume();
+}
+
+/**
+ * Bug K fix: Notify clients that the resource list has changed.
+ * Call after a new report is created.
+ */
+export function notifyResourcesChanged(): void {
+  notify("notifications/resources/list_changed");
 }

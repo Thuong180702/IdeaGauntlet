@@ -315,7 +315,31 @@ export interface CompletionOptions {
   system?: string;
   temperature?: number;
   maxTokens?: number;
+  /** AbortSignal for timeout/cancellation. */
+  signal?: AbortSignal;
+  /** Streaming callback — invoked on each token chunk if supported by provider. */
+  onToken?: (chunk: string) => void;
+  /** Retry configuration override. */
+  retry?: RetryConfig;
 }
+
+export interface RetryConfig {
+  /** Maximum retry attempts. Default 3. */
+  maxRetries?: number;
+  /** Base delay in ms for exponential backoff. Default 1000. */
+  baseDelayMs?: number;
+  /** Maximum delay cap in ms. Default 30000. */
+  maxDelayMs?: number;
+  /** HTTP status codes that should trigger a retry. Default [429, 500, 502, 503, 504]. */
+  retryOnStatuses?: number[];
+}
+
+export const DEFAULT_RETRY: Required<RetryConfig> = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 30000,
+  retryOnStatuses: [429, 500, 502, 503, 504],
+};
 
 export interface LLMProvider {
   kind: "openai" | "ollama" | "custom";

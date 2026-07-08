@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { isAbsolute, resolve, sep } from "node:path";
 
 export type SafeWriteResult =
@@ -72,8 +72,10 @@ export function safeWriteReport(
     };
   }
 
+  // Bug D fix: synchronous mkdirSync before writeFileSync
+  // Previously used async import().then() which caused a race condition
   if (!existsSync(baseDir)) {
-    import("node:fs").then((fs) => fs.mkdirSync(baseDir, { recursive: true }));
+    mkdirSync(baseDir, { recursive: true });
   }
 
   writeFileSync(filePath, content, "utf-8");

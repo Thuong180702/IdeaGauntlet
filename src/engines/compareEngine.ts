@@ -1,5 +1,5 @@
 import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, ComparedIdea, Verdict, EnhancedComparisonResult } from "../core/types.js";
-import { buildReport } from "../core/report.js";
+import { extractJSON } from "../utils/jsonRepair.js";
 import { compareWorkflow } from "../workflows/definitions/compare.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 
@@ -25,7 +25,8 @@ export async function runCompareEngine(ideas: IdeaInput[], provider: LLMProvider
       temperature: 0.4,
       maxTokens: 4096,
     });
-    const parsed = JSON.parse(response);
+    const parsed = extractJSON<any>(response);
+    if (!parsed) throw new Error("Failed to parse comparison response");
 
     // Build ComparedIdea[] for backward compat
     if (parsed.comparisonMatrix) {
@@ -80,12 +81,11 @@ export async function runCompareEngine(ideas: IdeaInput[], provider: LLMProvider
 
   const report: GauntletReport = {
     id, createdAt: now, mode: "compare", input: ideas[0],
-    verdict: `Compared ${ideas.length} ideas. Top pick: ${comparison.recommendedPick}` as Verdict,
+    verdict: "unclear" as Verdict,
     comparison,
     enhancedComparison,
     nextActions: [`Validate "${comparison.recommendedPick}" first`],
     markdown: "",
   };
-  report.markdown = buildReport(report);
   return report;
 }

@@ -7,7 +7,7 @@ import type {
   EnhancedPersona,
   UserSynthesis,
 } from "../core/types.js";
-import { buildReport } from "../core/report.js";
+import { extractJSON } from "../utils/jsonRepair.js";
 
 export async function runUserLab(
   idea: IdeaInput,
@@ -58,7 +58,8 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
       temperature: 0.5,
       maxTokens: 4096,
     });
-    const parsed = JSON.parse(response);
+    const parsed = extractJSON<any>(response);
+    if (!parsed) throw new Error("Failed to parse users response");
 
     // Build basic SyntheticPersona[] for backward compat
     const rawUsers: any[] = (parsed.users ?? []).slice(0, count);
@@ -121,6 +122,5 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
     ),
     markdown: "",
   };
-  report.markdown = buildReport(report);
   return report;
 }

@@ -2,6 +2,7 @@ import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest
 import { calculateScores, medianScore } from "../core/scoring.js";
 import { quickWorkflow } from "../workflows/definitions/quick.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
+import { extractJSON, safeParseJSON } from "../utils/jsonRepair.js";
 
 export async function runImmuneEngine(
   idea: IdeaInput,
@@ -17,7 +18,6 @@ export async function runImmuneEngine(
     `Product idea: ${idea.idea}`,
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
-    ".json",
     "",
     "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), nextStep",
   ].filter(Boolean).join("\n");
@@ -29,7 +29,7 @@ export async function runImmuneEngine(
       temperature: 0.4,
       maxTokens: 2048,
     });
-    parsed = JSON.parse(response);
+    parsed = extractJSON(response) ?? {};
   } catch {
     parsed = {};
   }
@@ -59,7 +59,7 @@ export async function runImmuneEngine(
   );
 
   const scoreOverrides = parsed.scores ?? {};
-  const scores: Scorecard = calculateScores({ hasEvidence: false, overrides: scoreOverrides });
+  const { scores } = calculateScores({ hasEvidence: false, overrides: scoreOverrides });
   const verdict = determineVerdict(scores);
 
   const quickReport: EnhancedQuickReport = {

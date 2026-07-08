@@ -6,9 +6,26 @@ import type {
   Verdict,
   EnhancedCourtDebate,
 } from "../core/types.js";
-import { buildReport } from "../core/report.js";
 import { courtWorkflow } from "../workflows/definitions/court.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
+import { extractJSON } from "../utils/jsonRepair.js";
+
+/**
+ * Maps a verdict string from LLM output to the Verdict enum.
+ * Handles common verbal phrasings like "promising but risky", "weak", etc.
+ */
+function mapVerdict(text: string): Verdict {
+  if (!text) return "unclear";
+  const lower = text.toLowerCase();
+  if (lower.includes("strong") && !lower.includes("risky")) return "strong";
+  if (lower.includes("promising") && lower.includes("risky")) return "promising_but_risky";
+  if (lower.includes("pivot")) return "pivot_recommended";
+  if (lower.includes("needs") && lower.includes("evidence")) return "needs_real_evidence";
+  if (lower.includes("weak")) return "weak";
+  if (lower.includes("unclear") || lower.includes("not clear") || lower.includes("unknown")) return "unclear";
+  // Fallback: treat as unclear
+  return "unclear";
+}
 
 export async function runCourtEngine(
   idea: IdeaInput,
@@ -18,7 +35,6 @@ export async function runCourtEngine(
   const now = new Date().toISOString();
   const transcript: CourtTurn[] = [];
 
-  // Single-call structured debate prompt
   const systemPrompt = formatForCliPrompt(courtWorkflow, "court");
   const structuredSystem = `You are the Court Mode analyst in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
@@ -36,12 +52,12 @@ export async function runCourtEngine(
     "evidenceAudit (string)",
     "killTests (array of kill test objects with title, method, timeframe, successSignal, killSignal)",
     "scoresDetailed (array of {dimension, score, reason} — score 0-10)",
-    "verdictDetail (string)",
+    "verdictDetail (string — include a one-word verdict prefix: 'strong', 'promising but risky', 'unclear', 'weak', 'needs real evidence', or 'pivot recommended')",
     "nextActions (array of string)",
   ].filter(Boolean).join("\n");
 
   let courtDebate: EnhancedCourtDebate | undefined;
-  const reportVerdict: Verdict = "unclear";
+  let reportVerdict: Verdict = "unclear";
 
   try {
     const response = await provider.complete(userMessage, {
@@ -50,7 +66,9 @@ export async function runCourtEngine(
       maxTokens: 4096,
     });
 
-    const parsed = JSON.parse(response);
+    const parsed = extractJSON<any>(response);
+
+    if (!parsed) throw new Error("Failed to parse court response");
 
     // Build transcript for backward compatibility
     if (parsed.roleArguments) {
@@ -77,6 +95,9 @@ export async function runCourtEngine(
       scoresDetailed: parsed.scoresDetailed ?? [],
       nextActions: parsed.nextActions ?? [],
     };
+
+    // Extract verdict from LLM response (Bug B fix)
+    reportVerdict = mapVerdict(parsed.verdictDetail ?? "");
   } catch {
     // On parse failure, return minimal report with empty enhanced fields
     courtDebate = {
@@ -90,6 +111,7 @@ export async function runCourtEngine(
       scoresDetailed: [],
       nextActions: ["Retry the court analysis with a shorter idea description."],
     };
+    reportVerdict = "unclear";
   }
 
   const verdictText = courtDebate.verdictDetail || "Court debate completed.";
@@ -109,6 +131,5 @@ export async function runCourtEngine(
     courtDebate,
     markdown: "",
   };
-  report.markdown = buildReport(report);
   return report;
 }

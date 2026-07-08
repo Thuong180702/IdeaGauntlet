@@ -3,12 +3,12 @@ import { calculateScores, medianScore } from "../../src/core/scoring.js";
 
 describe("calculateScores", () => {
   it("returns low evidence score when no evidence provided", () => {
-    const scores = calculateScores({ hasEvidence: false });
+    const { scores } = calculateScores({ hasEvidence: false });
     expect(scores.evidence).toBeLessThanOrEqual(2);
   });
 
   it("returns higher evidence score with strong evidence", () => {
-    const scores = calculateScores({ hasEvidence: true, evidenceStrength: "strong" });
+    const { scores } = calculateScores({ hasEvidence: true, evidenceStrength: "strong" });
     expect(scores.evidence).toBeGreaterThanOrEqual(6);
   });
 });

@@ -8,6 +8,7 @@ import { runMvpPlanner } from "../engines/mvpPlanner.js";
 import { runCompareEngine } from "../engines/compareEngine.js";
 import { resolveProvider } from "../providers/providerUtils.js";
 import { mcpToolDescriptions } from "../workflows/formatters/formatForMcpDescription.js";
+import { notifyResourcesChanged } from "./server.js";
 
 const reports = new Map<string, GauntletReport>();
 
@@ -35,6 +36,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       const report = await runImmuneEngine({ idea: args.idea }, requireProvider());
       report.markdown = buildReport(report);
       reports.set(report.id, report);
+      notifyResourcesChanged();
       return { type: "text", text: report.markdown };
     }
 
@@ -42,6 +44,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       if (!args.idea) throw new Error("idea required");
       const report = await runCourtEngine({ idea: args.idea }, requireProvider());
       reports.set(report.id, report);
+      notifyResourcesChanged();
       return { type: "text", text: report.markdown };
     }
 
@@ -53,6 +56,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
         args.personas ?? 6,
       );
       reports.set(report.id, report);
+      notifyResourcesChanged();
       return { type: "text", text: report.markdown };
     }
 
@@ -60,6 +64,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       if (!args.idea) throw new Error("idea required");
       const report = await runMvpPlanner({ idea: args.idea }, requireProvider());
       reports.set(report.id, report);
+      notifyResourcesChanged();
       return { type: "text", text: report.markdown };
     }
 
@@ -69,6 +74,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       const ideas = args.ideas.map((i: string) => ({ idea: i }));
       const report = await runCompareEngine(ideas, requireProvider());
       reports.set(report.id, report);
+      notifyResourcesChanged();
       return { type: "text", text: report.markdown };
     }
 

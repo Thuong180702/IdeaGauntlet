@@ -1,11 +1,22 @@
 import type { Scorecard } from "./types.js";
 
+export interface ScoreReasons {
+  clarity?: string;
+  pain?: string;
+  differentiation?: string;
+  buildability?: string;
+  distribution?: string;
+  monetization?: string;
+  evidence?: string;
+}
+
 export function calculateScores(params: {
   hasEvidence: boolean;
   evidenceStrength?: "weak" | "medium" | "strong";
   overrides?: Partial<Scorecard>;
-}): Scorecard {
-  const { hasEvidence, evidenceStrength, overrides } = params;
+  reasons?: Partial<ScoreReasons>;
+}): { scores: Scorecard; reasons: Partial<ScoreReasons> } {
+  const { hasEvidence, evidenceStrength, overrides, reasons } = params;
   const defaults = {
     clarity: 6,
     pain: 5,
@@ -15,7 +26,10 @@ export function calculateScores(params: {
     monetization: 3,
     evidence: evidenceScore(hasEvidence, evidenceStrength),
   };
-  return { ...defaults, ...overrides };
+  return { 
+    scores: { ...defaults, ...overrides },
+    reasons: reasons ?? {},
+  };
 }
 
 function evidenceScore(hasEvidence: boolean, strength?: "weak" | "medium" | "strong"): number {

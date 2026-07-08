@@ -14,6 +14,8 @@ export async function runGauntlet(params: {
   constraints?: Record<string, unknown>;
   mode?: GauntletMode;
   provider?: LLMProvider;
+  /** Multiple ideas for compare mode (Bug A fix). */
+  compareIdeas?: string[];
 }): Promise<GauntletReport> {
   if (!params.provider) {
     throw new Error("LLM provider is required. Pass an OpenAICompatibleProvider, OllamaProvider, or a custom LLMProvider.");
@@ -44,14 +46,26 @@ export async function runGauntlet(params: {
     case "mvp":
       report = await runMvpPlanner(input, params.provider);
       break;
-    case "compare":
-      report = await runCompareEngine([input], params.provider);
+    case "compare": {
+      // Bug A fix: accept multiple ideas via compareIdeas param
+      if (params.compareIdeas && params.compareIdeas.length > 0) {
+        const ideas: IdeaInput[] = params.compareIdeas.map((i) => ({
+          idea: i,
+          mode: "compare" as GauntletMode,
+        }));
+        report = await runCompareEngine(ideas, params.provider);
+      } else {
+        // Fallback: single idea comparison
+        report = await runCompareEngine([input], params.provider);
+      }
       break;
+    }
     default:
       report = await runImmuneEngine(input, params.provider);
       break;
   }
 
+  // Bug P fix: single buildReport call here — engines no longer call it internally
   report.markdown = buildReport(report);
   return report;
 }
