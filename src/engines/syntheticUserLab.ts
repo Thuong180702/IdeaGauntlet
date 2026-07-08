@@ -8,16 +8,33 @@ import type {
   UserSynthesis,
 } from "../core/types.js";
 import { extractJSON } from "../utils/jsonRepair.js";
+import { performResearch } from "../search/searchOrchestrator.js";
+import type { ResearchBrief } from "../search/types.js";
 
 export async function runUserLab(
   idea: IdeaInput,
   provider: LLMProvider,
   count: number = 6,
+  options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+
+  // Web research — always-on unless explicitly disabled
+  let research: ResearchBrief | undefined;
+  if (options?.enableSearch !== false) {
+    try {
+      research = options?.research ?? await performResearch(idea, "users");
+    } catch {
+      // Silent fallback
+    }
+  }
+
+  const researchContext = research?.summary ?? "";
   const systemPrompt = `You are a Synthetic User Generator for IdeaGauntlet.
 Generate ${count} diverse fictional user archetypes. Each persona must be clearly labeled as fictional.
+
+${researchContext}
 
 For each persona include:
 - name (string)
@@ -120,6 +137,7 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
     nextActions: users.map(
       (u) => `Interview a real user like "${u.name}": ${u.interviewQuestion}`,
     ),
+    webResearch: research,
     markdown: "",
   };
   return report;

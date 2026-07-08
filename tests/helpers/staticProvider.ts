@@ -2,11 +2,91 @@ import type { CompletionOptions, LLMProvider } from "../../src/core/types.js";
 
 export class StaticProvider implements LLMProvider {
   kind = "custom" as const;
+  private callCount = 0;
 
   async complete(prompt: string, options?: CompletionOptions): Promise<string> {
     const combined = `${options?.system ?? ""}\n${prompt}`;
+    this.callCount++;
 
-    // Court mode — structured single-call response
+    // ─── Court 2.0 — Multi-turn phase detection ──────────────────
+    // Phase 1: Opening statements — system includes role mandate
+    if (combined.includes("Court debate") && combined.includes("Your stance:") && combined.includes("opening statement")) {
+      // Extract role name from system
+      const roleMatch = combined.match(/You are (.+?) in an IdeaGauntlet/);
+      const roleName = roleMatch?.[1] ?? "Unknown Role";
+      const roleId = roleName.toLowerCase().replace(/\s+/g, "-");
+      return `${roleName} opening: This idea faces significant challenges in my area of scrutiny. ${prompt.slice(0, 100)}`;
+    }
+
+    // Phase 2: Cross-examination — judge identifies conflicts
+    if (combined.includes("Cross-examine") && combined.includes("OPENING STATEMENTS")) {
+      return JSON.stringify({
+        keyConflicts: [
+          { roles: ["Market Skeptic", "Business Defender"], conflict: "Market Skeptic says no WTP, defender says $5-10/mo viable", significance: "high" },
+          { roles: ["Product Skeptic", "User Advocate"], conflict: "Onboarding friction vs user need", significance: "medium" },
+        ],
+        openQuestions: ["Is there real willingness to pay?", "Can onboarding be simplified enough?"],
+      });
+    }
+
+    // Phase 3: Rebuttals — skeptic responds to cross-exam
+    if (combined.includes("REBUTTAL phase")) {
+      const roleMatch = combined.match(/You are (.+?) in an IdeaGauntlet/);
+      const roleName = roleMatch?.[1] ?? "Unknown Role";
+      return `${roleName} rebuttal: The opposing arguments have merit but miss key evidence. ${prompt.slice(0, 80)}`;
+    }
+
+    // Phase 4: Final verdict — judge produces final JSON
+    if (combined.includes("VERDICT phase") || (combined.includes("Court debate") && combined.includes("verdictDetail"))) {
+      return JSON.stringify({
+        ideaSnapshot: {
+          idea: "A focus-room app for remote workers",
+          targetUser: "Remote workers, students, freelancers",
+          market: "Productivity tools for distributed teams",
+          stage: "napkin",
+          keyPromise: "Structured deep work through synthetic pair accountability",
+        },
+        assumptionsMap: [
+          { assumption: "Users will feel accountable to an AI partner", riskLevel: "critical", whyItMatters: "Core value depends on perceived accountability" },
+          { assumption: "Users will return after first session", riskLevel: "high", whyItMatters: "Retention drives habit formation" },
+        ],
+        roleArguments: [
+          { roleId: "market-skeptic", roleName: "Market Skeptic", argument: "Demand for focus tools is high but willingness to pay is low. Most users use free timers or study-with-me videos." },
+          { roleId: "distribution-skeptic", roleName: "Distribution Skeptic", argument: "Acquisition relies on content marketing in a crowded productivity space. CAC may exceed LTV for paid acquisition." },
+          { roleId: "product-skeptic", roleName: "Product Skeptic", argument: "Onboarding requires user to commit to a session before experiencing value — high friction for first use." },
+          { roleId: "technical-skeptic", roleName: "Technical Skeptic", argument: "Real-time pairing and accountability features require reliable WebRTC infrastructure. Small team operational burden is significant." },
+          { roleId: "business-defender", roleName: "Business Defender", argument: "Focus rooms solve a genuine pain for remote workers. A modest subscription ($5-10/mo) is viable if retention exceeds 30% at 90 days." },
+          { roleId: "user-advocate", roleName: "User Advocate", argument: "Users current workaround (coworking cafes, body-doubling Discord servers) is free and social. The product must be significantly better." },
+          { roleId: "judge", roleName: "Judge", argument: "The idea has promise but the critical assumption (accountability to AI) is untested. A fake-door test should precede any build." },
+        ],
+        crossExamination: "The strongest disagreement is between the Market Skeptic (no WTP) and Business Defender ($5-10/mo viable). This is the key assumption to test.",
+        evidenceAudit: "No direct evidence supports the idea. Assumed: users want AI accountability. Unknown: WTP, retention, acquisition cost.",
+        killTests: [
+          { title: "Fake-door WTP test", method: "Landing page with pricing tiers", timeframe: "1 week", successSignal: "5% click-through to payment", killSignal: "<1% CTR" },
+          { title: "Single-session prototype", method: "Manual concierge test with 10 users", timeframe: "2 weeks", successSignal: "6/10 complete session", killSignal: "<3/10 complete" },
+        ],
+        scoresDetailed: [
+          { dimension: "Clarity", score: 7, reason: "The idea is understandable but the exact mechanic (AI vs human pairing) is ambiguous." },
+          { dimension: "Pain", score: 6, reason: "Focus is a real problem but current free workarounds reduce urgency." },
+          { dimension: "Urgency", score: 4, reason: "Users have existing coping strategies — no crisis driving adoption." },
+          { dimension: "Differentiation", score: 5, reason: "AI body-doubling is novel but adjacent to existing focus tools." },
+          { dimension: "Distribution", score: 3, reason: "Crowded productivity space with high CAC." },
+          { dimension: "Monetization", score: 4, reason: "WTP uncertain; free alternatives exist." },
+          { dimension: "Buildability", score: 6, reason: "Core timer + pairing is buildable but real-time infra is non-trivial." },
+          { dimension: "Retention", score: 3, reason: "No clear retention loop beyond habit formation." },
+          { dimension: "Evidence", score: 2, reason: "No real user evidence yet." },
+          { dimension: "Overall", score: 5, reason: "Promising concept with critical untested assumptions." },
+        ],
+        verdictDetail: "Promising but high-risk. The core assumption (accountability to AI) must be validated before building. Recommend fake-door test first.",
+        nextActions: [
+          "Run a fake-door WTP test with 3 pricing tiers",
+          "Interview 10 remote workers about current focus routines",
+          "Build a single-session manual concierge prototype",
+        ],
+      });
+    }
+
+    // ─── Legacy court mode (single-call) — backward compat ─────────
     if (combined.includes("Court Mode")) {
       return JSON.stringify({
         ideaSnapshot: {
@@ -57,7 +137,7 @@ export class StaticProvider implements LLMProvider {
     }
 
     // Quick mode
-    if (combined.includes("Quick") || combined.includes("skeptic") || combined.includes("immune")) {
+    if (combined.includes("Quick Critique") || combined.includes("Quick")) {
       return JSON.stringify({
         oneLineVerdict: "Promising concept with critical untested assumptions around retention and willingness to pay.",
         topRisks: [
@@ -121,7 +201,7 @@ export class StaticProvider implements LLMProvider {
     }
 
     // MVP mode
-    if (combined.includes("MVP") || combined.includes("mvp")) {
+    if (combined.includes("MVP Planner")) {
       return JSON.stringify({
         coreHypothesis: "Users will complete more focused work sessions with a synthetic accountability partner than alone.",
         riskiestAssumptions: [

@@ -6,7 +6,7 @@ describe("runCompareEngine", () => {
   it("returns enhanced comparison with matrix", async () => {
     const provider = new StaticProvider();
     const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
-    const report = await runCompareEngine(ideas, provider);
+    const report = await runCompareEngine(ideas, provider, { enableSearch: false });
     expect(report.enhancedComparison).toBeDefined();
     expect(Array.isArray(report.enhancedComparison!.comparisonMatrix)).toBe(true);
     expect(report.enhancedComparison!.comparisonMatrix.length).toBe(2);
@@ -15,14 +15,14 @@ describe("runCompareEngine", () => {
   it("returns per-idea kill tests", async () => {
     const provider = new StaticProvider();
     const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
-    const report = await runCompareEngine(ideas, provider);
+    const report = await runCompareEngine(ideas, provider, { enableSearch: false });
     expect(Array.isArray(report.enhancedComparison!.killTestsPerIdea)).toBe(true);
   });
 
   it("returns recommendation with caveats", async () => {
     const provider = new StaticProvider();
     const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
-    const report = await runCompareEngine(ideas, provider);
+    const report = await runCompareEngine(ideas, provider, { enableSearch: false });
     expect(report.enhancedComparison!.recommendation.pick).toBeTruthy();
     expect(Array.isArray(report.enhancedComparison!.recommendation.caveats)).toBe(true);
   });
@@ -30,7 +30,7 @@ describe("runCompareEngine", () => {
   it("returns backward-compatible comparison", async () => {
     const provider = new StaticProvider();
     const ideas = [{ idea: "Focus Room App" }, { idea: "SaaS Inbox for Sellers" }];
-    const report = await runCompareEngine(ideas, provider);
+    const report = await runCompareEngine(ideas, provider, { enableSearch: false });
     expect(report.comparison).toBeDefined();
     expect(Array.isArray(report.comparison!.ideas)).toBe(true);
   });

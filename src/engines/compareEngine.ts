@@ -2,13 +2,30 @@ import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, Compared
 import { extractJSON } from "../utils/jsonRepair.js";
 import { compareWorkflow } from "../workflows/definitions/compare.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
+import { performResearch } from "../search/searchOrchestrator.js";
+import type { ResearchBrief } from "../search/types.js";
 
-export async function runCompareEngine(ideas: IdeaInput[], provider: LLMProvider): Promise<GauntletReport> {
+export async function runCompareEngine(
+  ideas: IdeaInput[],
+  provider: LLMProvider,
+  options?: { enableSearch?: boolean; research?: ResearchBrief },
+): Promise<GauntletReport> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  // Web research — always-on unless explicitly disabled
+  let research: ResearchBrief | undefined;
+  if (options?.enableSearch !== false) {
+    try {
+      research = options?.research ?? await performResearch(ideas[0], "compare");
+    } catch {
+      // Silent fallback
+    }
+  }
+
   const systemPrompt = formatForCliPrompt(compareWorkflow, "compare");
-  const structuredSystem = `You are the Comparison Analyst in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+  const researchContext = research?.summary ?? "";
+  const structuredSystem = `You are the Comparison Analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
   const ideasText = ideas.map((idea, i) =>
     `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\nDescription: ${idea.idea}`
@@ -85,6 +102,7 @@ export async function runCompareEngine(ideas: IdeaInput[], provider: LLMProvider
     comparison,
     enhancedComparison,
     nextActions: [`Validate "${comparison.recommendedPick}" first`],
+    webResearch: research,
     markdown: "",
   };
   return report;

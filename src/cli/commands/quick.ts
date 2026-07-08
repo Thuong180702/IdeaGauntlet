@@ -5,6 +5,7 @@ import { runImmuneEngine } from "../../engines/immuneEngine.js";
 import { buildReport } from "../../core/report.js";
 import { showOnboardingMenu } from "../onboarding.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
+import { saveReport } from "../../history/historyStore.js";
 
 export async function quickCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
   const options = normalizeOptions(rawOptions);
@@ -53,8 +54,15 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
   }
 
   try {
-    const report = await runImmuneEngine(idea, providerRes.provider);
+    const enableSearch = !options.noSearch;
+    const report = await runImmuneEngine(idea, providerRes.provider, { enableSearch });
     report.markdown = buildReport(report);
+
+    // Save to history if --save flag
+    if (options.save) {
+      const savedPath = saveReport(report);
+      console.error(`Report saved to history: ${savedPath}`);
+    }
 
     const isJson = !!options.json;
     const output = options.output as string | undefined;

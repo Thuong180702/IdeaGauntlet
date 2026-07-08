@@ -16,6 +16,10 @@ export async function runGauntlet(params: {
   provider?: LLMProvider;
   /** Multiple ideas for compare mode (Bug A fix). */
   compareIdeas?: string[];
+  /** Enable web search before LLM analysis. Default: true. */
+  enableSearch?: boolean;
+  /** Custom roles for court mode. */
+  customRoles?: import("../engines/courtPhases.js").RoleDefinition[];
 }): Promise<GauntletReport> {
   if (!params.provider) {
     throw new Error("LLM provider is required. Pass an OpenAICompatibleProvider, OllamaProvider, or a custom LLMProvider.");
@@ -31,20 +35,25 @@ export async function runGauntlet(params: {
   };
 
   const mode = params.mode ?? "quick";
+  const enableSearch = params.enableSearch !== false;
+  const engineOptions = { enableSearch };
   let report: GauntletReport;
 
   switch (mode) {
     case "quick":
-      report = await runImmuneEngine(input, params.provider);
+      report = await runImmuneEngine(input, params.provider, engineOptions);
       break;
     case "court":
-      report = await runCourtEngine(input, params.provider);
+      report = await runCourtEngine(input, params.provider, {
+        enableSearch,
+        customRoles: params.customRoles,
+      });
       break;
     case "users":
-      report = await runUserLab(input, params.provider);
+      report = await runUserLab(input, params.provider, 6, engineOptions);
       break;
     case "mvp":
-      report = await runMvpPlanner(input, params.provider);
+      report = await runMvpPlanner(input, params.provider, engineOptions);
       break;
     case "compare": {
       // Bug A fix: accept multiple ideas via compareIdeas param
@@ -53,15 +62,15 @@ export async function runGauntlet(params: {
           idea: i,
           mode: "compare" as GauntletMode,
         }));
-        report = await runCompareEngine(ideas, params.provider);
+        report = await runCompareEngine(ideas, params.provider, engineOptions);
       } else {
         // Fallback: single idea comparison
-        report = await runCompareEngine([input], params.provider);
+        report = await runCompareEngine([input], params.provider, engineOptions);
       }
       break;
     }
     default:
-      report = await runImmuneEngine(input, params.provider);
+      report = await runImmuneEngine(input, params.provider, engineOptions);
       break;
   }
 

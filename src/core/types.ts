@@ -307,6 +307,8 @@ export interface GauntletReport {
   userSynthesis?: UserSynthesis;
   enhancedMvpPlan?: EnhancedMVPPlan;
   enhancedComparison?: EnhancedComparisonResult;
+  /** Web research brief gathered before LLM analysis. */
+  webResearch?: import("../search/types.js").ResearchBrief;
 }
 
 // ─── Provider types ────────────────────────────────────────────

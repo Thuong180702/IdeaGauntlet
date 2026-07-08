@@ -131,28 +131,28 @@ describe("jsonRepair", () => {
 describe("Engine error paths", () => {
   it("immuneEngine handles provider error gracefully", async () => {
     const provider = new ErrorProvider();
-    const report = await runImmuneEngine(testIdea, provider);
+    const report = await runImmuneEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("quick");
     expect(report.id).toBeTruthy();
   });
 
   it("immuneEngine handles empty response", async () => {
     const provider = new EmptyProvider();
-    const report = await runImmuneEngine(testIdea, provider);
+    const report = await runImmuneEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("quick");
     expect(report.id).toBeTruthy();
   });
 
   it("immuneEngine handles malformed JSON (prose only)", async () => {
     const provider = new MalformedProvider();
-    const report = await runImmuneEngine(testIdea, provider);
+    const report = await runImmuneEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("quick");
     expect(Array.isArray(report.risks)).toBe(true);
   });
 
   it("immuneEngine extracts JSON from fenced markdown", async () => {
     const provider = new FencedJsonProvider();
-    const report = await runImmuneEngine(testIdea, provider);
+    const report = await runImmuneEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("quick");
     expect(report.quickReport).toBeTruthy();
     expect(report.quickReport!.oneLineVerdict).toBe("Test verdict");
@@ -160,35 +160,35 @@ describe("Engine error paths", () => {
 
   it("immuneEngine extracts JSON with trailing text", async () => {
     const provider = new TrailingTextProvider();
-    const report = await runImmuneEngine(testIdea, provider);
+    const report = await runImmuneEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("quick");
     expect(report.quickReport!.oneLineVerdict).toBe("Trailing text test");
   });
 
   it("immuneEngine extracts JSON with prefixed text", async () => {
     const provider = new PrefixedTextProvider();
-    const report = await runImmuneEngine(testIdea, provider);
+    const report = await runImmuneEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("quick");
     expect(report.quickReport!.oneLineVerdict).toBe("Prefixed test");
   });
 
   it("courtEngine handles provider error gracefully", async () => {
     const provider = new ErrorProvider();
-    const report = await runCourtEngine(testIdea, provider);
+    const report = await runCourtEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("court");
     expect(report.courtDebate).toBeTruthy();
   });
 
   it("courtEngine handles empty response", async () => {
     const provider = new EmptyProvider();
-    const report = await runCourtEngine(testIdea, provider);
+    const report = await runCourtEngine(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("court");
     expect(report.courtDebate).toBeTruthy();
   });
 
   it("mvpPlanner handles provider error gracefully", async () => {
     const provider = new ErrorProvider();
-    const report = await runMvpPlanner(testIdea, provider);
+    const report = await runMvpPlanner(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("mvp");
     expect(report.mvpPlan).toBeTruthy();
     expect(report.mvpPlan!.goal).toBeTruthy();
@@ -196,14 +196,14 @@ describe("Engine error paths", () => {
 
   it("mvpPlanner handles malformed JSON", async () => {
     const provider = new MalformedProvider();
-    const report = await runMvpPlanner(testIdea, provider);
+    const report = await runMvpPlanner(testIdea, provider, { enableSearch: false });
     expect(report.mode).toBe("mvp");
     expect(report.mvpPlan!.goal).toBeTruthy();
   });
 
   it("runUserLab handles provider error gracefully", async () => {
     const provider = new ErrorProvider();
-    const report = await runUserLab(testIdea, provider, 3);
+    const report = await runUserLab(testIdea, provider, 3, { enableSearch: false });
     expect(report.mode).toBe("users");
     expect(Array.isArray(report.syntheticUsers)).toBe(true);
     expect(report.syntheticUsers!.length).toBe(0);
@@ -215,7 +215,7 @@ describe("Engine error paths", () => {
       { idea: "Idea 1", mode: "compare" as const },
       { idea: "Idea 2", mode: "compare" as const },
     ];
-    const report = await runCompareEngine(ideas, provider);
+    const report = await runCompareEngine(ideas, provider, { enableSearch: false });
     expect(report.mode).toBe("compare");
     expect(report.comparison).toBeTruthy();
   });

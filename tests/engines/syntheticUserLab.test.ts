@@ -5,7 +5,7 @@ import { StaticProvider } from "../helpers/staticProvider.js";
 describe("runUserLab", () => {
   it("returns enhanced personas with full fields", async () => {
     const provider = new StaticProvider();
-    const report = await runUserLab({ idea: "Test idea" }, provider);
+    const report = await runUserLab({ idea: "Test idea" }, provider, 6, { enableSearch: false });
     expect(report.enhancedSyntheticUsers).toBeDefined();
     expect(report.enhancedSyntheticUsers!.length).toBeGreaterThan(0);
     const persona = report.enhancedSyntheticUsers![0];
@@ -18,7 +18,7 @@ describe("runUserLab", () => {
 
   it("returns user synthesis", async () => {
     const provider = new StaticProvider();
-    const report = await runUserLab({ idea: "Test idea" }, provider);
+    const report = await runUserLab({ idea: "Test idea" }, provider, 6, { enableSearch: false });
     expect(report.userSynthesis).toBeDefined();
     expect(Array.isArray(report.userSynthesis!.recurringObjections)).toBe(true);
     expect(Array.isArray(report.userSynthesis!.interviewQuestions)).toBe(true);
@@ -27,7 +27,7 @@ describe("runUserLab", () => {
 
   it("returns backward-compatible synthetic users", async () => {
     const provider = new StaticProvider();
-    const report = await runUserLab({ idea: "Test idea" }, provider);
+    const report = await runUserLab({ idea: "Test idea" }, provider, 6, { enableSearch: false });
     expect(Array.isArray(report.syntheticUsers)).toBe(true);
   });
 });

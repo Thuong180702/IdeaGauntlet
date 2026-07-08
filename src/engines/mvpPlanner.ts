@@ -2,6 +2,8 @@ import type { LLMProvider, IdeaInput, GauntletReport, MVPPlan, Verdict, Enhanced
 import { mvpWorkflow } from "../workflows/definitions/mvp.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 import { extractJSON } from "../utils/jsonRepair.js";
+import { performResearch } from "../search/searchOrchestrator.js";
+import type { ResearchBrief } from "../search/types.js";
 
 const DEFAULT_PLAN: MVPPlan = {
   goal: "Test the riskiest assumption",
@@ -11,12 +13,27 @@ const DEFAULT_PLAN: MVPPlan = {
   metrics: ["Signup conversion > 10%", "5+ user interviews"],
 };
 
-export async function runMvpPlanner(idea: IdeaInput, provider: LLMProvider): Promise<GauntletReport> {
+export async function runMvpPlanner(
+  idea: IdeaInput,
+  provider: LLMProvider,
+  options?: { enableSearch?: boolean; research?: ResearchBrief },
+): Promise<GauntletReport> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  // Web research — always-on unless explicitly disabled
+  let research: ResearchBrief | undefined;
+  if (options?.enableSearch !== false) {
+    try {
+      research = options?.research ?? await performResearch(idea, "mvp");
+    } catch {
+      // Silent fallback
+    }
+  }
+
   const systemPrompt = formatForCliPrompt(mvpWorkflow, "mvp");
-  const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+  const researchContext = research?.summary ?? "";
+  const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
   const userMessage = `Product idea: ${idea.idea}\n\nReturn JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string)`;
 
@@ -78,6 +95,7 @@ export async function runMvpPlanner(idea: IdeaInput, provider: LLMProvider): Pro
     mvpPlan: plan,
     enhancedMvpPlan,
     nextActions: plan.scope,
+    webResearch: research,
     markdown: "",
   };
   return report;

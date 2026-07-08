@@ -14,6 +14,14 @@ export function getModel(): string {
   return getEnv("IDEAGAUNTLET_MODEL") ?? "gpt-4o-mini";
 }
 
+export function getSearchApiKey(): string | undefined {
+  return getEnv("IDEAGAUNTLET_SEARCH_API_KEY");
+}
+
+export function getSearchProvider(): string | undefined {
+  return getEnv("IDEAGAUNTLET_SEARCH_PROVIDER");
+}
+
 export function hasApiKey(): boolean {
   return !!getApiKey();
 }

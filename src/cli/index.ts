@@ -15,6 +15,8 @@ import { mcpCommand } from "./commands/mcp.js";
 import { installCommand } from "./commands/install.js";
 import { uninstallCommand } from "./commands/uninstall.js";
 import { statusCommand } from "./commands/status.js";
+import { batchCommand } from "./commands/batch.js";
+import { historyCommand } from "./commands/history.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -39,6 +41,8 @@ providerOptions(
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON instead of Markdown")
     .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+    .option("--save", "Save report to history for evolution tracking")
 ).action((idea: string, options: Record<string, unknown>) => quickCommand(idea, options));
 
 providerOptions(
@@ -46,6 +50,8 @@ providerOptions(
     .option("--stage <stage>", "Idea stage")
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+    .option("--roles <file>", "Load custom court roles from JSON file")
 ).action((idea: string, options: Record<string, unknown>) => courtCommand(idea, options));
 
 providerOptions(
@@ -54,6 +60,7 @@ providerOptions(
     .option("--stage <stage>", "Idea stage")
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => usersCommand(idea, options));
 
 providerOptions(
@@ -61,11 +68,13 @@ providerOptions(
     .option("--stage <stage>", "Idea stage")
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => mvpCommand(idea, options));
 
 providerOptions(
   cli.command("compare <...ideas>", "Compare multiple product ideas")
     .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
 ).action((ideas: string[], options: Record<string, unknown>) => compareCommand(ideas, options));
 
 cli.command("init [directory]", "Scaffold an IdeaGauntlet workspace template")
@@ -112,5 +121,17 @@ cli.command("mcp", "Start the MCP stdio server")
   .option("--port <port>", "HTTP port (for HTTP transport)")
   .option("--http", "Use HTTP transport instead of stdio")
   .action((options) => mcpCommand(options));
+
+providerOptions(
+  cli.command("batch <file>", "Run quick critique on multiple ideas from a file")
+    .option("--mode <mode>", "Gauntlet mode: quick, court, users, mvp (default: quick)")
+    .option("--output <dir>", "Write all reports to directory")
+    .option("--json", "Output JSON")
+    .option("--no-search", "Disable web search before analysis")
+).action((file: string, options: Record<string, unknown>) => batchCommand(file, options));
+
+cli.command("history [id]", "View saved idea reports and track evolution")
+  .option("--evolve <id>", "Compare against a saved report to see score delta")
+  .action((id: string | undefined, options: Record<string, unknown>) => historyCommand(id, options));
 
 cli.parse();

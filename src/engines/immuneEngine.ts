@@ -3,16 +3,30 @@ import { calculateScores, medianScore } from "../core/scoring.js";
 import { quickWorkflow } from "../workflows/definitions/quick.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 import { extractJSON, safeParseJSON } from "../utils/jsonRepair.js";
+import { performResearch } from "../search/searchOrchestrator.js";
+import type { ResearchBrief } from "../search/types.js";
 
 export async function runImmuneEngine(
   idea: IdeaInput,
   provider: LLMProvider,
+  options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  // Web research — always-on unless explicitly disabled
+  let research: ResearchBrief | undefined;
+  if (options?.enableSearch !== false) {
+    try {
+      research = options?.research ?? await performResearch(idea, "quick");
+    } catch {
+      // Silent fallback — proceed without web research
+    }
+  }
+
   const systemPrompt = formatForCliPrompt(quickWorkflow, "quick");
-  const structuredSystem = `You are the Quick Critique analyst in IdeaGauntlet.\n${systemPrompt}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+  const researchContext = research?.summary ?? "";
+  const structuredSystem = `You are the Quick Critique analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
   const userMessage = [
     `Product idea: ${idea.idea}`,
@@ -88,6 +102,7 @@ export async function runImmuneEngine(
     killTests,
     quickReport,
     nextActions: parsed.nextStep ? [parsed.nextStep] : [],
+    webResearch: research,
     markdown: "",
   };
 }

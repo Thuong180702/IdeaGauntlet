@@ -19,7 +19,8 @@ export async function mvpCommand(ideaArg: string, rawOptions: Record<string, unk
   }
 
   const idea = parseIdeaInput({ idea: loadIdeaInput(ideaArg), mode: "mvp", stage: options.stage as string });
-  const report = await runMvpPlanner(idea, providerRes.provider);
+  const enableSearch = !options.noSearch;
+  const report = await runMvpPlanner(idea, providerRes.provider, { enableSearch });
   report.markdown = buildReport(report);
 
   const isJson = !!options.json;

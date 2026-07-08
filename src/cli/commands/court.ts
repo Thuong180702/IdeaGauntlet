@@ -29,8 +29,21 @@ export async function courtCommand(
     process.exit(2);
   }
 
+  // Load custom roles from file if provided
+  let customRoles: import("../../engines/courtPhases.js").RoleDefinition[] | undefined;
+  if (options.roles) {
+    try {
+      const { loadCustomRoles } = await import("../../workflows/roleLoader.js");
+      customRoles = loadCustomRoles(options.roles as string);
+    } catch (err: any) {
+      console.error(`Error loading custom roles: ${err.message}`);
+      process.exit(2);
+    }
+  }
+
   try {
-    const report = await runCourtEngine(idea, providerRes.provider);
+    const enableSearch = !options.noSearch;
+    const report = await runCourtEngine(idea, providerRes.provider, { enableSearch, customRoles });
     report.markdown = buildReport(report);
 
     const isJson = !!options.json;

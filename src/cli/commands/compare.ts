@@ -19,7 +19,8 @@ export async function compareCommand(ideas: string[], rawOptions: Record<string,
   }
 
   const parsed = ideas.map((i) => parseIdeaInput({ idea: loadIdeaInput(i), mode: "compare" }));
-  const report = await runCompareEngine(parsed, providerRes.provider);
+  const enableSearch = !options.noSearch;
+  const report = await runCompareEngine(parsed, providerRes.provider, { enableSearch });
   report.markdown = buildReport(report);
 
   const output = options.output as string | undefined;

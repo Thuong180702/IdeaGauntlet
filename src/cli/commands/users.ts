@@ -31,7 +31,8 @@ export async function usersCommand(
   }
 
   try {
-    const report = await runUserLab(idea, providerRes.provider, count);
+    const enableSearch = !options.noSearch;
+    const report = await runUserLab(idea, providerRes.provider, count, { enableSearch });
     report.markdown = buildReport(report);
 
     const isJson = !!options.json;
