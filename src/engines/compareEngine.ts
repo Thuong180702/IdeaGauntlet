@@ -32,7 +32,7 @@ export async function runCompareEngine(
     `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\nDescription: ${idea.idea}`
   ).join("\n\n");
 
-  const userMessage = `${ideasText}\n\nCompare these ideas. Return JSON with: comparisonMatrix (array of {ideaTitle, criteria: {clarity, pain, urgency, marketAccessibility, distribution, monetization, differentiation, buildComplexity, timeToValidate, evidence}}), perIdeaStrengths (array of {ideaTitle, strengths}), perIdeaRisks (array of {ideaTitle, risks}), bestForFastValidation ({ideaTitle, reasoning}), bestForLongTermUpside ({ideaTitle, reasoning}), killTestsPerIdea (array of {ideaTitle, killTests}), recommendation ({pick, caveats, reasoning})`;
+  const userMessage = `${ideasText}\n\nCompare these ideas. Return JSON with: comparisonMatrix (array of {ideaTitle, criteria: {clarity, pain, urgency, marketAccessibility, distribution, monetization, differentiation, buildComplexity, timeToValidate, evidence, competitiveAdvantage, nichePotential}}), perIdeaStrengths (array of {ideaTitle, strengths}), perIdeaRisks (array of {ideaTitle, risks}), bestForFastValidation ({ideaTitle, reasoning}), bestForLongTermUpside ({ideaTitle, reasoning}), killTestsPerIdea (array of {ideaTitle, killTests}), competitorLandscapePerIdea (array of {ideaTitle, landscape: {competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}}) — name real competitors for each idea, nicheOpportunitiesPerIdea (array of {ideaTitle, niches: [{type, description, evidence, wedgeIdea, whyNow}]}) — 3-5 niches per idea if market saturated, recommendation ({pick, caveats, reasoning})`;
 
   const results: ComparedIdea[] = [];
   let enhancedComparison: EnhancedComparisonResult | undefined;
@@ -75,6 +75,8 @@ export async function runCompareEngine(
       bestForLongTermUpside: parsed.bestForLongTermUpside ?? { ideaTitle: "", reasoning: "" },
       killTestsPerIdea: parsed.killTestsPerIdea ?? [],
       recommendation: parsed.recommendation ?? { pick: "", caveats: [], reasoning: "" },
+      competitorLandscapePerIdea: parsed.competitorLandscapePerIdea,
+      nicheOpportunitiesPerIdea: parsed.nicheOpportunitiesPerIdea,
     };
   } catch {
     // Minimal fallback

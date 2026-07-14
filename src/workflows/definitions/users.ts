@@ -65,6 +65,9 @@ export const usersWorkflow: WorkflowDefinition = {
     "Each persona must have a realistic objection, not a generic one",
     "Interview questions must be specific and actionable",
     "Synthesis must highlight which objections are most likely to be real",
+    "Each persona MUST reference real competitor alternatives they currently use",
+    "Segments must be informed by competitor coverage gaps where possible",
+    "If competitors exist, personas should react to them — not pretend they don't",
   ],
   requiredHeadings: [
     "Synthetic Personas",

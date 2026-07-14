@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ResearchBrief, CompetitorLandscape, NicheOpportunity } from "../search/types.js";
 
 // ─── Literal union types ───────────────────────────────────────
 
@@ -198,6 +199,8 @@ export interface EnhancedCourtDebate {
     reason: string;
   }>;
   nextActions: string[];
+  competitorLandscape?: CompetitorLandscape;
+  nicheOpportunities?: NicheOpportunity[];
 }
 
 export interface EnhancedQuickReport {
@@ -217,6 +220,8 @@ export interface EnhancedQuickReport {
   };
   quickScores: Scorecard;
   nextStep: string;
+  competitorAnalysis?: CompetitorLandscape;
+  nicheOpportunities?: NicheOpportunity[];
 }
 
 export interface EnhancedPersona {
@@ -265,6 +270,8 @@ export interface EnhancedMVPPlan {
   killCriteria: string[];
   pivotOptions: string[];
   recommendedScope: string;
+  competitiveWedge?: string;
+  nicheStrategy?: { niche: string; whyUnderserved: string; howToReach: string };
 }
 
 export interface EnhancedComparisonResult {
@@ -297,6 +304,8 @@ export interface EnhancedComparisonResult {
     caveats: string[];
     reasoning: string;
   };
+  competitorLandscapePerIdea?: Array<{ ideaTitle: string; landscape: CompetitorLandscape }>;
+  nicheOpportunitiesPerIdea?: Array<{ ideaTitle: string; niches: NicheOpportunity[] }>;
 }
 
 // Enhanced fields added via declaration merging — keeps original interface unchanged

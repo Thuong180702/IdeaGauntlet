@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import { globalSetup } from "./setup/globalSetup.js";
 
 /**
@@ -6,10 +7,26 @@ import { globalSetup } from "./setup/globalSetup.js";
  * Performs a best-effort global integration install for detected
  * Claude Code, Codex, Cursor, and MCP-compatible configs.
  *
+ * Also installs Playwright Chromium browser binary for headless web fetching.
+ *
  * NEVER throws — errors are caught and printed as warnings so npm
  * install always succeeds regardless of integration setup outcome.
  */
 export async function runPostinstall(): Promise<void> {
+  // Install Playwright Chromium browser binary (best-effort, non-blocking)
+  console.log("  Installing Playwright Chromium browser...");
+  try {
+    execSync("npx playwright install chromium", {
+      stdio: "ignore",
+      timeout: 120_000,
+    });
+    console.log("  ✓ Playwright Chromium browser installed.");
+  } catch {
+    console.log("  ! Playwright Chromium not installed — web fetch will use fallback mode.");
+    console.log("    Run `npx playwright install chromium` for full JS page rendering.");
+  }
+  console.log("");
+
   try {
     const result = await globalSetup({
       mode: "install",

@@ -93,6 +93,19 @@ export const COURT_ROLES: RoleDefinition[] = [
       "What switching costs exist?",
     ],
   },
+  {
+    id: "competitor-analyst",
+    name: "Competitor Analyst",
+    stance: "skeptic",
+    mandate: "Research existing competitors. Analyze their pricing, features, positioning, weaknesses, and market saturation. Identify what they do well and where gaps exist. If the market is saturated, propose niche strategies.",
+    mustAddress: [
+      "Who already provides this or similar solutions? Name them.",
+      "What do they charge? Is there a pricing gap?",
+      "What features do they have? What do they lack?",
+      "Is the market saturated? Where are the gaps?",
+      "If entering, what niche or edge gives the best chance?",
+    ],
+  },
 ];
 
 /** Phase 1 — Opening statement prompt for a single role. */
@@ -216,6 +229,8 @@ export function buildVerdictPrompt(
     `scoresDetailed (array: { dimension, score 0-10, reason })`,
     `verdictDetail (string — start with verdict prefix: 'strong', 'promising but risky', 'unclear', 'weak', 'needs real evidence', or 'pivot recommended')`,
     `nextActions (array of string)`,
+    `competitorLandscape (object: { competitors: [{ name, url, type, pricing, features, weaknesses }], saturationLevel: "low"|"medium"|"high"|"unknown", analysisNote }) — use data from research brief competitor landscape, add your analysis from the debate`,
+    `nicheOpportunities (array: { type: "underserved_segment"|"feature_gap"|"pricing_gap"|"use_case_gap"|"geographic_gap", description, evidence, wedgeIdea, whyNow }) — 3-5 niches if market is saturated, or explain why niches aren't needed`,
     `No markdown fences. JSON only.`,
     ``,
     research?.summary ?? "",

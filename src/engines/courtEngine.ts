@@ -183,6 +183,8 @@ export async function runCourtEngine(
       killTests: parsed.killTests ?? [],
       scoresDetailed: parsed.scoresDetailed ?? [],
       nextActions: parsed.nextActions ?? [],
+      competitorLandscape: parsed.competitorLandscape,
+      nicheOpportunities: parsed.nicheOpportunities,
     };
 
     reportVerdict = mapVerdict(parsed.verdictDetail ?? "");
@@ -205,6 +207,8 @@ export async function runCourtEngine(
       killTests: [],
       scoresDetailed: [],
       nextActions: ["Retry the court analysis with a shorter idea description."],
+      competitorLandscape: research?.competitorLandscape,
+      nicheOpportunities: research?.nicheOpportunities,
     };
     reportVerdict = "unclear";
   }

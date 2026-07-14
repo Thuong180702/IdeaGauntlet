@@ -42,7 +42,7 @@ For each persona include:
 - archetype (string, e.g., "Busy Professional", "Price-Sensitive Student")
 - segmentDescription (string — what segment they represent)
 - context (string — their current situation)
-- currentWorkaround (string — what they do now instead of this product)
+- currentWorkaround (string — what they do now instead of this product — if competitors exist, name the specific competitor tool they use)
 - triggerEvent (string — what would make them try the product)
 - desiredOutcome (string — what they want to achieve)
 - primaryObjection (string — why they might not use it)
@@ -50,8 +50,10 @@ For each persona include:
 - willingnessToPay ("none" | "low" | "medium" | "high")
 - adoptionBlocker (string — the single biggest reason they won't adopt)
 - likelyChurnReason (string — why they would stop using it)
-- quote (string — a realistic quote in their voice)
+- quote (string — a realistic quote in their voice, mentioning competitor if relevant)
 - interviewQuestion (string — what to ask them in a real interview)
+
+IMPORTANT: If the web research brief mentions competitors, each persona MUST reference at least one real competitor by name in their currentWorkaround or quote. Personas should react to real competitors — not pretend they don't exist. If the market is saturated, include personas from underserved segments that competitors miss.
 
 Also return a synthesis object with:
 - recurringObjections (string[] — objections that appear across personas)

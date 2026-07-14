@@ -92,6 +92,18 @@ export const mvpWorkflow: WorkflowDefinition = {
       required: ["Falsifiable kill signals"],
     },
     {
+      id: "competitive-wedge",
+      heading: "Competitive Wedge",
+      purpose: "Based on competitor analysis, what wedge gives the best chance?",
+      required: ["Competitor summary", "Chosen wedge", "Why this wedge works"],
+    },
+    {
+      id: "niche-strategy",
+      heading: "Niche Strategy",
+      purpose: "Specific niche to target first",
+      required: ["Target niche", "Why underserved", "How to reach them"],
+    },
+    {
       id: "pivot-options",
       heading: "Pivot Options",
       purpose: "Adjacent directions if the core hypothesis fails",
@@ -111,6 +123,9 @@ export const mvpWorkflow: WorkflowDefinition = {
     "Every metric must have a concrete target (e.g., '40% session completion', not 'good engagement')",
     "Kill criteria must be specific and measurable",
     "Pivot options should be genuinely different, not minor variations",
+    "The MVP wedge MUST be informed by competitor analysis — don't build what already exists",
+    "If competitors exist, the MVP must target a specific gap or underserved segment",
+    "Cite competitors by name when explaining the competitive wedge",
   ],
   requiredHeadings: [
     "Core Hypothesis",
@@ -124,6 +139,8 @@ export const mvpWorkflow: WorkflowDefinition = {
     "Interview Script",
     "Success Metrics",
     "Kill Criteria",
+    "Competitive Wedge",
+    "Niche Strategy",
     "Pivot Options",
     "Recommended Scope",
   ],

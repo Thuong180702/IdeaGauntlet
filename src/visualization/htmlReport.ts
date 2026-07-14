@@ -1,7 +1,7 @@
 import type { GauntletReport } from "../core/types.js";
 import { buildReport } from "../core/report.js";
 import { generateRadarChart, type RadarChartInput } from "./radarChart.js";
-import { generateMvpFlowchart, generateCourtMindmap } from "./mermaidDiagram.js";
+import { generateMvpFlowchart, generateCourtMindmap, generateCompetitorGraph, generateNicheMindmap } from "./mermaidDiagram.js";
 
 /**
  * HTML report generator - styled, self-contained HTML page.
@@ -62,6 +62,24 @@ export function generateHtmlReport(report: GauntletReport): string {
   if (report.mode === "court" && report.courtDebate) {
     mermaidBlocks.push(
       '<div class="diagram-block">' + escapeHtml(generateCourtMindmap(report)) + "</div>",
+    );
+  }
+  // Competitor landscape diagram
+  const competitorLandscape =
+    report.courtDebate?.competitorLandscape ??
+    report.quickReport?.competitorAnalysis;
+  if (competitorLandscape && competitorLandscape.competitors.length > 0) {
+    mermaidBlocks.push(
+      '<div class="diagram-block">' + escapeHtml(generateCompetitorGraph(report)) + "</div>",
+    );
+  }
+  // Niche mindmap
+  const niches =
+    report.courtDebate?.nicheOpportunities ??
+    report.quickReport?.nicheOpportunities;
+  if (niches && niches.length > 0) {
+    mermaidBlocks.push(
+      '<div class="diagram-block">' + escapeHtml(generateNicheMindmap(report)) + "</div>",
     );
   }
 
@@ -126,6 +144,8 @@ export function generateHtmlReport(report: GauntletReport): string {
   parts.push("      margin-top: 1rem; border: 1px solid var(--surface-2); overflow-x: auto; }");
   parts.push("    pre { background: var(--bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }");
   parts.push("    .disclaimer { text-align: center; color: var(--text-dim); font-size: 0.8rem; margin-top: 2rem; }");
+  parts.push("    .niche-card { background: var(--surface-2); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 3px solid var(--accent); }");
+  parts.push("    .niche-type { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; background: var(--accent); color: #fff; margin-bottom: 0.5rem; }");
   parts.push("  </style>");
   parts.push("</head>");
   parts.push("<body>");
@@ -144,6 +164,35 @@ export function generateHtmlReport(report: GauntletReport): string {
   }
   if (mermaidBlocks.length > 0) {
     parts.push('    <div class="card full-width" style="margin-top:1.5rem"><h2>Diagrams</h2>' + mermaidBlocks.join("") + "</div>");
+  }
+  // Competitor landscape card
+  if (competitorLandscape && competitorLandscape.competitors.length > 0) {
+    parts.push('    <div class="card full-width" style="margin-top:1.5rem">');
+    parts.push('      <h2>Competitor Landscape</h2>');
+    parts.push('      <p style="color:var(--text-dim);margin-bottom:1rem">Saturation: <strong style="color:' + getSaturationColor(competitorLandscape.saturationLevel) + '">' + competitorLandscape.saturationLevel + '</strong> (' + competitorLandscape.competitors.length + ' competitors)</p>');
+    parts.push('      <p style="margin-bottom:1rem">' + inlineMd(competitorLandscape.analysisNote) + '</p>');
+    parts.push('      <table><thead><tr><th>#</th><th>Competitor</th><th>Type</th><th>Pricing</th><th>Features</th><th>Weaknesses</th></tr></thead><tbody>');
+    competitorLandscape.competitors.forEach((c, i) => {
+      parts.push('        <tr><td>' + (i + 1) + '</td><td><a href="' + c.url + '" target="_blank">' + escapeHtml(c.name) + '</a></td><td>' + c.type + '</td><td>' + escapeHtml(c.pricing ?? '-') + '</td><td>' + escapeHtml((c.features ?? []).join('; ')) + '</td><td>' + escapeHtml((c.weaknesses ?? []).join('; ')) + '</td></tr>');
+    });
+    parts.push('      </tbody></table>');
+    parts.push('    </div>');
+  }
+  // Niche opportunities card
+  if (niches && niches.length > 0) {
+    parts.push('    <div class="card full-width" style="margin-top:1.5rem">');
+    parts.push('      <h2>Niche Opportunities</h2>');
+    parts.push('      <p style="color:var(--text-dim);margin-bottom:1rem">If the market is saturated, consider these edge opportunities:</p>');
+    niches.forEach((n, i) => {
+      parts.push('        <div class="niche-card">');
+      parts.push('          <span class="niche-type">' + n.type.replace(/_/g, ' ') + '</span>');
+      parts.push('          <p><strong>' + escapeHtml(n.description) + '</strong></p>');
+      parts.push('          <p style="font-size:0.85rem;color:var(--text-dim)">Evidence: ' + escapeHtml(n.evidence) + '</p>');
+      parts.push('          <p style="font-size:0.85rem">Wedge: ' + escapeHtml(n.wedgeIdea) + '</p>');
+      parts.push('          <p style="font-size:0.85rem">Why now: ' + escapeHtml(n.whyNow) + '</p>');
+      parts.push('        </div>');
+    });
+    parts.push('    </div>');
   }
   parts.push('    <div class="report-body full-width">');
   parts.push("      " + htmlBody);
@@ -193,6 +242,15 @@ function getVerdictColor(verdict?: string): string {
     case "pivot_recommended": return "linear-gradient(135deg, #f97316, #ea580c)";
     case "weak": return "linear-gradient(135deg, #ef4444, #dc2626)";
     default: return "linear-gradient(135deg, #64748b, #475569)";
+  }
+}
+
+function getSaturationColor(level?: string): string {
+  switch (level) {
+    case "high": return "#ef4444";
+    case "medium": return "#f59e0b";
+    case "low": return "#10b981";
+    default: return "#64748b";
   }
 }
 

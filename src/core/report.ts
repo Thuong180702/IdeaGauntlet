@@ -1,5 +1,6 @@
 import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, CourtSession, MVPPlan, ComparisonResult, ComparedIdea } from "./types.js";
 import type { EnhancedCourtDebate, EnhancedQuickReport, EnhancedPersona, UserSynthesis, EnhancedMVPPlan, EnhancedComparisonResult } from "./types.js";
+import type { CompetitorLandscape, NicheOpportunity } from "../search/types.js";
 import { medianScore } from "./scoring.js";
 
 export function buildReport(report: GauntletReport): string {
@@ -188,6 +189,14 @@ function buildEnhancedCourtDebate(debate: EnhancedCourtDebate): string {
     parts.push(debate.nextActions.map((a, i) => `${i + 1}. ${a}`).join("\n"));
   }
 
+  if (debate.competitorLandscape) {
+    parts.push(buildCompetitorLandscape(debate.competitorLandscape));
+  }
+
+  if (debate.nicheOpportunities && debate.nicheOpportunities.length > 0) {
+    parts.push(buildNicheOpportunities(debate.nicheOpportunities));
+  }
+
   return parts.join("\n\n");
 }
 
@@ -201,6 +210,12 @@ function buildEnhancedQuickReport(qr: EnhancedQuickReport): string {
   if (qr.buildabilityRisk) parts.push(`**Buildability risk:** ${qr.buildabilityRisk}`);
   if (qr.fastestValidationTest?.description) {
     parts.push(`**Fastest test:** ${qr.fastestValidationTest.description} (${qr.fastestValidationTest.method}, ${qr.fastestValidationTest.timeline})`);
+  }
+  if (qr.competitorAnalysis) {
+    parts.push(buildCompetitorLandscape(qr.competitorAnalysis));
+  }
+  if (qr.nicheOpportunities && qr.nicheOpportunities.length > 0) {
+    parts.push(buildNicheOpportunities(qr.nicheOpportunities));
   }
   if (qr.nextStep) parts.push(`**Next step:** ${qr.nextStep}`);
   return parts.join("\n\n");
@@ -260,6 +275,10 @@ function buildEnhancedMvpPlan(p: EnhancedMVPPlan): string {
   if (p.pivotOptions.length > 0) {
     parts.push("**Pivot options:**\n" + p.pivotOptions.map((po, i) => `${i + 1}. ${po}`).join("\n"));
   }
+  if (p.competitiveWedge) parts.push(`**Competitive wedge:** ${p.competitiveWedge}`);
+  if (p.nicheStrategy) {
+    parts.push(`**Niche strategy:** ${p.nicheStrategy.niche}\n- **Why underserved:** ${p.nicheStrategy.whyUnderserved}\n- **How to reach:** ${p.nicheStrategy.howToReach}`);
+  }
   if (p.recommendedScope) parts.push(`**Recommended scope:** ${p.recommendedScope}`);
   return parts.join("\n\n");
 }
@@ -285,5 +304,44 @@ function buildEnhancedComparison(c: EnhancedComparisonResult): string {
     }
   }
 
+  if (c.competitorLandscapePerIdea && c.competitorLandscapePerIdea.length > 0) {
+    parts.push("### Competitor Landscape Per Idea\n");
+    for (const item of c.competitorLandscapePerIdea) {
+      parts.push(`**${item.ideaTitle}:**\n` + buildCompetitorLandscape(item.landscape));
+    }
+  }
+
+  if (c.nicheOpportunitiesPerIdea && c.nicheOpportunitiesPerIdea.length > 0) {
+    parts.push("### Niche Opportunities Per Idea\n");
+    for (const item of c.nicheOpportunitiesPerIdea) {
+      if (item.niches.length > 0) {
+        parts.push(`**${item.ideaTitle}:**\n` + buildNicheOpportunities(item.niches));
+      }
+    }
+  }
+
+  return parts.join("\n\n");
+}
+
+// ─── Competitor + niche rendering helpers ──────────────────────
+
+function buildCompetitorLandscape(landscape: CompetitorLandscape): string {
+  const parts: string[] = [`### Competitor Landscape\n\n**Saturation:** ${landscape.saturationLevel} (${landscape.competitors.length} competitors)\n\n${landscape.analysisNote}`];
+  if (landscape.competitors.length > 0) {
+    parts.push("\n| # | Competitor | Type | Pricing | Features | Weaknesses |\n|---|---|---|---|---|---|");
+    landscape.competitors.forEach((c, i) => {
+      const features = c.features?.join("; ") ?? "-";
+      const weaknesses = c.weaknesses?.join("; ") ?? "-";
+      parts.push(`| ${i + 1} | [${c.name}](${c.url}) | ${c.type} | ${c.pricing ?? "-"} | ${features} | ${weaknesses} |`);
+    });
+  }
+  return parts.join("\n");
+}
+
+function buildNicheOpportunities(niches: NicheOpportunity[]): string {
+  const parts: string[] = ["### Niche Opportunities\n"];
+  niches.forEach((n, i) => {
+    parts.push(`${i + 1}. **[${n.type}]** ${n.description}\n   - **Evidence:** ${n.evidence}\n   - **Wedge:** ${n.wedgeIdea}\n   - **Why now:** ${n.whyNow}`);
+  });
   return parts.join("\n\n");
 }

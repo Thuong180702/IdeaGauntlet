@@ -34,7 +34,7 @@ export async function runImmuneEngine(
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
-    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), nextStep",
+    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), nextStep",
   ].filter(Boolean).join("\n");
 
   let parsed: any = {};
@@ -89,6 +89,8 @@ export async function runImmuneEngine(
     fastestValidationTest: parsed.fastestValidationTest ?? { description: "", method: "", timeline: "", successSignal: "" },
     quickScores: scores,
     nextStep: parsed.nextStep ?? "",
+    competitorAnalysis: parsed.competitorAnalysis,
+    nicheOpportunities: parsed.nicheOpportunities,
   };
 
   return {

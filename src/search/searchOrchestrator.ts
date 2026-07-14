@@ -3,10 +3,19 @@ import type {
   SearchResult,
   ResearchBrief,
   SearchConfig,
+  PageContent,
 } from "./types.js";
 import { DEFAULT_SEARCH_CONFIG } from "./types.js";
 import { DuckDuckGoProvider } from "./duckDuckGoProvider.js";
 import { SerperProvider } from "./serperProvider.js";
+import { ProductHuntProvider } from "./productHuntProvider.js";
+import { GitHubProvider } from "./gitHubProvider.js";
+import { HackerNewsProvider } from "./hackerNewsProvider.js";
+import { fetchPageContent, fetchPageContents } from "./pageFetcher.js";
+import { fetchPagesPlaywright } from "./playwrightFetcher.js";
+import { checkLivenessBatch } from "./playwrightFetcher.js";
+import { analyzeCompetitors } from "./competitorAnalyzer.js";
+import { detectNiches } from "./nicheDetector.js";
 import type { IdeaInput, GauntletMode } from "../core/types.js";
 
 /**
@@ -26,12 +35,33 @@ export function resolveSearchProvider(
     return new SerperProvider(apiKey);
   }
 
-  return new DuckDuckGoProvider();
+  switch (provider) {
+    case "producthunt":
+      return new ProductHuntProvider();
+    case "github":
+      return new GitHubProvider();
+    case "hackernews":
+      return new HackerNewsProvider();
+    case "serper":
+      return new SerperProvider(apiKey ?? "");
+    default:
+      return new DuckDuckGoProvider();
+  }
+}
+
+/**
+ * Get supplementary providers for multi-source research.
+ * Always returns GitHub + HackerNews + ProductHunt for tech/product ideas.
+ * These run in parallel with the primary provider.
+ */
+function getSupplementaryProviders(): WebSearchProvider[] {
+  return [new GitHubProvider(), new HackerNewsProvider(), new ProductHuntProvider()];
 }
 
 /**
  * Generate mode-specific search queries for an idea.
  * Each mode needs different research focus.
+ * Deepened: pricing, complaints, underserved segments, niche queries.
  */
 export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
   const ideaText = idea.idea;
@@ -43,7 +73,11 @@ export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
       return [
         `${ideaText} competitors alternatives`,
         `${ideaText} market size demand trends`,
-        market ? `${ideaText} ${market} willingness to pay pricing` : `${ideaText} pricing model`,
+        market ? `${ideaText} ${market} willingness to pay pricing` : `${ideaText} pricing model "per month" OR "per year" OR "free"`,
+        `${ideaText} "I wish" OR "frustrating" OR "missing feature"`,
+        `${ideaText} review pros cons`,
+        market ? `${ideaText} ${market} underserved OR niche` : `${ideaText} underserved niche`,
+        `${ideaText} alternatives for "small business" OR "startups" OR "individuals"`,
       ];
 
     case "court":
@@ -53,6 +87,9 @@ export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
         `${ideaText} user complaints reviews problems`,
         users ? `${ideaText} ${users} needs behavior` : `${ideaText} target user behavior`,
         `${ideaText} privacy regulatory concerns`,
+        `${ideaText} "I wish" OR "frustrating" OR "missing feature" OR "alternative to"`,
+        `${ideaText} pricing "per month" OR "per year" OR "free plan"`,
+        `${ideaText} underserved segment OR niche OR niche market`,
       ];
 
     case "users":
@@ -61,6 +98,8 @@ export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
         `${ideaText} user pain points complaints`,
         users ? `${ideaText} ${users} needs behavior` : `${ideaText} user needs`,
         `${ideaText} current workarounds alternatives`,
+        `${ideaText} "I wish" OR "frustrating" OR "hate" OR "missing"`,
+        `${ideaText} alternatives for "small business" OR "freelancers" OR "students" OR "beginners"`,
       ];
 
     case "mvp":
@@ -69,6 +108,9 @@ export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
         `${ideaText} validation test landing page`,
         `${ideaText} competitors MVP features`,
         `${ideaText} build vs buy technical feasibility`,
+        `${ideaText} competitors pricing "per month" OR "free"`,
+        `${ideaText} "frustrating" OR "missing feature" OR "alternative to"`,
+        `${ideaText} niche OR underserved segment`,
       ];
 
     case "compare":
@@ -76,17 +118,68 @@ export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
         `${ideaText} competitors comparison`,
         `${ideaText} market opportunity`,
         `${ideaText} which is better alternatives`,
+        `${ideaText} pricing "per month" OR "free"`,
+        `${ideaText} "frustrating" OR "missing" OR "I wish"`,
+        `${ideaText} niche OR underserved`,
       ];
 
     default:
-      return [`${ideaText} competitors`, `${ideaText} market`];
+      return [`${ideaText} competitors`, `${ideaText} market`, `${ideaText} pricing`];
   }
 }
 
 /**
+ * Fetch page content with 2-tier fallback:
+ * 1. Cheap fetch() + HTML strip
+ * 2. Playwright headless browser for JS-rendered sites
+ *
+ * Also runs liveness check before fetching to skip 404/paywalled pages.
+ */
+async function fetchPagesWithFallback(
+  urls: string[],
+  options?: { timeoutMs?: number; maxChars?: number; concurrency?: number },
+): Promise<PageContent[]> {
+  const maxChars = options?.maxChars ?? 8_000;
+  const timeoutMs = options?.timeoutMs ?? 15_000;
+  const concurrency = options?.concurrency ?? 3;
+
+  // Step 1: Liveness check — skip dead URLs
+  const aliveUrls = await checkLivenessBatch(urls, 5_000);
+  if (aliveUrls.length === 0) return [];
+
+  // Step 2: Try cheap fetch() first
+  const cheapResults = await fetchPageContents(aliveUrls, {
+    timeoutMs,
+    maxChars,
+    concurrency,
+  });
+
+  // If we got good results from most URLs, return them
+  if (cheapResults.length >= Math.ceil(aliveUrls.length * 0.6)) {
+    return cheapResults;
+  }
+
+  // Step 3: For URLs where cheap fetch failed, try Playwright
+  const fetchedUrls = new Set(cheapResults.map((r) => r.url));
+  const missingUrls = aliveUrls.filter((url) => !fetchedUrls.has(url));
+
+  if (missingUrls.length === 0) return cheapResults;
+
+  const playwrightResults = await fetchPagesPlaywright(missingUrls, {
+    timeoutMs,
+    maxChars,
+    concurrency,
+  });
+
+  // Merge results, preferring Playwright for the missing URLs
+  return [...cheapResults, ...playwrightResults];
+}
+
+/**
  * Perform web research for an idea in a given mode.
- * Calls the search provider, aggregates results, and returns a brief
- * formatted for injection into the LLM system prompt.
+ * Uses multi-provider search (DuckDuckGo + GitHub + HN + ProductHunt),
+ * then fetches page contents with Playwright fallback,
+ * runs competitor analysis and niche detection.
  */
 export async function performResearch(
   idea: IdeaInput,
@@ -98,6 +191,7 @@ export async function performResearch(
   const searchProvider = provider ?? resolveSearchProvider(cfg);
   const queries = generateQueries(idea, mode).slice(0, cfg.maxQueries);
 
+  // Run primary provider queries
   const allResults: SearchResult[] = [];
   const perQueryResults: Record<string, SearchResult[]> = {};
 
@@ -107,35 +201,93 @@ export async function performResearch(
       perQueryResults[query] = results;
       allResults.push(...results);
     } catch {
-      // Silently skip failed queries
       perQueryResults[query] = [];
     }
   }
 
-  const summary = formatResearchBrief(queries, perQueryResults);
+  // Run supplementary providers in parallel (GitHub, HN, ProductHunt)
+  const supplementary = getSupplementaryProviders();
+  const supplementaryQuery = `${idea.idea} ${idea.market ?? ""}`.trim();
+
+  const supplementaryResults = await Promise.all(
+    supplementary.map(async (p) => {
+      try {
+        return await p.search(supplementaryQuery, 5);
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  // Merge supplementary results
+  for (const results of supplementaryResults) {
+    allResults.push(...results);
+  }
+  perQueryResults["[supplementary: github+hackernews+producthunt]"] = supplementaryResults.flat();
+
+  // Fetch page contents from top unique URLs (max 8 for deeper analysis)
+  const urlsToFetch = [...new Set(allResults.map((r) => r.url))]
+    .filter((url) => !isSocialMedia(url) && !isKnownApiUrl(url))
+    .slice(0, 8);
+
+  const pageContents = await fetchPagesWithFallback(urlsToFetch, {
+    timeoutMs: 15_000,
+    maxChars: 8_000,
+    concurrency: 3,
+  });
+
+  // Competitor analysis
+  const competitorLandscape = analyzeCompetitors(
+    idea.idea,
+    allResults,
+    pageContents.length > 0 ? pageContents : undefined,
+  );
+
+  // Niche detection
+  const nicheOpportunities = detectNiches(
+    idea.idea,
+    competitorLandscape,
+    allResults,
+    pageContents.length > 0 ? pageContents : undefined,
+  );
+
+  const summary = formatResearchBrief(
+    queries,
+    perQueryResults,
+    pageContents,
+    competitorLandscape,
+    nicheOpportunities,
+  );
 
   return {
     queries,
     results: allResults,
     summary,
     searchedAt: new Date().toISOString(),
+    pageContents: pageContents.length > 0 ? pageContents : undefined,
+    competitorLandscape,
+    nicheOpportunities: nicheOpportunities.length > 0 ? nicheOpportunities : undefined,
   };
 }
 
 /**
- * Format search results into a text brief for LLM system prompt injection.
- * Includes source URLs so the LLM can cite real evidence.
+ * Format search results + competitor + niche data into a text brief
+ * for LLM system prompt injection.
  */
 function formatResearchBrief(
   queries: string[],
   perQueryResults: Record<string, SearchResult[]>,
+  pageContents: PageContent[],
+  competitorLandscape: ResearchBrief["competitorLandscape"],
+  nicheOpportunities: ResearchBrief["nicheOpportunities"],
 ): string {
   const lines: string[] = [
     "=== WEB RESEARCH BRIEF ===",
-    "The following real-world information was gathered from web search. Use this evidence to ground your analysis. Cite sources where relevant.",
+    "The following real-world information was gathered from web search (DuckDuckGo + GitHub + Hacker News + Product Hunt). You MUST ground your analysis in this evidence. Cite competitors by name. If no competitor data exists, explicitly state 'No competitor data found'.",
     "",
   ];
 
+  // Standard search results
   for (const query of queries) {
     const results = perQueryResults[query] ?? [];
     if (results.length === 0) continue;
@@ -149,9 +301,88 @@ function formatResearchBrief(
     }
   }
 
-  if (lines.length <= 3) {
-    return "=== WEB RESEARCH BRIEF ===\nNo search results found. Proceed with analysis based on your knowledge.";
+  // Supplementary provider results
+  const suppResults = perQueryResults["[supplementary: github+hackernews+producthunt]"] ?? [];
+  if (suppResults.length > 0) {
+    lines.push("--- Supplementary Sources (GitHub + Hacker News + Product Hunt) ---");
+    for (const r of suppResults) {
+      lines.push(`• ${r.title}`);
+      lines.push(`  URL: ${r.url}`);
+      if (r.snippet) lines.push(`  ${r.snippet}`);
+      lines.push("");
+    }
   }
 
+  // Competitor landscape
+  if (competitorLandscape && competitorLandscape.competitors.length > 0) {
+    lines.push("=== COMPETITOR LANDSCAPE ===");
+    lines.push(`Saturation: ${competitorLandscape.saturationLevel} (${competitorLandscape.competitors.length} competitors found)`);
+    lines.push(competitorLandscape.analysisNote);
+    lines.push("");
+
+    competitorLandscape.competitors.forEach((c, i) => {
+      lines.push(`${i + 1}. ${c.name} (${c.type}) — ${c.url}`);
+      if (c.pricing) lines.push(`   Pricing: ${c.pricing}`);
+      if (c.features && c.features.length > 0) lines.push(`   Features: ${c.features.join(", ")}`);
+      if (c.weaknesses && c.weaknesses.length > 0) lines.push(`   Weaknesses: ${c.weaknesses.join("; ")}`);
+      if (c.notes) lines.push(`   Notes: ${c.notes}`);
+      lines.push("");
+    });
+  } else {
+    lines.push("=== COMPETITOR LANDSCAPE ===");
+    lines.push("No direct competitors found in search results. This may indicate a blue ocean opportunity OR lack of market demand — investigate further.");
+    lines.push("");
+  }
+
+  // Niche opportunities
+  if (nicheOpportunities && nicheOpportunities.length > 0) {
+    lines.push("=== NICHE OPPORTUNITIES ===");
+    lines.push("If the market is saturated, consider these edge opportunities:");
+    lines.push("");
+    nicheOpportunities.forEach((n, i) => {
+      lines.push(`${i + 1}. [${n.type}] ${n.description}`);
+      lines.push(`   Evidence: ${n.evidence}`);
+      lines.push(`   Wedge: ${n.wedgeIdea}`);
+      lines.push(`   Why now: ${n.whyNow}`);
+      lines.push("");
+    });
+  }
+
+  // Deep page content excerpts (increased to 2000 chars per page for richer context)
+  if (pageContents.length > 0) {
+    lines.push("=== DEEP PAGE CONTENT ===");
+    lines.push("Excerpts from competitor/relevant pages (up to 2000 chars each):");
+    lines.push("");
+    for (const page of pageContents.slice(0, 6)) {
+      lines.push(`--- ${page.title} (${page.url}) ---`);
+      if (page.description) lines.push(`Description: ${page.description}`);
+      lines.push(page.text.slice(0, 2000));
+      lines.push("");
+    }
+  }
+
+  lines.push("=== END RESEARCH BRIEF ===");
   return lines.join("\n");
+}
+
+function isSocialMedia(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.includes("reddit.com/") ||
+    lower.includes("youtube.com/") ||
+    lower.includes("twitter.com/") ||
+    lower.includes("x.com/") ||
+    lower.includes("facebook.com/") ||
+    lower.includes("instagram.com/");
+}
+
+/**
+ * Filter out API endpoints and known non-html URLs that would waste fetch budget.
+ */
+function isKnownApiUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.includes("api.github.com/") ||
+    lower.includes("hn.algolia.com/") ||
+    lower.includes("producthunt.com/frontend/graphql") ||
+    lower.includes("api.greenhouse.io/") ||
+    lower.includes("api.ashbyhq.com/");
 }

@@ -11,6 +11,55 @@ export interface SearchResult {
   snippet: string;
 }
 
+// ─── Page content (fetched from URLs) ───────────────────────────
+
+export interface PageContent {
+  url: string;
+  title: string;
+  text: string;
+  description?: string;
+}
+
+// ─── Competitor analysis ───────────────────────────────────────
+
+export interface CompetitorInfo {
+  name: string;
+  url: string;
+  type: "direct" | "indirect";
+  pricing?: string;
+  features?: string[];
+  weaknesses?: string[];
+  notes?: string;
+}
+
+export interface CompetitorLandscape {
+  competitors: CompetitorInfo[];
+  saturationLevel: "low" | "medium" | "high" | "unknown";
+  analysisNote: string;
+}
+
+// ─── Niche opportunities ───────────────────────────────────────
+
+export type NicheType =
+  | "underserved_segment"
+  | "feature_gap"
+  | "pricing_gap"
+  | "use_case_gap"
+  | "geographic_gap"
+  | "integration_gap"
+  | "workflow_gap"
+  | "industry_vertical_gap";
+
+export interface NicheOpportunity {
+  type: NicheType;
+  description: string;
+  evidence: string;
+  wedgeIdea: string;
+  whyNow: string;
+}
+
+// ─── Research brief (aggregated) ───────────────────────────────
+
 export interface ResearchBrief {
   /** The search queries that were executed. */
   queries: string[];
@@ -22,15 +71,21 @@ export interface ResearchBrief {
   role?: string;
   /** Timestamp of research. */
   searchedAt: string;
+  /** Full page contents fetched from top result URLs. */
+  pageContents?: PageContent[];
+  /** Structured competitor landscape. */
+  competitorLandscape?: CompetitorLandscape;
+  /** Detected niche / edge opportunities. */
+  nicheOpportunities?: NicheOpportunity[];
 }
 
 export interface WebSearchProvider {
-  kind: "duckduckgo" | "serper" | "custom";
+  kind: "duckduckgo" | "serper" | "producthunt" | "github" | "hackernews" | "custom";
   search(query: string, maxResults?: number): Promise<SearchResult[]>;
 }
 
 export interface SearchConfig {
-  provider: "duckduckgo" | "serper";
+  provider: "duckduckgo" | "serper" | "producthunt" | "github" | "hackernews";
   apiKey?: string;
   maxResultsPerQuery: number;
   maxQueries: number;
@@ -41,6 +96,6 @@ export const DEFAULT_SEARCH_CONFIG: SearchConfig = {
   provider: "duckduckgo",
   apiKey: undefined,
   maxResultsPerQuery: 5,
-  maxQueries: 5,
+  maxQueries: 8,
   timeoutMs: 15000,
 };

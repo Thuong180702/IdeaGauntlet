@@ -62,6 +62,18 @@ export const compareWorkflow: WorkflowDefinition = {
       required: ["Test proposals per idea"],
     },
     {
+      id: "competitor-landscape-per-idea",
+      heading: "Competitor Landscape Per Idea",
+      purpose: "How saturated is the market for each idea?",
+      required: ["Competitor count per idea", "Saturation assessment"],
+    },
+    {
+      id: "niche-opportunities-per-idea",
+      heading: "Niche Opportunities Per Idea",
+      purpose: "Edge opportunities for each idea",
+      required: ["Niches per idea", "Wedge feasibility"],
+    },
+    {
       id: "recommendation",
       heading: "Recommendation",
       purpose: "Which idea to pursue and what caveats apply",
@@ -79,6 +91,8 @@ export const compareWorkflow: WorkflowDefinition = {
     { id: "build-complexity", label: "Build Complexity", definition: "How complex is it to build?" },
     { id: "time-to-validate", label: "Time to Validate", definition: "How quickly can it be tested?" },
     { id: "evidence", label: "Evidence", definition: "What real evidence supports it?" },
+    { id: "competitive-advantage", label: "Competitive Advantage", definition: "Does this idea have a real edge over existing competitors?" },
+    { id: "niche-potential", label: "Niche Potential", definition: "Can it enter an underserved niche?" },
   ],
   outputRules: [
     "Score all ideas on the same criteria — do not use different standards",
@@ -86,6 +100,9 @@ export const compareWorkflow: WorkflowDefinition = {
     "Kill tests must be specific to each idea, not generic",
     "Recommendation must include caveats and conditions",
     "Do not rank ideas if the comparison is inconclusive — say so",
+    "You MUST research and name real competitors for each idea before scoring",
+    "If a market is saturated, score niche-potential based on real gaps found",
+    "Cite competitors by name — do not say 'some competitors exist' without naming them",
   ],
   requiredHeadings: [
     "Comparison Matrix",
@@ -94,6 +111,8 @@ export const compareWorkflow: WorkflowDefinition = {
     "Best Idea for Fast Validation",
     "Best Idea for Long-Term Upside",
     "Kill Tests Per Idea",
+    "Competitor Landscape Per Idea",
+    "Niche Opportunities Per Idea",
     "Recommendation",
   ],
 };

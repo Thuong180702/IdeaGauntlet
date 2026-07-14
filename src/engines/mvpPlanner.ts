@@ -36,7 +36,7 @@ export async function runMvpPlanner(
   const researchContext = research?.summary ?? "";
   const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  const userMessage = `Product idea: ${idea.idea}\n\nReturn JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string)`;
+  const userMessage = `Product idea: ${idea.idea}\n\nReturn JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string), competitiveWedge (string — based on competitor analysis from research brief, cite competitors by name), nicheStrategy ({niche, whyUnderserved, howToReach} — identify a specific underserved niche to target first)`;
 
   let plan: MVPPlan = { ...DEFAULT_PLAN };
   let enhancedMvpPlan: EnhancedMVPPlan | undefined;
@@ -74,6 +74,8 @@ export async function runMvpPlanner(
       killCriteria: parsed.killCriteria ?? [],
       pivotOptions: parsed.pivotOptions ?? [],
       recommendedScope: parsed.recommendedScope ?? "",
+      competitiveWedge: parsed.competitiveWedge,
+      nicheStrategy: parsed.nicheStrategy,
     };
 
     // Verdict reflects MVP plan readiness (Bug C fix)

@@ -24,7 +24,7 @@ describe("workflow definitions", () => {
     }
   });
 
-  it("court workflow has exactly 7 roles with correct IDs", () => {
+  it("court workflow has exactly 8 roles with correct IDs", () => {
     const court = getWorkflow("court");
     const roleIds = court.roles.map((r: WorkflowRole) => r.id);
     expect(roleIds).toContain("market-skeptic");
@@ -33,8 +33,9 @@ describe("workflow definitions", () => {
     expect(roleIds).toContain("technical-skeptic");
     expect(roleIds).toContain("business-defender");
     expect(roleIds).toContain("user-advocate");
+    expect(roleIds).toContain("competitor-analyst");
     expect(roleIds).toContain("judge");
-    expect(court.roles.length).toBe(7);
+    expect(court.roles.length).toBe(8);
   });
 
   it("court workflow has 12 phases", () => {
@@ -109,10 +110,10 @@ describe("workflow definitions", () => {
     expect(court.requiredHeadings).toContain("Evidence Gaps");
   });
 
-  // Verify that roles.length is still 7 and phases.length is still 12
-  it("court workflow still has exactly 7 debate roles", () => {
+  // Verify that roles.length is still 8 and phases.length is still 12
+  it("court workflow still has exactly 8 debate roles", () => {
     const court = getWorkflow("court");
-    expect(court.roles.length).toBe(7);
+    expect(court.roles.length).toBe(8);
   });
 
   it("court workflow still has exactly 12 debate phases", () => {
@@ -148,9 +149,9 @@ describe("workflow definitions", () => {
     expect(mvp.requiredHeadings).toContain("Interview Script");
   });
 
-  it("compare workflow has 10 scoring dimensions", () => {
+  it("compare workflow has 12 scoring dimensions", () => {
     const compare = getWorkflow("compare");
-    expect(compare.scoringDimensions.length).toBe(10);
+    expect(compare.scoringDimensions.length).toBe(12);
     expect(compare.requiredHeadings).toContain("Comparison Matrix");
     expect(compare.requiredHeadings).toContain("Per-Idea Strengths");
     expect(compare.requiredHeadings).toContain("Kill Tests Per Idea");

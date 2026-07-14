@@ -44,13 +44,14 @@
   },
   "dependencies": {
     "cac": "^6.7.14",
+    "playwright": "^1.40.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0",
     "tsup": "^8.2.0",
     "tsx": "^4.16.0",
-    "vitest": "^2.0.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }
