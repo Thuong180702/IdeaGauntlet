@@ -140,6 +140,26 @@ Terminal CLI mode does not guarantee live web browsing. It uses the configured p
 
 Direct CLI and MCP generation require a provider. Agent-native workflows do not.
 
+**Anthropic Claude (Native):**
+
+Simply set your Anthropic API key, or provide a key with the prefix `sk-ant-` as `IDEAGAUNTLET_API_KEY`:
+
+```bash
+export ANTHROPIC_API_KEY="your-anthropic-key"
+# Optional model override (default: claude-3-5-sonnet-latest)
+export IDEAGAUNTLET_MODEL="claude-3-5-sonnet-latest"
+```
+
+**Groq (Native):**
+
+Set your Groq API key, or provide a key with the prefix `gsk_` as `IDEAGAUNTLET_API_KEY`:
+
+```bash
+export GROQ_API_KEY="your-groq-key"
+# Optional model override (default: llama-3.1-70b-versatile)
+export IDEAGAUNTLET_MODEL="llama-3.1-70b-versatile"
+```
+
 **OpenAI-compatible:**
 
 ```bash
@@ -155,7 +175,7 @@ ollama serve
 idea-gauntlet quick "Your idea" --ollama --model llama3
 ```
 
-Supports OpenAI, OpenRouter, Groq, Together, Fireworks, LM Studio, LocalAI.
+Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Studio, LocalAI.
 
 ---
 
@@ -321,6 +341,19 @@ idea-gauntlet history <id>
 # Compare score deltas between two saved reports
 idea-gauntlet history <new-id> --evolve <old-id>
 ```
+
+---
+
+## Interactive Court Defense
+
+When running in **Interactive mode**, you can defend your idea against skeptics in **Court mode**:
+
+1. Start interactive mode: `idea-gauntlet interactive "Your idea"`
+2. Set mode to court: `/mode court`
+3. Add a defense argument: `/defend "We bypass this distribution risk by partnering with key industry platforms directly."`
+4. Run court analysis: `/run`
+5. The Judge and Skeptics will dynamically process your defense, debate it, and re-calibrate the scorebars in the report.
+6. Clear defenses at any time: `/clear-defenses`
 
 ---
 
