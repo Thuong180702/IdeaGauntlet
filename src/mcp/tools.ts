@@ -11,14 +11,32 @@ import { mcpToolDescriptions } from "../workflows/formatters/formatForMcpDescrip
 import { notifyResourcesChanged } from "./server.js";
 import { t } from "../utils/locale.js";
 
+import { loadReport, listReports } from "../history/historyStore.js";
+
 const reports = new Map<string, GauntletReport>();
 
 let provider: LLMProvider | null = null;
 const resolved = resolveProvider({});
 if (resolved) provider = resolved.provider;
 
+export function getReport(id: string): GauntletReport | null {
+  const inMemory = reports.get(id);
+  if (inMemory) return inMemory;
+  try {
+    return loadReport(id, process.cwd());
+  } catch {
+    return null;
+  }
+}
+
 export function getReportIds(): string[] {
-  return Array.from(reports.keys());
+  const inMemory = Array.from(reports.keys());
+  try {
+    const history = listReports(process.cwd()).map((entry) => entry.id);
+    return [...new Set([...inMemory, ...history])];
+  } catch {
+    return inMemory;
+  }
 }
 
 function requireProvider(): LLMProvider {

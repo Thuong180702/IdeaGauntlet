@@ -1,5 +1,5 @@
 import { handleToolCall, toolDefinitions, getReportIds } from "./tools.js";
-import { listResources } from "./resources.js";
+import { listResources, readMcpResource } from "./resources.js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -90,6 +90,24 @@ function handleMessage(line: string): void {
     case "resources/list":
       respond(msg.id, listResources(getReportIds()));
       break;
+    case "resources/read": {
+      const uri = msg.params?.uri as string;
+      if (!uri) {
+        respond(msg.id, null, { code: -32602, message: "URI parameter is required" });
+        break;
+      }
+      try {
+        const result = readMcpResource(uri);
+        if (result) {
+          respond(msg.id, result);
+        } else {
+          respond(msg.id, null, { code: -32002, message: `Resource not found: ${uri}` });
+        }
+      } catch (err: any) {
+        respond(msg.id, null, { code: -32000, message: err.message });
+      }
+      break;
+    }
     default:
       respond(msg.id, null, { code: -32601, message: "Method not found" });
   }

@@ -66,6 +66,14 @@ export async function doctorCommand(
       : undefined,
   });
 
+  const searchOk = await checkSearchLiveness();
+  results.push({
+    label: "Web search connectivity",
+    status: searchOk ? "pass" : "warn",
+    message: searchOk ? "Active (DuckDuckGo accessible)" : "Blocked or offline (web research will be skipped)",
+    detail: verbose && !searchOk ? "Fetch to html.duckduckgo.com returned non-ok status or failed" : undefined,
+  });
+
   console.log("\nIdeaGauntlet Doctor");
   console.log("──────────────────");
   for (const r of results) {
@@ -104,6 +112,20 @@ async function checkMcpServer(): Promise<boolean> {
   try {
     const { startMcpServer } = await import("../../mcp/server.js");
     return typeof startMcpServer === "function";
+  } catch {
+    return false;
+  }
+}
+
+async function checkSearchLiveness(): Promise<boolean> {
+  try {
+    const res = await fetch("https://html.duckduckgo.com/html/?q=test", {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+      }
+    });
+    return res.ok;
   } catch {
     return false;
   }
