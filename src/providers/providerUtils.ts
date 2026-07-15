@@ -1,11 +1,12 @@
 import { hasApiKey, getApiKey, getBaseUrl, getModel } from "../utils/env.js";
 import { OpenAICompatibleProvider } from "./openaiCompatibleProvider.js";
 import { OllamaProvider } from "./ollamaProvider.js";
+import { ClaudeProvider } from "./claudeProvider.js";
 import type { LLMProvider } from "../core/types.js";
 
 export type ProviderResolution = {
   provider: LLMProvider;
-  source: "flags" | "env" | "ollama";
+  source: "flags" | "env" | "ollama" | "claude" | "groq";
 };
 
 export function resolveProvider(options?: {
@@ -13,7 +14,58 @@ export function resolveProvider(options?: {
   baseUrl?: string;
   model?: string;
   ollama?: boolean;
+  provider?: string;
 }): ProviderResolution | null {
+  const selectedProvider = options?.provider || process.env.IDEAGAUNTLET_PROVIDER;
+
+  if (selectedProvider === "claude" || (options?.apiKey && options.apiKey.startsWith("sk-ant-"))) {
+    const key = options?.apiKey || process.env.ANTHROPIC_API_KEY || process.env.IDEAGAUNTLET_API_KEY;
+    if (key) {
+      return {
+        provider: new ClaudeProvider({
+          apiKey: key,
+          model: options?.model || process.env.IDEAGAUNTLET_MODEL || "claude-3-5-sonnet-latest",
+        }),
+        source: "claude",
+      };
+    }
+  }
+
+  if (selectedProvider === "groq" || (options?.apiKey && options.apiKey.startsWith("gsk_"))) {
+    const key = options?.apiKey || process.env.GROQ_API_KEY || process.env.IDEAGAUNTLET_API_KEY;
+    if (key) {
+      return {
+        provider: new OpenAICompatibleProvider({
+          apiKey: key,
+          baseUrl: options?.baseUrl || "https://api.groq.com/openai/v1",
+          model: options?.model || process.env.IDEAGAUNTLET_MODEL || "llama-3.1-70b-versatile",
+        }),
+        source: "groq",
+      };
+    }
+  }
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    return {
+      provider: new ClaudeProvider({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+        model: options?.model || process.env.IDEAGAUNTLET_MODEL || "claude-3-5-sonnet-latest",
+      }),
+      source: "claude",
+    };
+  }
+
+  if (process.env.GROQ_API_KEY) {
+    return {
+      provider: new OpenAICompatibleProvider({
+        apiKey: process.env.GROQ_API_KEY,
+        baseUrl: "https://api.groq.com/openai/v1",
+        model: options?.model || process.env.IDEAGAUNTLET_MODEL || "llama-3.1-70b-versatile",
+      }),
+      source: "groq",
+    };
+  }
+
   if (options?.apiKey) {
     return {
       provider: new OpenAICompatibleProvider({
@@ -26,9 +78,29 @@ export function resolveProvider(options?: {
   }
 
   if (hasApiKey()) {
+    const envKey = getApiKey()!;
+    if (envKey.startsWith("sk-ant-")) {
+      return {
+        provider: new ClaudeProvider({
+          apiKey: envKey,
+          model: options?.model ?? getModel() ?? "claude-3-5-sonnet-latest",
+        }),
+        source: "claude",
+      };
+    } else if (envKey.startsWith("gsk_")) {
+      return {
+        provider: new OpenAICompatibleProvider({
+          apiKey: envKey,
+          baseUrl: "https://api.groq.com/openai/v1",
+          model: options?.model ?? getModel() ?? "llama-3.1-70b-versatile",
+        }),
+        source: "groq",
+      };
+    }
+    
     return {
       provider: new OpenAICompatibleProvider({
-        apiKey: getApiKey()!,
+        apiKey: envKey,
         baseUrl: options?.baseUrl ?? getBaseUrl(),
         model: options?.model ?? getModel(),
       }),
@@ -51,6 +123,7 @@ export function getProvider(options?: {
   baseUrl?: string;
   model?: string;
   ollama?: boolean;
+  provider?: string;
 }): LLMProvider {
   const resolved = resolveProvider(options);
   if (!resolved) throw new NoProviderError();

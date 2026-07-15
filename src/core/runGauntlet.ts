@@ -20,6 +20,8 @@ export async function runGauntlet(params: {
   enableSearch?: boolean;
   /** Custom roles for court mode. */
   customRoles?: import("../engines/courtPhases.js").RoleDefinition[];
+  /** Founder defense arguments. */
+  defenseArguments?: string[];
 }): Promise<GauntletReport> {
   if (!params.provider) {
     throw new Error("LLM provider is required. Pass an OpenAICompatibleProvider, OllamaProvider, or a custom LLMProvider.");
@@ -47,6 +49,7 @@ export async function runGauntlet(params: {
       report = await runCourtEngine(input, params.provider, {
         enableSearch,
         customRoles: params.customRoles,
+        defenseArguments: params.defenseArguments,
       });
       break;
     case "users":

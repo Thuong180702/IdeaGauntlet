@@ -87,6 +87,9 @@ export async function interactiveCommand(
   // For compare mode: store multiple ideas separately.
   let compareIdeas: string[] = [];
 
+  // For interactive defense arguments.
+  let defenseArguments: string[] = [];
+
   if (!currentIdea) {
     console.log("Enter your product idea to begin.\n");
     const answer = await rl.question("Idea: ");
@@ -235,6 +238,22 @@ export async function interactiveCommand(
       continue;
     }
 
+    // Interactive Court defense
+    if (trimmed.startsWith("/defend ")) {
+      const argument = trimmed.slice(8).trim();
+      if (argument) {
+        defenseArguments.push(argument);
+        console.log(GREEN + "Added defense argument #" + defenseArguments.length + ": " + argument.slice(0, 60) + RESET + "\n");
+      }
+      continue;
+    }
+
+    if (trimmed === "/clear-defenses") {
+      defenseArguments = [];
+      console.log(GREEN + "Defense arguments list cleared." + RESET + "\n");
+      continue;
+    }
+
     if (trimmed === "/run") {
       // Validate compare mode has multiple ideas.
       if (currentMode === "compare") {
@@ -246,7 +265,7 @@ export async function interactiveCommand(
       } else {
         console.log("Running " + currentMode + " analysis...\n");
       }
-      lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch, compareIdeas);
+      lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch, compareIdeas, defenseArguments);
       if (lastReport) {
         lastReport.markdown = buildReport(lastReport);
         printReport(lastReport);
@@ -349,6 +368,7 @@ async function runGauntletSafe(
   provider: any,
   enableSearch: boolean,
   compareIdeas: string[],
+  defenseArguments?: string[],
 ): Promise<GauntletReport | null> {
   try {
     if (mode === "compare" && compareIdeas.length >= 2) {
@@ -365,6 +385,7 @@ async function runGauntletSafe(
       mode,
       provider,
       enableSearch,
+      defenseArguments,
     });
   } catch (err: any) {
     console.error(RED + "Error: " + err.message + RESET + "\n");
@@ -383,6 +404,8 @@ function printHelp(): void {
   console.log("  /idea <text>      - Update idea text");
   console.log("  /mode <mode>      - Switch mode (quick, court, users, mvp, compare)");
   console.log("  /config           - View or change LLM provider config");
+  console.log("  /defend <text>    - Add a defense argument (court mode)");
+  console.log("  /clear-defenses   - Clear all defense arguments");
   console.log("  /run              - Run analysis with current idea + mode");
   console.log("  /add-idea <text>  - Add an idea to compare list (compare mode)");
   console.log("  /list-ideas       - List ideas in compare list");

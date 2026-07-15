@@ -68,6 +68,8 @@ export async function runCourtEngine(
     enableSearch?: boolean;
     research?: ResearchBrief;
     customRoles?: RoleDefinition[];
+    defenseArguments?: string[];
+    autoDomainRoles?: boolean;
   },
 ): Promise<GauntletReport> {
   if (!idea?.idea?.trim()) {
@@ -88,14 +90,21 @@ export async function runCourtEngine(
     }
   }
 
+  // Dynamically generate domain specific expert roles
+  let generatedRoles: RoleDefinition[] = [];
+  if (options?.autoDomainRoles !== false) {
+    generatedRoles = await generateDomainRoles(idea.idea, provider);
+  }
+
   // Merge custom roles with defaults (custom replaces matching IDs, appends new)
-  const roles = mergeRoles(COURT_ROLES, options?.customRoles);
+  const combinedCustom = [...(options?.customRoles ?? []), ...generatedRoles];
+  const roles = mergeRoles(COURT_ROLES, combinedCustom);
 
   // ─── Phase 1: Opening Statements (rate-limited parallel) ────────
   // Use concurrency limiter to avoid hitting rate limits with 7 simultaneous calls.
   const openingTasks = roles.map((role) => async () => {
     try {
-      const { system, user } = buildOpeningPrompt(role, idea, research);
+      const { system, user } = buildOpeningPrompt(role, idea, research, { defenseArguments: options?.defenseArguments });
       const response = await provider.complete(user, {
         system,
         temperature: 0.5,
@@ -176,6 +185,7 @@ export async function runCourtEngine(
       rebuttals,
       idea,
       research,
+      { defenseArguments: options?.defenseArguments },
     );
     const verdictResponse = await provider.complete(user, {
       system,
@@ -263,6 +273,32 @@ export async function runCourtEngine(
     markdown: "",
   };
   return report;
+}
+
+async function generateDomainRoles(idea: string, provider: LLMProvider): Promise<RoleDefinition[]> {
+  const prompt = `Analyze the following startup idea: "${idea}"
+Determine which business/technical domain it belongs to (e.g. Healthcare, Web3/Crypto, Enterprise SaaS, AI/ML, Consumer Marketplace, Biotech, Hardware).
+Then, propose 1 to 2 specialized domain expert critique roles (with 'skeptic' stance) that would be highly relevant to audit this specific domain.
+For example, for Biotech, you could propose "FDA/Regulatory Consultant" or "Clinical Trials Assessor".
+For each role, provide:
+- id (string: e.g. "healthcare-compliance-skeptic")
+- name (string: e.g. "Healthcare Compliance Skeptic")
+- stance (must be "skeptic")
+- mandate (string: what they challenge)
+- mustAddress (array of 3-4 specific questions they challenge)
+
+Return ONLY a JSON array of these roles. No markdown code blocks, no other text.`;
+
+  try {
+    const response = await provider.complete(prompt, { temperature: 0.2 });
+    const parsed = extractJSON<RoleDefinition[]>(response);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(r => r && r.id && r.name && r.mandate && Array.isArray(r.mustAddress));
+    }
+  } catch (err) {
+    // Silent fallback
+  }
+  return [];
 }
 
 /**

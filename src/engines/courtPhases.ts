@@ -113,6 +113,7 @@ export function buildOpeningPrompt(
   role: RoleDefinition,
   idea: IdeaInput,
   research: ResearchBrief | undefined,
+  options?: { defenseArguments?: string[] },
 ): { system: string; user: string } {
   const system = [
     `You are ${role.name} in an IdeaGauntlet Court debate.`,
@@ -134,6 +135,9 @@ export function buildOpeningPrompt(
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
     ``,
+    options?.defenseArguments && options.defenseArguments.length > 0
+      ? `=== FOUNDER'S DEFENSE ARGUMENTS ===\n${options.defenseArguments.map((d, i) => `${i + 1}. ${d}`).join("\n")}\n`
+      : "",
     `Present your opening statement as ${role.name}.`,
   ].filter(Boolean).join("\n");
 
@@ -213,6 +217,7 @@ export function buildVerdictPrompt(
   rebuttals: Array<{ roleId: string; roleName: string; argument: string }>,
   idea: IdeaInput,
   research: ResearchBrief | undefined,
+  options?: { defenseArguments?: string[] },
 ): { system: string; user: string } {
   const system = [
     `You are the Judge in an IdeaGauntlet Court debate.`,
@@ -254,6 +259,9 @@ export function buildVerdictPrompt(
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
     ``,
+    options?.defenseArguments && options.defenseArguments.length > 0
+      ? `=== FOUNDER'S DEFENSE ARGUMENTS ===\n${options.defenseArguments.map((d, i) => `${i + 1}. ${d}`).join("\n")}\n`
+      : "",
     `=== OPENING STATEMENTS ===`,
     openingsText,
     ``,

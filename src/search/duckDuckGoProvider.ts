@@ -10,8 +10,18 @@ import type { WebSearchProvider, SearchResult } from "./types.js";
  */
 
 const DDG_HTML_URL = "https://html.duckduckgo.com/html/";
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
+
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+];
+
+function rotateUserAgent(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
 
 export class DuckDuckGoProvider implements WebSearchProvider {
   kind = "duckduckgo" as const;
@@ -19,7 +29,6 @@ export class DuckDuckGoProvider implements WebSearchProvider {
   private readonly minDelayMs = 500;
 
   async search(query: string, maxResults = 5): Promise<SearchResult[]> {
-    // Rate limit
     const now = Date.now();
     const elapsed = now - this.lastRequestTime;
     if (elapsed < this.minDelayMs) {
@@ -27,35 +36,46 @@ export class DuckDuckGoProvider implements WebSearchProvider {
     }
     this.lastRequestTime = Date.now();
 
-    const params = new URLSearchParams({ q: query });
-    const url = `${DDG_HTML_URL}?${params.toString()}`;
+    const userAgent = rotateUserAgent();
+    try {
+      const params = new URLSearchParams({ q: query });
+      const url = `${DDG_HTML_URL}?${params.toString()}`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html",
-      },
-    });
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "User-Agent": userAgent,
+          Accept: "text/html",
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error(`DuckDuckGo returned ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`DuckDuckGo returned ${response.status}`);
+      }
+
+      const html = await response.text();
+      const ddgResults = parseDuckDuckGoHtml(html, maxResults);
+      if (ddgResults.length > 0) {
+        return ddgResults;
+      }
+      throw new Error("DuckDuckGo returned empty parsed results");
+    } catch (err: any) {
+      // Catch DDG failures / bans and attempt Google fallback
+      try {
+        return await searchGoogleFallback(query, maxResults);
+      } catch (gErr: any) {
+        return [];
+      }
     }
-
-    const html = await response.text();
-    return parseDuckDuckGoHtml(html, maxResults);
   }
 }
 
 /**
  * Parse DuckDuckGo HTML results page.
- * DDG wraps results in `<a class="result__a" href="...">title</a>`
- * with snippets in `<a class="result__snippet">...</a>`.
  */
 function parseDuckDuckGoHtml(html: string, maxResults: number): SearchResult[] {
   const results: SearchResult[] = [];
 
-  // Match result links: <a class="result__a" href="...">Title text</a>
   const linkRegex =
     /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
   let match: RegExpExecArray | null;
@@ -64,7 +84,6 @@ function parseDuckDuckGoHtml(html: string, maxResults: number): SearchResult[] {
     const rawUrl = match[1];
     const titleHtml = match[2];
 
-    // DDG wraps URLs in a redirect: //duckduckgo.com/l/?uddg=<encoded_url>
     let url = rawUrl;
     const uddgMatch = rawUrl.match(/uddg=([^&]+)/);
     if (uddgMatch) {
@@ -74,10 +93,8 @@ function parseDuckDuckGoHtml(html: string, maxResults: number): SearchResult[] {
         url = rawUrl;
       }
     }
-    // Strip HTML tags from title
     const title = stripHtml(titleHtml).trim();
 
-    // Find snippet — look for result__snippet near this position
     const snippetStart = linkRegex.lastIndex;
     const remainingHtml = html.slice(snippetStart, snippetStart + 2000);
     const snippetMatch = remainingHtml.match(
@@ -89,6 +106,54 @@ function parseDuckDuckGoHtml(html: string, maxResults: number): SearchResult[] {
 
     if (title && url) {
       results.push({ title, url, snippet });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Google Search Scraper Fallback
+ */
+async function searchGoogleFallback(query: string, maxResults = 5): Promise<SearchResult[]> {
+  const params = new URLSearchParams({ q: query });
+  const url = `https://www.google.com/search?${params.toString()}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "User-Agent": rotateUserAgent(),
+      Accept: "text/html",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google fallback returned ${response.status}`);
+  }
+
+  const html = await response.text();
+  return parseGoogleHtml(html, maxResults);
+}
+
+function parseGoogleHtml(html: string, maxResults: number): SearchResult[] {
+  const results: SearchResult[] = [];
+  const linkRegex = /<a[^>]*href="\/url\?q=([^&"]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkRegex.exec(html)) !== null && results.length < maxResults) {
+    const rawUrl = decodeURIComponent(match[1]);
+    const titleHtml = match[2];
+
+    if (rawUrl.includes("google.com/")) continue;
+
+    const title = stripHtml(titleHtml).trim();
+    const snippetStart = linkRegex.lastIndex;
+    const remainingHtml = html.slice(snippetStart, snippetStart + 1500);
+    const snippetMatch = remainingHtml.match(/<div[^>]*class="BNeawe s3v9rd AP7Wnd"[^>]*>([\s\S]*?)<\/div>/);
+    const snippet = snippetMatch ? stripHtml(snippetMatch[1]).trim() : "";
+
+    if (title && rawUrl) {
+      results.push({ title, url: rawUrl, snippet });
     }
   }
 
