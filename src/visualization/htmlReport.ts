@@ -297,24 +297,24 @@ function markdownToHtml(markdown: string): string {
       closeList();
     }
 
-    if (line.startsWith("### ")) html.push("<h3>" + inlineMd(line.slice(4)) + "</h3>");
-    else if (line.startsWith("## ")) html.push("<h2>" + inlineMd(line.slice(3)) + "</h2>");
-    else if (line.startsWith("# ")) html.push("<h1>" + inlineMd(line.slice(2)) + "</h1>");
+    if (line.startsWith("### ")) html.push("<h3>" + inlineMd(escapeHtml(line.slice(4))) + "</h3>");
+    else if (line.startsWith("## ")) html.push("<h2>" + inlineMd(escapeHtml(line.slice(3))) + "</h2>");
+    else if (line.startsWith("# ")) html.push("<h1>" + inlineMd(escapeHtml(line.slice(2))) + "</h1>");
     else if (line.trim() === "---") { closeList(); html.push("<hr/>"); }
     else if (line.trim() === "") { closeList(); html.push("<br/>"); }
     else if (line.match(/^\d+\.\s/)) {
       // Ordered list item — open <ol> if not already open
       if (inUl) { html.push("</ul>"); inUl = false; }
       if (!inOl) { html.push("<ol>"); inOl = true; }
-      html.push("<li>" + inlineMd(line.replace(/^\d+\.\s/, "")) + "</li>");
+      html.push("<li>" + inlineMd(escapeHtml(line.replace(/^\d+\.\s/, ""))) + "</li>");
     } else if (line.startsWith("- ")) {
       // Unordered list item — open <ul> if not already open
       if (inOl) { html.push("</ol>"); inOl = false; }
       if (!inUl) { html.push("<ul>"); inUl = true; }
-      html.push("<li>" + inlineMd(line.slice(2)) + "</li>");
+      html.push("<li>" + inlineMd(escapeHtml(line.slice(2))) + "</li>");
     } else {
       closeList();
-      html.push("<p>" + inlineMd(line) + "</p>");
+      html.push("<p>" + inlineMd(escapeHtml(line)) + "</p>");
     }
   }
 
@@ -335,9 +335,9 @@ function renderTable(rows: string[]): string {
   };
   const header = parse(rows[0]);
   const body = rows.slice(2).map(parse).filter((r) => r.length > 0);
-  const th = header.map((h) => "<th>" + inlineMd(h) + "</th>").join("");
+  const th = header.map((h) => "<th>" + inlineMd(escapeHtml(h)) + "</th>").join("");
   const tr = body
-    .map((r) => "<tr>" + r.map((c, i) => "<td>" + (i < header.length ? inlineMd(c) : c) + "</td>").join("") + "</tr>")
+    .map((r) => "<tr>" + r.map((c, i) => "<td>" + (i < header.length ? inlineMd(escapeHtml(c)) : escapeHtml(c)) + "</td>").join("") + "</tr>")
     .join("");
   return "<table><thead><tr>" + th + "</tr></thead><tbody>" + tr + "</tbody></table>";
 }
@@ -347,5 +347,8 @@ function inlineMd(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="' + QUOT + '" target="_blank">$1</a>'.replace(QUOT, "$2"));
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_, label, url) => {
+      const cleanUrl = url.trim().toLowerCase().startsWith("javascript:") ? "#" : url;
+      return `<a href="${cleanUrl}" target="_blank">${label}</a>`;
+    });
 }

@@ -21,15 +21,62 @@ export async function interactiveCommand(
 ): Promise<void> {
   console.log("\n\x1B[1mIdeaGauntlet - Interactive Mode\x1B[0m\n");
 
-  const providerRes = resolveProvider({
+  const rl = readline.createInterface({ input, output });
+
+  let providerRes = resolveProvider({
     apiKey: process.env.IDEAGAUNTLET_API_KEY,
     baseUrl: process.env.IDEAGAUNTLET_BASE_URL,
     model: process.env.IDEAGAUNTLET_MODEL,
   });
 
   if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
+    console.log(YELLOW + "No LLM provider configured." + RESET);
+    console.log("Please configure a provider to continue:");
+    console.log("  1. Configure OpenAI-compatible API key");
+    console.log("  2. Use local Ollama");
+    console.log("  3. Exit interactive mode");
+    console.log("");
+    
+    const choice = await rl.question("Choice (1-3): ");
+    const trimmedChoice = choice.trim();
+    if (trimmedChoice === "1") {
+      const apiKey = await rl.question("Enter API Key: ");
+      const baseUrl = await rl.question("Enter Base URL (default: https://api.openai.com/v1): ");
+      const model = await rl.question("Enter Model Name (default: gpt-4o-mini): ");
+      
+      const keyVal = apiKey.trim();
+      const urlVal = baseUrl.trim() || undefined;
+      const modelVal = model.trim() || undefined;
+      
+      if (!keyVal) {
+        console.error(RED + "API key is required. Exiting." + RESET);
+        rl.close();
+        process.exit(2);
+      }
+      
+      providerRes = resolveProvider({
+        apiKey: keyVal,
+        baseUrl: urlVal,
+        model: modelVal,
+      });
+    } else if (trimmedChoice === "2") {
+      const model = await rl.question("Enter Ollama Model Name (default: llama3): ");
+      const modelVal = model.trim() || "llama3";
+      providerRes = resolveProvider({
+        ollama: true,
+        model: modelVal,
+      });
+    } else {
+      console.log("Exiting.");
+      rl.close();
+      return;
+    }
+    
+    if (!providerRes) {
+      console.error(RED + "Failed to initialize provider. Exiting." + RESET);
+      rl.close();
+      process.exit(2);
+    }
   }
 
   let currentIdea = initialIdea || "";
@@ -39,8 +86,6 @@ export async function interactiveCommand(
 
   // For compare mode: store multiple ideas separately.
   let compareIdeas: string[] = [];
-
-  const rl = readline.createInterface({ input, output });
 
   if (!currentIdea) {
     console.log("Enter your product idea to begin.\n");
@@ -79,6 +124,57 @@ export async function interactiveCommand(
 
     if (trimmed === "/help") {
       printHelp();
+      continue;
+    }
+
+    if (trimmed === "/config") {
+      const providerKind = providerRes.provider.kind;
+      const providerModel = (providerRes.provider as any).config?.model ?? (providerRes.provider as any).model ?? "unknown";
+      console.log("\nCurrent Provider: " + providerKind + " (" + providerModel + ")");
+      console.log("Reconfigure provider:");
+      console.log("  1. Configure OpenAI-compatible API key");
+      console.log("  2. Use local Ollama");
+      console.log("  3. Cancel");
+      console.log("");
+      
+      const choice = await rl.question("Choice (1-3): ");
+      const trimmedChoice = choice.trim();
+      if (trimmedChoice === "1") {
+        const apiKey = await rl.question("Enter API Key: ");
+        const baseUrl = await rl.question("Enter Base URL (default: https://api.openai.com/v1): ");
+        const model = await rl.question("Enter Model Name (default: gpt-4o-mini): ");
+        
+        const keyVal = apiKey.trim();
+        const urlVal = baseUrl.trim() || undefined;
+        const modelVal = model.trim() || undefined;
+        
+        if (keyVal) {
+          const newRes = resolveProvider({
+            apiKey: keyVal,
+            baseUrl: urlVal,
+            model: modelVal,
+          });
+          if (newRes) {
+            providerRes = newRes;
+            console.log(GREEN + "Provider reconfigured successfully." + RESET + "\n");
+          } else {
+            console.log(RED + "Failed to resolve provider with input options." + RESET + "\n");
+          }
+        } else {
+          console.log(RED + "API key is required to configure provider." + RESET + "\n");
+        }
+      } else if (trimmedChoice === "2") {
+        const model = await rl.question("Enter Ollama Model Name (default: llama3): ");
+        const modelVal = model.trim() || "llama3";
+        const newRes = resolveProvider({
+          ollama: true,
+          model: modelVal,
+        });
+        if (newRes) {
+          providerRes = newRes;
+          console.log(GREEN + "Provider reconfigured successfully to Ollama." + RESET + "\n");
+        }
+      }
       continue;
     }
 
@@ -286,6 +382,7 @@ function printHelp(): void {
   console.log("\nInteractive Commands:");
   console.log("  /idea <text>      - Update idea text");
   console.log("  /mode <mode>      - Switch mode (quick, court, users, mvp, compare)");
+  console.log("  /config           - View or change LLM provider config");
   console.log("  /run              - Run analysis with current idea + mode");
   console.log("  /add-idea <text>  - Add an idea to compare list (compare mode)");
   console.log("  /list-ideas       - List ideas in compare list");

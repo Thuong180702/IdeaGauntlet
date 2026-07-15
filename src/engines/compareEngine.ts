@@ -37,15 +37,31 @@ export async function runCompareEngine(
             `=== Research for Idea ${i + 1}: ${ideas[i].idea.slice(0, 60)} ===\n${r.summary}`
           ).join("\n\n");
 
+          const allCompetitors = validResults.flatMap((r) => r.competitorLandscape?.competitors ?? []);
+          const allNiches = validResults.flatMap((r) => r.nicheOpportunities ?? []);
+          
+          const levels = validResults.map((r) => r.competitorLandscape?.saturationLevel ?? "unknown");
+          let saturationLevel: import("../search/types.js").CompetitorLandscape["saturationLevel"] = "unknown";
+          if (levels.includes("high")) saturationLevel = "high";
+          else if (levels.includes("medium")) saturationLevel = "medium";
+          else if (levels.includes("low")) saturationLevel = "low";
+
+          const mergedAnalysisNote = validResults
+            .map((r, i) => `Idea ${i + 1}: ${r.competitorLandscape?.analysisNote ?? "No competitor data."}`)
+            .join(" ");
+
           research = {
             queries: validResults.flatMap((r) => r.queries),
             results: validResults.flatMap((r) => r.results),
             summary: mergedSummary,
             searchedAt: new Date().toISOString(),
             pageContents: validResults.flatMap((r) => r.pageContents ?? []),
-            // Use first result's landscape as primary (most relevant for idea 1)
-            competitorLandscape: validResults[0]?.competitorLandscape,
-            nicheOpportunities: validResults[0]?.nicheOpportunities,
+            competitorLandscape: {
+              competitors: allCompetitors,
+              saturationLevel,
+              analysisNote: mergedAnalysisNote,
+            },
+            nicheOpportunities: allNiches.length > 0 ? allNiches : undefined,
           };
         }
       }

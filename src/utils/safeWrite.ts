@@ -27,10 +27,19 @@ export function safeWriteOutput(
   // Detect genuine path traversal: raw `..` segments that escape cwd
   // These are almost always malicious (e.g. `../../../etc/passwd`)
   // Allow absolute paths and sibling references that resolve normally.
-  if (!isAbsolute(outputPath) && parts.includes("..")) {
-    // Only block if traversal actually escapes the working directory
+  if (parts.includes("..")) {
     const cwd = process.cwd();
-    if (!resolved.startsWith(cwd)) {
+    const isWindows = process.platform === "win32";
+    const resStr = isWindows ? resolved.toLowerCase() : resolved;
+    const cwdStr = isWindows ? cwd.toLowerCase() : cwd;
+
+    // Check if resolved path is within CWD (matching either exact CWD or inside CWD subfolder)
+    const isWithinCwd = resStr.startsWith(cwdStr) && 
+      (resStr.length === cwdStr.length || 
+       resStr[cwdStr.length] === sep || 
+       cwdStr.endsWith(sep));
+
+    if (!isWithinCwd) {
       return {
         ok: false,
         reason: "traversal",

@@ -1,12 +1,29 @@
 import { handleToolCall, toolDefinitions, getReportIds } from "./tools.js";
 import { listResources } from "./resources.js";
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Read package version at startup to avoid hardcoding.
+// Traverse up until we find package.json, which is robust for both source and bundled files.
+function findPackageJson(startDir: string): string {
+  let dir = startDir;
+  while (true) {
+    const filePath = join(dir, "package.json");
+    if (existsSync(filePath)) {
+      return filePath;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      throw new Error("Could not find package.json in any parent directory");
+    }
+    dir = parent;
+  }
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const _pkg = JSON.parse(readFileSync(resolve(__dirname, "../../package.json"), "utf-8")) as { version: string };
+const pkgPath = findPackageJson(__dirname);
+const _pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version: string };
 const PKG_VERSION: string = _pkg.version;
 
 // ─── JSON-RPC helpers ────────────────────────────────────────────

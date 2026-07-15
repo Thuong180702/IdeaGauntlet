@@ -1,6 +1,6 @@
 {
   "name": "idea-gauntlet",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Stress-test product ideas with adversarial agents, synthetic users, and court-style critique.",
   "type": "module",
   "bin": {

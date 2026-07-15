@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, openSync, readSync, closeSync } from "node:fs";
 import { resolve, join } from "node:path";
 import type { GauntletReport, Scorecard } from "../core/types.js";
 
@@ -182,10 +182,10 @@ export function compareReports(
  */
 function readPartialJson(filePath: string, maxBytes: number): Partial<GauntletReport> | null {
   try {
-    const fd = require("node:fs").openSync(filePath, "r");
+    const fd = openSync(filePath, "r");
     const buf = Buffer.alloc(maxBytes);
-    const bytesRead = require("node:fs").readSync(fd, buf, 0, maxBytes, 0);
-    require("node:fs").closeSync(fd);
+    const bytesRead = readSync(fd, buf, 0, maxBytes, 0);
+    closeSync(fd);
     const text = buf.toString("utf-8", 0, bytesRead);
 
     // Extract top-level fields by looking for well-known keys.
