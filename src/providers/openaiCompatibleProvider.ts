@@ -33,11 +33,22 @@ export class OpenAICompatibleProvider implements LLMProvider {
       retryOnStatuses: options?.retry?.retryOnStatuses ?? DEFAULT_RETRY.retryOnStatuses,
     };
 
-    // Combine user-provided signal with our timeout signal
     const timeoutCtrl = new AbortController();
-    const timeoutId = setTimeout(() => timeoutCtrl.abort(), this.config.timeoutMs);
 
-    // If the caller provided their own signal, listen to it
+    // Track the active timer so it can be cleared before creating a new one on retry.
+    // Using a mutable object so inner functions share the same reference.
+    let activeTimeoutId: ReturnType<typeof setTimeout> = setTimeout(
+      () => timeoutCtrl.abort(),
+      this.config.timeoutMs,
+    );
+
+    // Helper to reset the timeout for the next attempt without leaking the old timer.
+    const resetTimeout = () => {
+      clearTimeout(activeTimeoutId);
+      activeTimeoutId = setTimeout(() => timeoutCtrl.abort(), this.config.timeoutMs);
+    };
+
+    // If the caller provided their own signal, listen to it.
     if (options?.signal) {
       options.signal.addEventListener("abort", () => timeoutCtrl.abort(), { once: true });
     }
@@ -53,7 +64,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       max_tokens: options?.maxTokens ?? 2048,
     };
 
-    // Enable streaming if onToken callback is provided
+    // Enable streaming if onToken callback is provided.
     if (options?.onToken) {
       body.stream = true;
     }
@@ -72,38 +83,34 @@ export class OpenAICompatibleProvider implements LLMProvider {
           signal: timeoutCtrl.signal,
         });
 
-        // Check for retryable status codes
+        // Check for retryable status codes.
         if (!response.ok) {
           const statusCode = response.status;
           const text = await response.text().catch(() => "");
 
-          // Parse Retry-After header for 429
+          // Parse Retry-After header for 429.
           if (statusCode === 429 && attempt < retryCfg.maxRetries) {
             const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
             const delay = retryAfter ?? computeBackoff(attempt, retryCfg);
-            clearTimeout(timeoutId);
             await sleep(delay);
-            // Reset timeout for next attempt
-            setTimeout(() => timeoutCtrl.abort(), this.config.timeoutMs);
+            resetTimeout(); // Reset timer — clears old, creates new (fixes memory leak).
             continue;
           }
 
           if (retryCfg.retryOnStatuses.includes(statusCode) && attempt < retryCfg.maxRetries) {
             const delay = computeBackoff(attempt, retryCfg);
-            clearTimeout(timeoutId);
             await sleep(delay);
-            // Reset timeout for next attempt
-            setTimeout(() => timeoutCtrl.abort(), this.config.timeoutMs);
+            resetTimeout();
             continue;
           }
 
-          clearTimeout(timeoutId);
+          clearTimeout(activeTimeoutId);
           throw new Error(`Provider returned ${statusCode}: ${text}`);
         }
 
-        clearTimeout(timeoutId);
+        clearTimeout(activeTimeoutId);
 
-        // Handle streaming response
+        // Handle streaming response.
         if (options?.onToken && response.body) {
           return await readSSEStream(response.body, options.onToken);
         }
@@ -112,21 +119,22 @@ export class OpenAICompatibleProvider implements LLMProvider {
         return data.choices[0].message.content ?? "";
       } catch (err: any) {
         lastError = err;
-        // Don't retry on AbortError (user-initiated cancel or timeout)
+        // Don't retry on AbortError (user-initiated cancel or timeout).
         if (err.name === "AbortError") {
-          clearTimeout(timeoutId);
+          clearTimeout(activeTimeoutId);
           throw new Error(`Request timed out or was cancelled after ${this.config.timeoutMs}ms`);
         }
-        // Retry network errors
+        // Retry network errors.
         if (attempt < retryCfg.maxRetries) {
           const delay = computeBackoff(attempt, retryCfg);
           await sleep(delay);
+          resetTimeout();
           continue;
         }
       }
     }
 
-    clearTimeout(timeoutId);
+    clearTimeout(activeTimeoutId);
     throw lastError ?? new Error("Provider request failed after all retries");
   }
 }

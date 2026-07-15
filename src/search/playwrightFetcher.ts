@@ -10,6 +10,10 @@
  * - Compact text output (whitespace-collapsed, length-capped)
  * - SSRF guard: rejects private/local IPs
  * - Silent fallback (returns null on any error)
+ *
+ * Performance: fetchPagesPlaywright() now shares a SINGLE browser instance
+ * across all URLs. Individual fetchPagePlaywright() also reuses a module-level
+ * singleton browser so repeated single-URL calls don't each spin up a browser.
  */
 
 import type { PageContent } from "./types.js";
@@ -20,7 +24,7 @@ const DEFAULT_MAX_CHARS = 8_000;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
-// Lazy-load playwright so the dependency is optional at runtime
+// Lazy-load playwright so the dependency is optional at runtime.
 let _chromium: typeof import("playwright").chromium | null = null;
 
 async function getChromium() {
@@ -31,12 +35,104 @@ async function getChromium() {
   return _chromium;
 }
 
+/**
+ * Module-level browser singleton for single-URL fetches.
+ * Avoids spinning up a fresh browser for every call to fetchPagePlaywright().
+ */
+let _singletonBrowser: import("playwright").Browser | null = null;
+let _singletonBrowserClosing = false;
+
+async function getSingletonBrowser(): Promise<import("playwright").Browser> {
+  if (_singletonBrowser && _singletonBrowser.isConnected() && !_singletonBrowserClosing) {
+    return _singletonBrowser;
+  }
+  const chromium = await getChromium();
+  _singletonBrowser = await chromium.launch({ headless: true });
+  _singletonBrowserClosing = false;
+  return _singletonBrowser;
+}
+
+/** Shutdown the singleton browser — call at process exit if needed. */
+export async function closeSingletonBrowser(): Promise<void> {
+  if (_singletonBrowser) {
+    _singletonBrowserClosing = true;
+    await _singletonBrowser.close().catch(() => undefined);
+    _singletonBrowser = null;
+  }
+}
+
 // Tokens to check in text for liveness
 const MIN_TEXT_LENGTH = 50;
 
 /**
+ * Extract visible text from a Playwright page.
+ * Runs inside the browser context.
+ */
+async function extractPageContent(
+  page: import("playwright").Page,
+  url: string,
+  maxChars: number,
+): Promise<PageContent | null> {
+  const result = (await page.evaluate((cap: number) => {
+    const doc = (globalThis as any).document;
+    if (!doc) return { title: "", description: undefined as string | undefined, text: "" };
+
+    const getStructuredText = (): string => {
+      // Remove script, style, nav, footer, header, aside
+      const discard = ["script", "style", "noscript", "nav", "footer", "header", "aside", "svg", "iframe"];
+      for (const tag of discard) {
+        doc.querySelectorAll(tag).forEach((el: any) => el.remove());
+      }
+
+      // Collect text from content tags
+      const collect = ["main", "article", "section", "p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th", "blockquote", "pre"];
+      const parts: string[] = [];
+      for (const tag of collect) {
+        doc.querySelectorAll(tag).forEach((el: any) => {
+          const text = (el.innerText || el.textContent || "").trim();
+          if (text.length > 15) parts.push(text);
+        });
+      }
+
+      let text = parts.join("\n\n");
+
+      // Fallback: body innerText if too little
+      if (text.length < 100) {
+        text = (doc.body?.innerText || doc.body?.textContent || "").trim();
+      }
+
+      // Collapse whitespace
+      text = text.replace(/[ \t\xa0]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
+      return text.length > cap ? text.slice(0, cap) + "…" : text;
+    };
+
+    const title = doc.title || doc.querySelector("h1")?.textContent?.trim() || "";
+    const description =
+      doc.querySelector('meta[name="description"]')?.getAttribute("content") ||
+      doc.querySelector('meta[property="og:description"]')?.getAttribute("content") ||
+      "";
+    const text = getStructuredText();
+
+    return { title: title.slice(0, 300), description: description?.trim() || undefined, text };
+  }, maxChars)) as { title: string; description?: string; text: string };
+
+  if (!result.text || result.text.length < MIN_TEXT_LENGTH) return null;
+
+  return {
+    url,
+    title: result.title,
+    text: result.text,
+    description: result.description,
+  };
+}
+
+/**
  * Fetch page content using Playwright headless Chromium.
  * Renders JS, waits for hydration, then extracts visible text.
+ *
+ * Fix: reuses the module-level singleton browser instance instead of creating
+ * a new browser for every call — dramatically reduces startup overhead.
  */
 export async function fetchPagePlaywright(
   url: string,
@@ -47,14 +143,16 @@ export async function fetchPagePlaywright(
 
   if (!isSafeUrl(url)) return null;
 
+  let context: import("playwright").BrowserContext | null = null;
+  let page: import("playwright").Page | null = null;
+
   try {
-    const chromium = await getChromium();
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({
+    const browser = await getSingletonBrowser();
+    context = await browser.newContext({
       userAgent: USER_AGENT,
       viewport: { width: 1280, height: 720 },
     });
-    const page = await context.newPage();
+    page = await context.newPage();
 
     const response = await page.goto(url, {
       waitUntil: "domcontentloaded",
@@ -62,76 +160,26 @@ export async function fetchPagePlaywright(
     });
 
     if (!response || !response.ok()) {
-      await browser.close();
       return null;
     }
 
     // Wait for JS hydration
     await page.waitForTimeout(HYDRATION_WAIT_MS);
 
-    // Extract text via DOM evaluation (runs in browser context)
-    const result = (await page.evaluate((cap: number) => {
-      const doc = (globalThis as any).document;
-      if (!doc) return { title: "", description: undefined as string | undefined, text: "" };
-
-      const getStructuredText = (): string => {
-        // Remove script, style, nav, footer, header, aside
-        const discard = ["script", "style", "noscript", "nav", "footer", "header", "aside", "svg", "iframe"];
-        for (const tag of discard) {
-          doc.querySelectorAll(tag).forEach((el: any) => el.remove());
-        }
-
-        // Collect text from content tags
-        const collect = ["main", "article", "section", "p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th", "blockquote", "pre"];
-        const parts: string[] = [];
-        for (const tag of collect) {
-          doc.querySelectorAll(tag).forEach((el: any) => {
-            const text = (el.innerText || el.textContent || "").trim();
-            if (text.length > 15) parts.push(text);
-          });
-        }
-
-        let text = parts.join("\n\n");
-
-        // Fallback: body innerText if too little
-        if (text.length < 100) {
-          text = (doc.body?.innerText || doc.body?.textContent || "").trim();
-        }
-
-        // Collapse whitespace
-        text = text.replace(/[ \t\xa0]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-
-        return text.length > cap ? text.slice(0, cap) + "…" : text;
-      };
-
-      const title = doc.title || doc.querySelector("h1")?.textContent?.trim() || "";
-      const description =
-        doc.querySelector('meta[name="description"]')?.getAttribute("content") ||
-        doc.querySelector('meta[property="og:description"]')?.getAttribute("content") ||
-        "";
-      const text = getStructuredText();
-
-      return { title: title.slice(0, 300), description: description?.trim() || undefined, text };
-    }, maxChars)) as { title: string; description?: string; text: string };
-
-    await browser.close();
-
-    if (!result.text || result.text.length < MIN_TEXT_LENGTH) return null;
-
-    return {
-      url,
-      title: result.title,
-      text: result.text,
-      description: result.description,
-    };
+    return await extractPageContent(page, url, maxChars);
   } catch {
     return null;
+  } finally {
+    // Close only the page context, not the shared browser.
+    if (page) await page.close().catch(() => undefined);
+    if (context) await context.close().catch(() => undefined);
   }
 }
 
 /**
  * Fetch multiple pages concurrently with Playwright.
- * Uses a single browser instance with multiple pages for efficiency.
+ * Fix: Uses a SINGLE shared browser instance for all URLs in the batch,
+ * opening one context+page per URL. This avoids per-URL browser startup cost.
  */
 export async function fetchPagesPlaywright(
   urls: string[],
@@ -140,24 +188,61 @@ export async function fetchPagesPlaywright(
   const concurrency = options?.concurrency ?? 3;
   const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const results: PageContent[] = [];
 
   // Filter unsafe URLs upfront
   const safeUrls = urls.filter(isSafeUrl);
-  if (safeUrls.length === 0) return results;
+  if (safeUrls.length === 0) return [];
 
+  // Launch a single shared browser for this batch.
+  let browser: import("playwright").Browser | null = null;
+  try {
+    const chromium = await getChromium();
+    browser = await chromium.launch({ headless: true });
+  } catch {
+    return [];
+  }
+
+  const results: PageContent[] = [];
   let index = 0;
 
-  async function runNext(): Promise<void> {
+  const runNext = async (): Promise<void> => {
     while (index < safeUrls.length) {
       const currentIdx = index++;
-      const content = await fetchPagePlaywright(safeUrls[currentIdx], { timeoutMs, maxChars });
-      if (content) results.push(content);
+      const url = safeUrls[currentIdx];
+      let context: import("playwright").BrowserContext | null = null;
+      let page: import("playwright").Page | null = null;
+
+      try {
+        context = await browser!.newContext({
+          userAgent: USER_AGENT,
+          viewport: { width: 1280, height: 720 },
+        });
+        page = await context.newPage();
+
+        const response = await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: timeoutMs,
+        });
+
+        if (response && response.ok()) {
+          await page.waitForTimeout(HYDRATION_WAIT_MS);
+          const content = await extractPageContent(page, url, maxChars);
+          if (content) results.push(content);
+        }
+      } catch {
+        // Silent failure — skip this URL
+      } finally {
+        if (page) await page.close().catch(() => undefined);
+        if (context) await context.close().catch(() => undefined);
+      }
     }
-  }
+  };
 
   const workers = Array.from({ length: Math.min(concurrency, safeUrls.length) }, () => runNext());
   await Promise.all(workers);
+
+  // Close the batch browser (separate from singleton)
+  await browser.close().catch(() => undefined);
 
   return results;
 }
@@ -178,22 +263,8 @@ function isSafeUrl(url: string): boolean {
       host.startsWith("127.") ||
       host.startsWith("10.") ||
       host.startsWith("192.168.") ||
-      host.startsWith("172.16.") ||
-      host.startsWith("172.17.") ||
-      host.startsWith("172.18.") ||
-      host.startsWith("172.19.") ||
-      host.startsWith("172.20.") ||
-      host.startsWith("172.21.") ||
-      host.startsWith("172.22.") ||
-      host.startsWith("172.23.") ||
-      host.startsWith("172.24.") ||
-      host.startsWith("172.25.") ||
-      host.startsWith("172.26.") ||
-      host.startsWith("172.27.") ||
-      host.startsWith("172.28.") ||
-      host.startsWith("172.29.") ||
-      host.startsWith("172.30.") ||
-      host.startsWith("172.31.") ||
+      // 172.16.0.0/12 block — more concisely handled via numeric comparison
+      isPrivate172(host) ||
       host.startsWith("169.254.") ||
       host === "::1" ||
       host.startsWith("fe80:") ||
@@ -206,6 +277,18 @@ function isSafeUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if host is in the 172.16.0.0/12 private range.
+ * Replaces the 16 separate startsWith checks.
+ */
+function isPrivate172(host: string): boolean {
+  if (!host.startsWith("172.")) return false;
+  const parts = host.split(".");
+  if (parts.length < 2) return false;
+  const second = parseInt(parts[1], 10);
+  return second >= 16 && second <= 31;
 }
 
 /**

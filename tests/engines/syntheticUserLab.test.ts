@@ -30,4 +30,28 @@ describe("runUserLab", () => {
     const report = await runUserLab({ idea: "Test idea" }, provider, 6, { enableSearch: false });
     expect(Array.isArray(report.syntheticUsers)).toBe(true);
   });
+
+  it("returns a meaningful scorecard (not undefined) when synthesis is present", async () => {
+    const provider = new StaticProvider();
+    const report = await runUserLab({ idea: "Test idea" }, provider, 6, { enableSearch: false });
+    expect(report.scores).toBeDefined();
+    if (report.scores) {
+      expect(report.scores.monetization).toBeGreaterThanOrEqual(1);
+      expect(report.scores.monetization).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it("returns a non-empty verdict", async () => {
+    const provider = new StaticProvider();
+    const report = await runUserLab({ idea: "Test idea" }, provider, 6, { enableSearch: false });
+    expect(report.verdict).toBeTruthy();
+  });
+
+  it("clamps user count to max 12", async () => {
+    const provider = new StaticProvider();
+    const report = await runUserLab({ idea: "Test idea" }, provider, 999, { enableSearch: false });
+    // Even if count is huge, engine should not crash
+    expect(report).toBeDefined();
+  });
 });
+

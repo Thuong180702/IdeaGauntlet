@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, GauntletReport, GauntletMode } from "../core/types.js";
+import { buildReport } from "../core/report.js";
 import { runImmuneEngine } from "./immuneEngine.js";
 import { runCourtEngine } from "./courtEngine.js";
 import { runUserLab } from "./syntheticUserLab.js";
@@ -30,13 +31,22 @@ export async function runBatchEngine(
     onProgress?: (done: number, total: number) => void;
   },
 ): Promise<BatchResult> {
+  if (!ideas || ideas.length === 0) {
+    return { results: [], total: 0, succeeded: 0, failed: 0 };
+  }
+
   const concurrency = options?.concurrency ?? 3;
   const enableSearch = options?.enableSearch ?? true;
   const total = ideas.length;
   let done = 0;
 
-  // Run each idea's engine
+  // Run each idea's engine and build its markdown report.
   const runOne = async (idea: IdeaInput): Promise<{ idea: string; report?: GauntletReport; error?: string }> => {
+    const ideaText = idea.idea?.trim();
+    if (!ideaText) {
+      return { idea: idea.idea ?? "", error: "Empty idea — skipped" };
+    }
+
     try {
       let report: GauntletReport;
       switch (mode) {
@@ -56,6 +66,8 @@ export async function runBatchEngine(
           report = await runImmuneEngine(idea, provider, { enableSearch });
           break;
       }
+      // Fix: build the markdown so callers always get a populated report.markdown.
+      report.markdown = buildReport(report);
       return { idea: idea.idea, report };
     } catch (err: any) {
       return { idea: idea.idea, error: err.message };

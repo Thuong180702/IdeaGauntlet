@@ -11,16 +11,46 @@ export async function runCompareEngine(
   provider: LLMProvider,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
+  if (!ideas || ideas.length === 0) {
+    throw new Error("At least one idea is required for compare mode.");
+  }
+
   const id = randomUUID();
   const now = new Date().toISOString();
 
-  // Web research — always-on unless explicitly disabled
+  // Web research — run for ALL ideas in parallel and merge the summaries.
+  // Previously only researched ideas[0], missing context for subsequent ideas.
   let research: ResearchBrief | undefined;
   if (options?.enableSearch !== false) {
     try {
-      research = options?.research ?? await performResearch(ideas[0], "compare");
+      if (options?.research) {
+        research = options.research;
+      } else {
+        // Run research for each idea in parallel and merge results.
+        const researchResults = await Promise.all(
+          ideas.map((idea) => performResearch(idea, "compare").catch(() => null)),
+        );
+        const validResults = researchResults.filter((r): r is ResearchBrief => r !== null);
+        if (validResults.length > 0) {
+          // Merge: combine all search results and summaries.
+          const mergedSummary = validResults.map((r, i) =>
+            `=== Research for Idea ${i + 1}: ${ideas[i].idea.slice(0, 60)} ===\n${r.summary}`
+          ).join("\n\n");
+
+          research = {
+            queries: validResults.flatMap((r) => r.queries),
+            results: validResults.flatMap((r) => r.results),
+            summary: mergedSummary,
+            searchedAt: new Date().toISOString(),
+            pageContents: validResults.flatMap((r) => r.pageContents ?? []),
+            // Use first result's landscape as primary (most relevant for idea 1)
+            competitorLandscape: validResults[0]?.competitorLandscape,
+            nicheOpportunities: validResults[0]?.nicheOpportunities,
+          };
+        }
+      }
     } catch {
-      // Silent fallback
+      // Silent fallback — proceed without web research
     }
   }
 
@@ -54,10 +84,13 @@ export async function runCompareEngine(
         const pain = scores.pain ?? 5;
         const diff = scores.differentiation ?? 5;
         const evidence = scores.evidence ?? 1;
+        const avg = Math.round((clarity + pain + diff) / 3);
+        // Determine per-idea verdict from aggregate score
+        const ideaVerdict = computeIdeaVerdict(avg, evidence);
         results.push({
           title: row.ideaTitle ?? "Unknown",
-          verdict: "unclear" as Verdict,
-          score: Math.round((clarity + pain + diff) / 3),
+          verdict: ideaVerdict,
+          score: avg,
           riskiestAssumption: "",
           evidenceScore: evidence,
         });
@@ -91,6 +124,9 @@ export async function runCompareEngine(
     }
   }
 
+  // Overall report verdict: use top-ranked idea's verdict.
+  const overallVerdict: Verdict = results.length > 0 ? results[0].verdict : "unclear";
+
   const comparison: ComparisonResult = {
     ideas: results,
     ranking: results.map((r) => r.title),
@@ -101,7 +137,7 @@ export async function runCompareEngine(
 
   const report: GauntletReport = {
     id, createdAt: now, mode: "compare", input: ideas[0],
-    verdict: "unclear" as Verdict,
+    verdict: overallVerdict,
     comparison,
     enhancedComparison,
     nextActions: [`Validate "${comparison.recommendedPick}" first`],
@@ -109,4 +145,15 @@ export async function runCompareEngine(
     markdown: "",
   };
   return report;
+}
+
+/**
+ * Compute a meaningful Verdict for a single idea from its aggregate score and evidence score.
+ */
+function computeIdeaVerdict(score: number, evidenceScore: number): Verdict {
+  if (score >= 8 && evidenceScore >= 5) return "strong";
+  if (score >= 7) return "promising_but_risky";
+  if (score >= 5) return "unclear";
+  if (evidenceScore <= 2 && score < 5) return "needs_real_evidence";
+  return "weak";
 }

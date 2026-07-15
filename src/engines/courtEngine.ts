@@ -21,6 +21,31 @@ import {
   type RoleDefinition,
 } from "./courtPhases.js";
 
+/** Maximum number of LLM requests to run in parallel (avoids rate-limit 429s). */
+const COURT_CONCURRENCY = 3;
+
+/**
+ * Run an array of async tasks with a concurrency limit.
+ */
+async function withConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number,
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+
+  async function runNext(): Promise<void> {
+    while (index < tasks.length) {
+      const current = index++;
+      results[current] = await tasks[current]();
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => runNext());
+  await Promise.all(workers);
+  return results;
+}
+
 /**
  * Maps a verdict string from LLM output to the Verdict enum.
  */
@@ -45,6 +70,10 @@ export async function runCourtEngine(
     customRoles?: RoleDefinition[];
   },
 ): Promise<GauntletReport> {
+  if (!idea?.idea?.trim()) {
+    throw new Error("A non-empty product idea is required for court mode.");
+  }
+
   const id = randomUUID();
   const now = new Date().toISOString();
   const transcript: CourtTurn[] = [];
@@ -62,8 +91,9 @@ export async function runCourtEngine(
   // Merge custom roles with defaults (custom replaces matching IDs, appends new)
   const roles = mergeRoles(COURT_ROLES, options?.customRoles);
 
-  // ─── Phase 1: Opening Statements (parallel) ────────────────────
-  const openingPromises = roles.map(async (role) => {
+  // ─── Phase 1: Opening Statements (rate-limited parallel) ────────
+  // Use concurrency limiter to avoid hitting rate limits with 7 simultaneous calls.
+  const openingTasks = roles.map((role) => async () => {
     try {
       const { system, user } = buildOpeningPrompt(role, idea, research);
       const response = await provider.complete(user, {
@@ -85,7 +115,7 @@ export async function runCourtEngine(
     }
   });
 
-  const openings = await Promise.all(openingPromises);
+  const openings = await withConcurrency(openingTasks, COURT_CONCURRENCY);
 
   // ─── Phase 2: Cross-Examination (single call) ───────────────────
   let crossExam: { keyConflicts: any[]; openQuestions: string[] };
@@ -104,12 +134,14 @@ export async function runCourtEngine(
     crossExam = { keyConflicts: [], openQuestions: [] };
   }
 
-  // ─── Phase 3: Rebuttals (parallel — skeptics only) ──────────────
-  const skeptics = roles.filter(
+  // ─── Phase 3: Rebuttals (rate-limited parallel) ─────────────────
+  // Include skeptics, defenders, and user-perspective roles in rebuttals
+  // (all three stances have strong reason to respond to cross-examination).
+  const rebuttalRoles = roles.filter(
     (r) => r.stance === "skeptic" || r.stance === "defender" || r.stance === "user",
   );
 
-  const rebuttalPromises = skeptics.map(async (role) => {
+  const rebuttalTasks = rebuttalRoles.map((role) => async () => {
     try {
       const { system, user } = buildRebuttalPrompt(role, openings, crossExam);
       const response = await provider.complete(user, {
@@ -131,7 +163,7 @@ export async function runCourtEngine(
     }
   });
 
-  const rebuttals = await Promise.all(rebuttalPromises);
+  const rebuttals = await withConcurrency(rebuttalTasks, COURT_CONCURRENCY);
 
   // ─── Phase 4: Final Verdict (single call) ────────────────────────
   let courtDebate: EnhancedCourtDebate;

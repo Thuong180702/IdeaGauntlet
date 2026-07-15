@@ -24,7 +24,19 @@ export class OllamaProvider implements LLMProvider {
     };
 
     const timeoutCtrl = new AbortController();
-    const timeoutId = setTimeout(() => timeoutCtrl.abort(), this.config_timeoutMs());
+
+    // Track the active timer so it can be cleared before creating a new one on retry.
+    let activeTimeoutId: ReturnType<typeof setTimeout> = setTimeout(
+      () => timeoutCtrl.abort(),
+      this.timeoutMs,
+    );
+
+    // Helper to reset the timeout for the next attempt without leaking the old timer.
+    const resetTimeout = () => {
+      clearTimeout(activeTimeoutId);
+      activeTimeoutId = setTimeout(() => timeoutCtrl.abort(), this.timeoutMs);
+    };
+
     if (options?.signal) {
       options.signal.addEventListener("abort", () => timeoutCtrl.abort(), { once: true });
     }
@@ -54,16 +66,15 @@ export class OllamaProvider implements LLMProvider {
         if (!response.ok) {
           const text = await response.text().catch(() => "");
           if (retryCfg.retryOnStatuses.includes(response.status) && attempt < retryCfg.maxRetries) {
-            clearTimeout(timeoutId);
             await sleep(computeBackoff(attempt, retryCfg));
-            setTimeout(() => timeoutCtrl.abort(), this.config_timeoutMs());
+            resetTimeout();
             continue;
           }
-          clearTimeout(timeoutId);
+          clearTimeout(activeTimeoutId);
           throw new Error(`Ollama returned ${response.status}: ${text}`);
         }
 
-        clearTimeout(timeoutId);
+        clearTimeout(activeTimeoutId);
 
         // Handle streaming
         if (options?.onToken && response.body) {
@@ -75,22 +86,19 @@ export class OllamaProvider implements LLMProvider {
       } catch (err: any) {
         lastError = err;
         if (err.name === "AbortError") {
-          clearTimeout(timeoutId);
+          clearTimeout(activeTimeoutId);
           throw new Error(`Ollama request timed out or was cancelled after ${this.timeoutMs}ms`);
         }
         if (attempt < retryCfg.maxRetries) {
           await sleep(computeBackoff(attempt, retryCfg));
+          resetTimeout();
           continue;
         }
       }
     }
 
-    clearTimeout(timeoutId);
+    clearTimeout(activeTimeoutId);
     throw lastError ?? new Error("Ollama request failed after all retries");
-  }
-
-  private config_timeoutMs(): number {
-    return this.timeoutMs;
   }
 }
 

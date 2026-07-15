@@ -19,6 +19,10 @@ export async function runMvpPlanner(
   provider: LLMProvider,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
+  if (!idea?.idea?.trim()) {
+    throw new Error("A non-empty product idea is required for MVP planner mode.");
+  }
+
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -36,7 +40,7 @@ export async function runMvpPlanner(
   const researchContext = research?.summary ?? "";
   const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  const userMessage = `Product idea: ${idea.idea}\n\nReturn JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string), competitiveWedge (string — based on competitor analysis from research brief, cite competitors by name), nicheStrategy ({niche, whyUnderserved, howToReach} — identify a specific underserved niche to target first)`;
+  const userMessage = `Product idea: ${idea.idea}\n\nReturn JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string), timeline (string — realistic days/weeks to first validation, e.g. "7 days" or "3 weeks"), competitiveWedge (string — based on competitor analysis from research brief, cite competitors by name), nicheStrategy ({niche, whyUnderserved, howToReach} — identify a specific underserved niche to target first)`;
 
   let plan: MVPPlan = { ...DEFAULT_PLAN };
   let enhancedMvpPlan: EnhancedMVPPlan | undefined;
@@ -52,11 +56,15 @@ export async function runMvpPlanner(
 
     if (!parsed) throw new Error("Failed to parse MVP response");
 
+    // Use timeline from LLM output, fall back to default only if not provided.
+    const llmTimeline = parsed.timeline?.trim();
+    const timeline = llmTimeline && llmTimeline.length > 0 ? llmTimeline : DEFAULT_PLAN.timeline;
+
     plan = {
       goal: parsed.coreHypothesis ?? plan.goal,
       scope: parsed.validationPlan ?? plan.scope,
       nonGoals: parsed.nonGoals ?? plan.nonGoals,
-      timeline: "14 days",
+      timeline,
       metrics: (parsed.successMetrics ?? []).map((m: any) => `${m.metric}: ${m.target}`),
     };
 
@@ -78,13 +86,17 @@ export async function runMvpPlanner(
       nicheStrategy: parsed.nicheStrategy,
     };
 
-    // Verdict reflects MVP plan readiness (Bug C fix)
+    // Verdict reflects MVP plan readiness
     const hasKillCriteria = (parsed.killCriteria ?? []).length > 0;
     const hasPivotOptions = (parsed.pivotOptions ?? []).length > 0;
-    if (hasKillCriteria && hasPivotOptions) {
+    const hasValidationPlan = (parsed.validationPlan ?? []).length > 0;
+
+    if (hasKillCriteria && hasPivotOptions && hasValidationPlan) {
       verdict = "promising_but_risky";
-    } else if (hasKillCriteria) {
+    } else if (hasKillCriteria && hasValidationPlan) {
       verdict = "needs_real_evidence";
+    } else if (hasValidationPlan) {
+      verdict = "unclear";
     } else {
       verdict = "weak";
     }

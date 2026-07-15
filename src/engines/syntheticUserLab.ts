@@ -7,6 +7,7 @@ import type {
   Verdict,
   EnhancedPersona,
   UserSynthesis,
+  Scorecard,
 } from "../core/types.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
@@ -18,6 +19,12 @@ export async function runUserLab(
   count: number = 6,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
+  if (!idea?.idea?.trim()) {
+    throw new Error("A non-empty product idea is required for user lab mode.");
+  }
+  // Clamp count to a sensible range.
+  const safeCount = Math.min(Math.max(1, Math.floor(count)), 12);
+
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -33,7 +40,7 @@ export async function runUserLab(
 
   const researchContext = research?.summary ?? "";
   const systemPrompt = `You are a Synthetic User Generator for IdeaGauntlet.
-Generate ${count} diverse fictional user archetypes. Each persona must be clearly labeled as fictional.
+Generate ${safeCount} diverse fictional user archetypes. Each persona must be clearly labeled as fictional.
 
 ${researchContext}
 
@@ -62,15 +69,19 @@ Also return a synthesis object with:
 - segmentsUnlikelyToCare (string[] — segments unlikely to adopt)
 - interviewQuestions (string[] — top 5 questions for real user interviews)
 - fakeDoorTestIdeas (string[] — 2-3 fake-door test ideas)
+- overallWillingnessToPayScore (number 1-10 — aggregate score across personas)
+- adoptionLikelihoodScore (number 1-10 — how likely the target segment is to adopt)
+- differentiationScore (number 1-10 — how differentiated the product is vs workarounds)
 
-Return a JSON object with keys: "users" (array) and "synthesis" (object). Only valid JSON.
+Return a JSON object with keys: "users" (array), "synthesis" (object). Only valid JSON.
 IMPORTANT: These are fictional archetypes for hypothesis generation.`;
 
-  const userMessage = `Product idea: ${idea.idea}${idea.targetUsers ? `\nTarget users: ${idea.targetUsers.join(", ")}` : ""}\n\nGenerate ${count} fictional user archetypes with synthesis as JSON.`;
+  const userMessage = `Product idea: ${idea.idea}${idea.targetUsers ? `\nTarget users: ${idea.targetUsers.join(", ")}` : ""}\n\nGenerate ${safeCount} fictional user archetypes with synthesis as JSON.`;
 
   let users: SyntheticPersona[] = [];
   let enhancedUsers: EnhancedPersona[] = [];
   let synthesis: UserSynthesis | undefined;
+  let scores: Scorecard | undefined;
 
   try {
     const response = await provider.complete(userMessage, {
@@ -82,7 +93,7 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
     if (!parsed) throw new Error("Failed to parse users response");
 
     // Build basic SyntheticPersona[] for backward compat
-    const rawUsers: any[] = (parsed.users ?? []).slice(0, count);
+    const rawUsers: any[] = (parsed.users ?? []).slice(0, safeCount);
     users = rawUsers.map((u: any) => ({
       name: u.name ?? "Unknown",
       archetype: u.archetype ?? "Unknown",
@@ -122,18 +133,38 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
         interviewQuestions: parsed.synthesis.interviewQuestions ?? [],
         fakeDoorTestIdeas: parsed.synthesis.fakeDoorTestIdeas ?? [],
       };
+
+      // Derive a meaningful scorecard from LLM-provided synthesis scores + persona signals.
+      const wtpScore = clampScore(parsed.synthesis.overallWillingnessToPayScore ?? deriveWtpScore(users));
+      const adoptionScore = clampScore(parsed.synthesis.adoptionLikelihoodScore ?? 5);
+      const diffScore = clampScore(parsed.synthesis.differentiationScore ?? 5);
+      const objectionPenalty = Math.min(synthesis.recurringObjections.length * 0.5, 2);
+
+      scores = {
+        clarity: 6, // Users mode doesn't assess clarity directly
+        pain: clampScore(adoptionScore + (synthesis.surprisingSegments.length > 0 ? 1 : 0)),
+        differentiation: diffScore,
+        buildability: 5, // Not assessed in users mode
+        distribution: clampScore(adoptionScore - objectionPenalty),
+        monetization: wtpScore,
+        evidence: clampScore(parsed.synthesis.fakeDoorTestIdeas?.length > 0 ? 3 : 1),
+      };
     }
   } catch {
     users = [];
     enhancedUsers = [];
   }
 
+  // Compute a meaningful verdict from the scorecard (not always "unclear").
+  const verdict = computeUsersVerdict(scores, users);
+
   const report: GauntletReport = {
     id,
     createdAt: now,
     mode: "users",
     input: idea,
-    verdict: "unclear" as Verdict,
+    verdict,
+    scores: scores,
     syntheticUsers: users,
     enhancedSyntheticUsers: enhancedUsers,
     userSynthesis: synthesis,
@@ -144,4 +175,35 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
     markdown: "",
   };
   return report;
+}
+
+function clampScore(v: number): number {
+  return Math.min(10, Math.max(1, Math.round(v)));
+}
+
+/**
+ * Derive a willingness-to-pay aggregate score from persona WTP values.
+ * none=1, low=3, medium=6, high=9
+ */
+function deriveWtpScore(users: SyntheticPersona[]): number {
+  if (users.length === 0) return 3;
+  const map: Record<string, number> = { none: 1, low: 3, medium: 6, high: 9 };
+  const total = users.reduce((acc, u) => acc + (map[u.willingnessToPay] ?? 3), 0);
+  return total / users.length;
+}
+
+/**
+ * Compute a meaningful Verdict from the users mode scorecard and personas.
+ * Falls back to "unclear" only when there is genuinely not enough signal.
+ */
+function computeUsersVerdict(scores: Scorecard | undefined, users: SyntheticPersona[]): Verdict {
+  if (!scores || users.length === 0) return "unclear";
+
+  const median = [scores.pain, scores.monetization, scores.differentiation, scores.distribution]
+    .sort((a, b) => a - b)[2]; // middle of 4
+
+  if (median >= 7 && scores.monetization >= 6) return "promising_but_risky";
+  if (median >= 5) return "unclear";
+  if (scores.monetization <= 2) return "needs_real_evidence";
+  return "weak";
 }

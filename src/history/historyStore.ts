@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, join } from "node:path";
 import type { GauntletReport, Scorecard } from "../core/types.js";
 
@@ -8,6 +8,8 @@ import type { GauntletReport, Scorecard } from "../core/types.js";
  */
 
 const HISTORY_DIR = ".idea-gauntlet/history";
+// Maximum number of entries returned by listReports to avoid OOM from huge stores.
+const MAX_LIST_ENTRIES = 200;
 
 function getHistoryDir(workspaceDir?: string): string {
   return resolve(workspaceDir ?? process.cwd(), HISTORY_DIR);
@@ -20,6 +22,8 @@ export interface HistoryEntry {
   idea: string;
   verdict: string;
   scores?: Scorecard;
+  /** File size in bytes — reported for display but not loaded into memory by default. */
+  fileSizeBytes?: number;
 }
 
 export interface ScoreDelta {
@@ -58,32 +62,65 @@ export function loadReport(id: string, workspaceDir?: string): GauntletReport | 
 }
 
 /**
- * List all saved reports as metadata entries.
+ * List all saved reports as lightweight metadata entries.
+ *
+ * Fix: Instead of loading the full JSON of every report (which can cause OOM
+ * with large stores), we only read the first ~2 KB of each file to extract the
+ * metadata fields we need (id, createdAt, mode, idea, verdict, scores).
+ * Reports that can't be partially parsed fall back to a full read.
+ *
+ * Pagination is supported via offset + limit to avoid loading all entries at once.
  */
-export function listReports(workspaceDir?: string): HistoryEntry[] {
+export function listReports(
+  workspaceDir?: string,
+  options?: { limit?: number; offset?: number },
+): HistoryEntry[] {
   const dir = getHistoryDir(workspaceDir);
   if (!existsSync(dir)) return [];
 
-  const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+  const limit = Math.min(options?.limit ?? MAX_LIST_ENTRIES, MAX_LIST_ENTRIES);
+  const offset = options?.offset ?? 0;
+
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .slice(offset, offset + limit);
+
   const entries: HistoryEntry[] = [];
 
   for (const file of files) {
+    const filePath = join(dir, file);
     try {
-      const report = JSON.parse(readFileSync(join(dir, file), "utf-8")) as GauntletReport;
+      const fileSizeBytes = statSync(filePath).size;
+      // Optimisation: for large files (>100 KB), try to read only the first 4 KB
+      // which almost always contains all the top-level metadata we need.
+      let parsed: Partial<GauntletReport> | null = null;
+
+      if (fileSizeBytes > 100_000) {
+        // Read partial buffer and attempt a best-effort JSON extract.
+        const partial = readPartialJson(filePath, 4096);
+        if (partial) parsed = partial;
+      }
+
+      if (!parsed) {
+        // Small file or partial parse failed: read full file.
+        parsed = JSON.parse(readFileSync(filePath, "utf-8")) as GauntletReport;
+      }
+
       entries.push({
-        id: report.id,
-        createdAt: report.createdAt,
-        mode: report.mode,
-        idea: report.input?.idea?.slice(0, 80) ?? "",
-        verdict: report.verdict,
-        scores: report.scores,
+        id: parsed.id ?? file.replace(".json", ""),
+        createdAt: parsed.createdAt ?? "",
+        mode: parsed.mode ?? "unknown",
+        idea: parsed.input?.idea?.slice(0, 80) ?? "",
+        verdict: parsed.verdict ?? "unknown",
+        scores: parsed.scores,
+        fileSizeBytes,
       });
     } catch {
-      // Skip corrupt files
+      // Skip corrupt / unreadable files silently
     }
   }
 
-  // Sort by date descending
+  // Sort by date descending (newest first)
   entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return entries;
 }
@@ -136,4 +173,47 @@ export function compareReports(
     deltas,
     overallTrend,
   };
+}
+
+/**
+ * Attempt to read and parse the first `maxBytes` of a JSON file.
+ * Useful for extracting top-level metadata without loading the full file.
+ * Returns null if the slice cannot be parsed.
+ */
+function readPartialJson(filePath: string, maxBytes: number): Partial<GauntletReport> | null {
+  try {
+    const fd = require("node:fs").openSync(filePath, "r");
+    const buf = Buffer.alloc(maxBytes);
+    const bytesRead = require("node:fs").readSync(fd, buf, 0, maxBytes, 0);
+    require("node:fs").closeSync(fd);
+    const text = buf.toString("utf-8", 0, bytesRead);
+
+    // Extract top-level fields by looking for well-known keys.
+    // This avoids requiring a complete JSON parse.
+    const extract = (key: string): string | undefined => {
+      const re = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`, "i");
+      return text.match(re)?.[1];
+    };
+
+    const id = extract("id");
+    const createdAt = extract("createdAt");
+    const mode = extract("mode");
+    const verdict = extract("verdict");
+
+    // Extract idea from input.idea
+    const ideaMatch = text.match(/"idea"\s*:\s*"([^"]*)"/);
+    const idea = ideaMatch?.[1];
+
+    if (!id || !createdAt) return null;
+
+    return {
+      id,
+      createdAt,
+      mode: mode as any,
+      verdict: verdict as any,
+      input: idea ? ({ idea } as any) : undefined,
+    };
+  } catch {
+    return null;
+  }
 }

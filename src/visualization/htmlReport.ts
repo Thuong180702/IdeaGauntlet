@@ -1,6 +1,6 @@
 import type { GauntletReport } from "../core/types.js";
 import { buildReport } from "../core/report.js";
-import { generateRadarChart, type RadarChartInput } from "./radarChart.js";
+import { generateRadarChart } from "./radarChart.js";
 import { generateMvpFlowchart, generateCourtMindmap, generateCompetitorGraph, generateNicheMindmap } from "./mermaidDiagram.js";
 
 /**
@@ -53,34 +53,27 @@ export function generateHtmlReport(report: GauntletReport): string {
     );
   }
 
-  const mermaidBlocks: string[] = [];
+  // Mermaid diagram raw strings — NOT HTML-escaped so the client JS can render them.
+  const mermaidDiagrams: string[] = [];
   if (report.enhancedMvpPlan) {
-    mermaidBlocks.push(
-      '<div class="diagram-block">' + escapeHtml(generateMvpFlowchart(report)) + "</div>",
-    );
+    mermaidDiagrams.push(generateMvpFlowchart(report));
   }
   if (report.mode === "court" && report.courtDebate) {
-    mermaidBlocks.push(
-      '<div class="diagram-block">' + escapeHtml(generateCourtMindmap(report)) + "</div>",
-    );
+    mermaidDiagrams.push(generateCourtMindmap(report));
   }
   // Competitor landscape diagram
   const competitorLandscape =
     report.courtDebate?.competitorLandscape ??
     report.quickReport?.competitorAnalysis;
   if (competitorLandscape && competitorLandscape.competitors.length > 0) {
-    mermaidBlocks.push(
-      '<div class="diagram-block">' + escapeHtml(generateCompetitorGraph(report)) + "</div>",
-    );
+    mermaidDiagrams.push(generateCompetitorGraph(report));
   }
   // Niche mindmap
   const niches =
     report.courtDebate?.nicheOpportunities ??
     report.quickReport?.nicheOpportunities;
   if (niches && niches.length > 0) {
-    mermaidBlocks.push(
-      '<div class="diagram-block">' + escapeHtml(generateNicheMindmap(report)) + "</div>",
-    );
+    mermaidDiagrams.push(generateNicheMindmap(report));
   }
 
   const verdictColor = getVerdictColor(report.verdict);
@@ -162,9 +155,19 @@ export function generateHtmlReport(report: GauntletReport): string {
   if (radarSvg) {
     parts.push('    <div class="card full-width"><h2>Score Visualization</h2><div class="radar-chart">' + radarSvg + "</div></div>");
   }
-  if (mermaidBlocks.length > 0) {
-    parts.push('    <div class="card full-width" style="margin-top:1.5rem"><h2>Diagrams</h2>' + mermaidBlocks.join("") + "</div>");
+
+  // Mermaid diagrams: store raw Mermaid text in <pre data-mermaid> tags so client JS can parse cleanly.
+  if (mermaidDiagrams.length > 0) {
+    const diagramHtml = mermaidDiagrams.map((d) => {
+      // Extract inner mermaid text from the ```mermaid...``` fence.
+      const match = d.match(/^```mermaid\n([\s\S]*?)\n```$/);
+      const mermaidText = match ? match[1] : d;
+      // Store as <pre data-mermaid> — avoids escapeHtml corruption of diagram content.
+      return '<div class="diagram-block"><pre data-mermaid>' + escapeHtml(mermaidText) + "</pre></div>";
+    }).join("");
+    parts.push('    <div class="card full-width" style="margin-top:1.5rem"><h2>Diagrams</h2>' + diagramHtml + "</div>");
   }
+
   // Competitor landscape card
   if (competitorLandscape && competitorLandscape.competitors.length > 0) {
     parts.push('    <div class="card full-width" style="margin-top:1.5rem">');
@@ -173,7 +176,7 @@ export function generateHtmlReport(report: GauntletReport): string {
     parts.push('      <p style="margin-bottom:1rem">' + inlineMd(competitorLandscape.analysisNote) + '</p>');
     parts.push('      <table><thead><tr><th>#</th><th>Competitor</th><th>Type</th><th>Pricing</th><th>Features</th><th>Weaknesses</th></tr></thead><tbody>');
     competitorLandscape.competitors.forEach((c, i) => {
-      parts.push('        <tr><td>' + (i + 1) + '</td><td><a href="' + c.url + '" target="_blank">' + escapeHtml(c.name) + '</a></td><td>' + c.type + '</td><td>' + escapeHtml(c.pricing ?? '-') + '</td><td>' + escapeHtml((c.features ?? []).join('; ')) + '</td><td>' + escapeHtml((c.weaknesses ?? []).join('; ')) + '</td></tr>');
+      parts.push('        <tr><td>' + (i + 1) + '</td><td><a href="' + escapeHtml(c.url) + '" target="_blank">' + escapeHtml(c.name) + '</a></td><td>' + escapeHtml(c.type) + '</td><td>' + escapeHtml(c.pricing ?? '-') + '</td><td>' + escapeHtml((c.features ?? []).join('; ')) + '</td><td>' + escapeHtml((c.weaknesses ?? []).join('; ')) + '</td></tr>');
     });
     parts.push('      </tbody></table>');
     parts.push('    </div>');
@@ -183,9 +186,9 @@ export function generateHtmlReport(report: GauntletReport): string {
     parts.push('    <div class="card full-width" style="margin-top:1.5rem">');
     parts.push('      <h2>Niche Opportunities</h2>');
     parts.push('      <p style="color:var(--text-dim);margin-bottom:1rem">If the market is saturated, consider these edge opportunities:</p>');
-    niches.forEach((n, i) => {
+    niches.forEach((n) => {
       parts.push('        <div class="niche-card">');
-      parts.push('          <span class="niche-type">' + n.type.replace(/_/g, ' ') + '</span>');
+      parts.push('          <span class="niche-type">' + escapeHtml(n.type.replace(/_/g, ' ')) + '</span>');
       parts.push('          <p><strong>' + escapeHtml(n.description) + '</strong></p>');
       parts.push('          <p style="font-size:0.85rem;color:var(--text-dim)">Evidence: ' + escapeHtml(n.evidence) + '</p>');
       parts.push('          <p style="font-size:0.85rem">Wedge: ' + escapeHtml(n.wedgeIdea) + '</p>');
@@ -202,19 +205,23 @@ export function generateHtmlReport(report: GauntletReport): string {
   parts.push("      <p>Synthetic analysis is not a substitute for real user research.</p>");
   parts.push("    </div>");
   parts.push("  </div>");
+
+  // Mermaid client-side rendering: read from <pre data-mermaid> to avoid HTML encoding issues.
   parts.push('  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>');
   parts.push("  <script>");
   parts.push("    document.addEventListener('DOMContentLoaded', function() {");
   parts.push("      if (typeof mermaid !== 'undefined') {");
   parts.push("        mermaid.initialize({ startOnLoad: false, theme: 'dark' });");
-  parts.push("        document.querySelectorAll('.diagram-block').forEach(function(block, i) {");
-  parts.push("          var text = block.textContent.trim();");
-  parts.push("          var match = text.match(/```mermaid\\n([\\s\\S]*?)\\n```/);");
-  parts.push("          if (match) {");
-  parts.push("            mermaid.render('m' + i, match[1]).then(function(r) {");
-  parts.push("              block.innerHTML = r.svg;");
-  parts.push("            })['catch'](function() { block.innerHTML = '<pre>' + text + '</pre>'; });");
-  parts.push("          } else { block.innerHTML = '<pre>' + text + '</pre>'; }");
+  // Fix: read from <pre data-mermaid> so the mermaid text is unescaped before rendering.
+  parts.push("        document.querySelectorAll('pre[data-mermaid]').forEach(function(pre, i) {");
+  parts.push("          var text = pre.textContent || '';");
+  parts.push("          var container = pre.parentElement;");
+  parts.push("          mermaid.render('mg' + i, text).then(function(r) {");
+  parts.push("            container.innerHTML = r.svg;");
+  parts.push("          })['catch'](function() {");
+  parts.push("            pre.style.display = 'block';");
+  parts.push("            pre.removeAttribute('data-mermaid');");
+  parts.push("          });");
   parts.push("        });");
   parts.push("      }");
   parts.push("    });");
@@ -260,31 +267,59 @@ function markdownToHtml(markdown: string): string {
   let inCodeBlock = false;
   let inTable = false;
   let tableRows: string[] = [];
+  let inUl = false;
+  let inOl = false;
+
+  const closeList = () => {
+    if (inUl) { html.push("</ul>"); inUl = false; }
+    if (inOl) { html.push("</ol>"); inOl = false; }
+  };
 
   for (const line of lines) {
+    // Code block toggle
     if (line.trim().startsWith("```")) {
+      closeList();
       if (inCodeBlock) { html.push("</pre>"); inCodeBlock = false; }
       else { html.push("<pre>"); inCodeBlock = true; }
       continue;
     }
     if (inCodeBlock) { html.push(escapeHtml(line)); continue; }
 
-    if (line.trim().startsWith("|") && !inTable) { inTable = true; tableRows = [line]; continue; }
+    // Table handling
+    if (line.trim().startsWith("|") && !inTable) { closeList(); inTable = true; tableRows = [line]; continue; }
     if (inTable) {
       if (line.trim().startsWith("|")) { tableRows.push(line); continue; }
       else { html.push(renderTable(tableRows)); tableRows = []; inTable = false; }
     }
 
+    // Headings close lists
+    if (line.startsWith("### ") || line.startsWith("## ") || line.startsWith("# ")) {
+      closeList();
+    }
+
     if (line.startsWith("### ")) html.push("<h3>" + inlineMd(line.slice(4)) + "</h3>");
     else if (line.startsWith("## ")) html.push("<h2>" + inlineMd(line.slice(3)) + "</h2>");
     else if (line.startsWith("# ")) html.push("<h1>" + inlineMd(line.slice(2)) + "</h1>");
-    else if (line.trim() === "---") html.push("<hr/>");
-    else if (line.trim() === "") html.push("<br/>");
-    else if (line.match(/^\d+\.\s/)) html.push("<li>" + inlineMd(line.replace(/^\d+\.\s/, "")) + "</li>");
-    else if (line.startsWith("- ")) html.push("<li>" + inlineMd(line.slice(2)) + "</li>");
-    else html.push("<p>" + inlineMd(line) + "</p>");
+    else if (line.trim() === "---") { closeList(); html.push("<hr/>"); }
+    else if (line.trim() === "") { closeList(); html.push("<br/>"); }
+    else if (line.match(/^\d+\.\s/)) {
+      // Ordered list item — open <ol> if not already open
+      if (inUl) { html.push("</ul>"); inUl = false; }
+      if (!inOl) { html.push("<ol>"); inOl = true; }
+      html.push("<li>" + inlineMd(line.replace(/^\d+\.\s/, "")) + "</li>");
+    } else if (line.startsWith("- ")) {
+      // Unordered list item — open <ul> if not already open
+      if (inOl) { html.push("</ol>"); inOl = false; }
+      if (!inUl) { html.push("<ul>"); inUl = true; }
+      html.push("<li>" + inlineMd(line.slice(2)) + "</li>");
+    } else {
+      closeList();
+      html.push("<p>" + inlineMd(line) + "</p>");
+    }
   }
 
+  // Close any open structures at end of document
+  closeList();
   if (inTable && tableRows.length > 0) html.push(renderTable(tableRows));
   if (inCodeBlock) html.push("</pre>");
   return html.join("\n");
@@ -312,5 +347,5 @@ function inlineMd(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="' + QUOT + '" target="_blank">$1</a>'.replace(QUOT, "$2"));
 }

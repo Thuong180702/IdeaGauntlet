@@ -1,5 +1,13 @@
 import { handleToolCall, toolDefinitions, getReportIds } from "./tools.js";
 import { listResources } from "./resources.js";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Read package version at startup to avoid hardcoding.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const _pkg = JSON.parse(readFileSync(resolve(__dirname, "../../package.json"), "utf-8")) as { version: string };
+const PKG_VERSION: string = _pkg.version;
 
 // ─── JSON-RPC helpers ────────────────────────────────────────────
 
@@ -27,7 +35,7 @@ const SERVER_CAPABILITIES = {
   },
   serverInfo: {
     name: "idea-gauntlet",
-    version: "0.2.3",
+    version: PKG_VERSION,
   },
 };
 

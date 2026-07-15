@@ -37,6 +37,9 @@ export async function interactiveCommand(
   let lastReport: GauntletReport | null = null;
   const enableSearch = true;
 
+  // For compare mode: store multiple ideas separately.
+  let compareIdeas: string[] = [];
+
   const rl = readline.createInterface({ input, output });
 
   if (!currentIdea) {
@@ -54,7 +57,7 @@ export async function interactiveCommand(
 
   // Run initial analysis
   console.log("Running " + currentMode + " analysis...\n");
-  lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch);
+  lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch, compareIdeas);
   if (lastReport) {
     lastReport.markdown = buildReport(lastReport);
     printReport(lastReport);
@@ -83,6 +86,7 @@ export async function interactiveCommand(
       const newIdea = trimmed.slice(6).trim();
       if (newIdea) {
         currentIdea = newIdea;
+        compareIdeas = []; // reset compare ideas when main idea changes
         console.log(GREEN + "Idea updated." + RESET + "\n");
       }
       continue;
@@ -92,16 +96,61 @@ export async function interactiveCommand(
       const newMode = trimmed.slice(6).trim() as GauntletMode;
       if (["quick", "court", "users", "mvp", "compare"].includes(newMode)) {
         currentMode = newMode;
-        console.log(GREEN + "Mode set to " + newMode + "." + RESET + "\n");
+        if (newMode === "compare" && compareIdeas.length === 0) {
+          console.log(GREEN + "Mode set to compare." + RESET);
+          console.log(YELLOW + "Use /add-idea <text> to add ideas to compare (at least 2)." + RESET + "\n");
+        } else {
+          console.log(GREEN + "Mode set to " + newMode + "." + RESET + "\n");
+        }
       } else {
         console.log(RED + "Invalid mode. Options: quick, court, users, mvp, compare" + RESET + "\n");
       }
       continue;
     }
 
+    // Compare mode: add multiple ideas.
+    if (trimmed.startsWith("/add-idea ")) {
+      const newIdea = trimmed.slice(10).trim();
+      if (newIdea) {
+        compareIdeas.push(newIdea);
+        console.log(GREEN + "Added idea #" + compareIdeas.length + ": " + newIdea.slice(0, 60) + RESET + "\n");
+      }
+      continue;
+    }
+
+    // Compare mode: list current ideas to compare.
+    if (trimmed === "/list-ideas") {
+      if (compareIdeas.length === 0) {
+        console.log(YELLOW + "No ideas added for comparison yet. Use /add-idea <text>." + RESET + "\n");
+      } else {
+        console.log("\nIdeas to compare:");
+        compareIdeas.forEach((idea, i) => {
+          console.log("  " + (i + 1) + ". " + idea.slice(0, 80));
+        });
+        console.log();
+      }
+      continue;
+    }
+
+    // Compare mode: clear ideas list.
+    if (trimmed === "/clear-ideas") {
+      compareIdeas = [];
+      console.log(GREEN + "Compare ideas list cleared." + RESET + "\n");
+      continue;
+    }
+
     if (trimmed === "/run") {
-      console.log("Running " + currentMode + " analysis...\n");
-      lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch);
+      // Validate compare mode has multiple ideas.
+      if (currentMode === "compare") {
+        if (compareIdeas.length < 2) {
+          console.log(YELLOW + "Compare mode needs at least 2 ideas. Use /add-idea <text> to add them." + RESET + "\n");
+          continue;
+        }
+        console.log("Comparing " + compareIdeas.length + " ideas...\n");
+      } else {
+        console.log("Running " + currentMode + " analysis...\n");
+      }
+      lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch, compareIdeas);
       if (lastReport) {
         lastReport.markdown = buildReport(lastReport);
         printReport(lastReport);
@@ -180,10 +229,9 @@ export async function interactiveCommand(
 
       const drillMore = await rl.question("Drill deeper? Run court mode focused on this risk? (y/n): ");
       if (drillMore.trim().toLowerCase() === "y") {
-        currentMode = "court";
-        currentIdea = currentIdea + " -- Focus specifically on this risk: " + risk.title + ". " + risk.explanation;
+        const drillIdea = currentIdea + " -- Focus specifically on this risk: " + risk.title + ". " + risk.explanation;
         console.log("\nRunning court analysis focused on this risk...\n");
-        lastReport = await runGauntletSafe(currentIdea, currentMode, providerRes.provider, enableSearch);
+        lastReport = await runGauntletSafe(drillIdea, "court", providerRes.provider, enableSearch, []);
         if (lastReport) {
           lastReport.markdown = buildReport(lastReport);
           printReport(lastReport);
@@ -204,8 +252,18 @@ async function runGauntletSafe(
   mode: GauntletMode,
   provider: any,
   enableSearch: boolean,
+  compareIdeas: string[],
 ): Promise<GauntletReport | null> {
   try {
+    if (mode === "compare" && compareIdeas.length >= 2) {
+      return await runGauntlet({
+        idea: compareIdeas[0],
+        mode,
+        provider,
+        enableSearch,
+        compareIdeas,
+      });
+    }
     return await runGauntlet({
       idea,
       mode,
@@ -226,14 +284,17 @@ function printReport(report: GauntletReport): void {
 
 function printHelp(): void {
   console.log("\nInteractive Commands:");
-  console.log("  /idea <text>     - Update idea text");
-  console.log("  /mode <mode>     - Switch mode (quick, court, users, mvp, compare)");
-  console.log("  /run             - Run analysis with current idea + mode");
-  console.log("  /benchmark       - Compare scores to benchmark dataset");
-  console.log("  /diagram         - Generate Mermaid diagram (MVP mode only)");
-  console.log("  /save            - Save current report to history store");
-  console.log("  /export html     - Export HTML report");
-  console.log("  /drill <n>       - Drill down into risk #n + optional court re-run");
-  console.log("  /help            - Show this help");
-  console.log("  /quit            - Exit interactive mode\n");
+  console.log("  /idea <text>      - Update idea text");
+  console.log("  /mode <mode>      - Switch mode (quick, court, users, mvp, compare)");
+  console.log("  /run              - Run analysis with current idea + mode");
+  console.log("  /add-idea <text>  - Add an idea to compare list (compare mode)");
+  console.log("  /list-ideas       - List ideas in compare list");
+  console.log("  /clear-ideas      - Clear compare ideas list");
+  console.log("  /benchmark        - Compare scores to benchmark dataset");
+  console.log("  /diagram          - Generate Mermaid diagram (MVP mode only)");
+  console.log("  /save             - Save current report to history store");
+  console.log("  /export html      - Export HTML report");
+  console.log("  /drill <n>        - Drill down into risk #n + optional court re-run");
+  console.log("  /help             - Show this help");
+  console.log("  /quit             - Exit interactive mode\n");
 }

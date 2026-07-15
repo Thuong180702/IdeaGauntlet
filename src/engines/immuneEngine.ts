@@ -12,6 +12,10 @@ export async function runImmuneEngine(
   provider: LLMProvider,
   options?: { enableSearch?: boolean; research?: ResearchBrief },
 ): Promise<GauntletReport> {
+  if (!idea?.idea?.trim()) {
+    throw new Error("A non-empty product idea is required for quick mode.");
+  }
+
   const id = randomUUID();
   const now = new Date().toISOString();
 

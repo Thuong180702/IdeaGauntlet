@@ -196,6 +196,9 @@ export class StaticProvider implements LLMProvider {
             "Landing page offering 'focus sessions with a virtual partner'",
             "Discord bot that pairs people for silent work sessions",
           ],
+          overallWillingnessToPayScore: 4,
+          adoptionLikelihoodScore: 6,
+          differentiationScore: 5,
         },
       });
     }
@@ -238,6 +241,7 @@ export class StaticProvider implements LLMProvider {
           "Team accountability feature for small remote teams",
         ],
         recommendedScope: "Single-room focus timer with simulated companion. No auth, no payments, no mobile.",
+        timeline: "10 days",
       });
     }
 
