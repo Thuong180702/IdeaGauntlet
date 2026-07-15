@@ -63,7 +63,6 @@ idea-gauntlet court idea.md
 idea-gauntlet users idea.md --personas 8
 idea-gauntlet mvp idea.md
 idea-gauntlet compare idea-a.md idea-b.md
-idea-gauntlet prompt quick "your idea"
 idea-gauntlet init
 idea-gauntlet setup --dry-run --all
 idea-gauntlet doctor --verbose
@@ -143,7 +142,6 @@ npm run typecheck
 npm run test
 npm run build
 node dist/cli/index.js --help
-node dist/cli/index.js prompt quick "test idea"
 node dist/cli/index.js setup --dry-run --all
 node dist/cli/index.js doctor --verbose
 npm pack --dry-run
