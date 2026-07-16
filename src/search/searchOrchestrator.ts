@@ -17,6 +17,25 @@ import { checkLivenessBatch } from "./playwrightFetcher.js";
 import { analyzeCompetitors } from "./competitorAnalyzer.js";
 import { detectNiches } from "./nicheDetector.js";
 import type { IdeaInput, GauntletMode } from "../core/types.js";
+import { warnIfError } from "../utils/warn.js";
+
+/** Run async tasks with a concurrency limit. */
+async function withConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number,
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+  async function runNext(): Promise<void> {
+    while (index < tasks.length) {
+      const current = index++;
+      results[current] = await tasks[current]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => runNext());
+  await Promise.all(workers);
+  return results;
+}
 
 /**
  * Resolves the search provider based on env vars and config.
@@ -63,10 +82,26 @@ function getSupplementaryProviders(): WebSearchProvider[] {
  * Each mode needs different research focus.
  * Deepened: pricing, complaints, underserved segments, niche queries.
  */
+/**
+ * Sanitize a search query — strip control chars, limit length, remove shell metacharacters.
+ * Prevents query injection in search provider URLs.
+ */
+export function sanitizeQuery(query: string): string {
+  return query
+    // Remove control characters (incl. \n, \r, \t, null bytes)
+    .replace(/[\x00-\x1f\x7f]/g, " ")
+    // Remove shell metacharacters that could be dangerous in spawn contexts
+    .replace(/[`$\\]/g, "")
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 export function generateQueries(idea: IdeaInput, mode: GauntletMode): string[] {
-  const ideaText = idea.idea;
-  const market = idea.market ?? "";
-  const users = idea.targetUsers?.join(", ") ?? "";
+  const ideaText = sanitizeQuery(idea.idea);
+  const market = sanitizeQuery(idea.market ?? "");
+  const users = idea.targetUsers?.map(sanitizeQuery).join(", ") ?? "";
 
   switch (mode) {
     case "quick":
@@ -195,25 +230,35 @@ export async function performResearch(
   const allResults: SearchResult[] = [];
   const perQueryResults: Record<string, SearchResult[]> = {};
 
-  for (const query of queries) {
+  // Run primary provider queries with concurrency limit (4 at a time).
+  // DuckDuckGo rate-limits internally (500ms between calls per provider instance).
+  const queryTasks = queries.map((query) => async () => {
     try {
       const results = await searchProvider.search(query, cfg.maxResultsPerQuery);
       perQueryResults[query] = results;
-      allResults.push(...results);
-    } catch {
+      return results;
+    } catch (err: any) {
+      warnIfError(`searchOrchestrator: query "${query}" failed`, err);
       perQueryResults[query] = [];
+      return [];
     }
+  });
+
+  const queryResults = await withConcurrency(queryTasks, 4);
+  for (const results of queryResults) {
+    allResults.push(...results);
   }
 
   // Run supplementary providers in parallel (GitHub, HN, ProductHunt)
   const supplementary = getSupplementaryProviders();
-  const supplementaryQuery = `${idea.idea} ${idea.market ?? ""}`.trim();
+  const supplementaryQuery = sanitizeQuery(`${idea.idea} ${idea.market ?? ""}`.trim());
 
   const supplementaryResults = await Promise.all(
     supplementary.map(async (p) => {
       try {
         return await p.search(supplementaryQuery, 5);
-      } catch {
+      } catch (err: any) {
+        warnIfError(`searchOrchestrator: supplementary provider "${p.kind}" failed`, err);
         return [];
       }
     }),

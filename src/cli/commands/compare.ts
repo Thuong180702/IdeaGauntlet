@@ -23,10 +23,14 @@ export async function compareCommand(ideas: string[], rawOptions: Record<string,
   const report = await runCompareEngine(parsed, providerRes.provider, { enableSearch });
   report.markdown = buildReport(report);
 
+  const isJson = !!options.json;
   const output = options.output as string | undefined;
   const format = options.format as string | undefined;
 
-  if (format === "html") {
+  if (isJson) {
+    const r = safeWriteOutput(output, JSON.stringify(report, null, 2), "Report");
+    if (!r.ok) { console.error(r.message); process.exit(2); }
+  } else if (format === "html") {
     const { generateHtmlReport } = await import("../../visualization/htmlReport.js");
     const html = generateHtmlReport(report);
     const htmlOutput = output?.replace(/\.md$/, ".html") ?? undefined;

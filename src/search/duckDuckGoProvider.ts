@@ -1,4 +1,5 @@
 import type { WebSearchProvider, SearchResult } from "./types.js";
+import { warnIfError } from "../utils/warn.js";
 
 /**
  * DuckDuckGo HTML search provider — free, no API key required.
@@ -64,6 +65,7 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       try {
         return await searchGoogleFallback(query, maxResults);
       } catch (gErr: any) {
+        warnIfError(`duckDuckGo: Google fallback failed for "${query}"`, gErr);
         return [];
       }
     }
@@ -89,7 +91,8 @@ function parseDuckDuckGoHtml(html: string, maxResults: number): SearchResult[] {
     if (uddgMatch) {
       try {
         url = decodeURIComponent(uddgMatch[1]);
-      } catch {
+      } catch (err: any) {
+        warnIfError("duckDuckGo: URL decode failed", err);
         url = rawUrl;
       }
     }

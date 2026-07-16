@@ -6,6 +6,7 @@ import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.j
 import { extractJSON, safeParseJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 export async function runImmuneEngine(
   idea: IdeaInput,
@@ -24,8 +25,8 @@ export async function runImmuneEngine(
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await performResearch(idea, "quick");
-    } catch {
-      // Silent fallback — proceed without web research
+    } catch (err: any) {
+      warnIfError("immuneEngine: web research failed", err);
     }
   }
 
@@ -49,7 +50,8 @@ export async function runImmuneEngine(
       maxTokens: 2048,
     });
     parsed = extractJSON(response) ?? {};
-  } catch {
+  } catch (err: any) {
+    warnIfError("immuneEngine: LLM response failed", err);
     parsed = {};
   }
 

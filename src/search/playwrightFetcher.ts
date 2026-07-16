@@ -17,6 +17,8 @@
  */
 
 import type { PageContent } from "./types.js";
+import { isSafeUrl } from "./ssrfGuard.js";
+import { warnIfError, warn } from "../utils/warn.js";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const HYDRATION_WAIT_MS = 2_000;
@@ -56,7 +58,7 @@ async function getSingletonBrowser(): Promise<import("playwright").Browser> {
 export async function closeSingletonBrowser(): Promise<void> {
   if (_singletonBrowser) {
     _singletonBrowserClosing = true;
-    await _singletonBrowser.close().catch(() => undefined);
+    await _singletonBrowser.close().catch((err: any) => warnIfError("playwright: singleton browser close", err));
     _singletonBrowser = null;
   }
 }
@@ -167,12 +169,13 @@ export async function fetchPagePlaywright(
     await page.waitForTimeout(HYDRATION_WAIT_MS);
 
     return await extractPageContent(page, url, maxChars);
-  } catch {
+  } catch (err: any) {
+    warnIfError(`playwright: failed to fetch ${url}`, err);
     return null;
   } finally {
     // Close only the page context, not the shared browser.
-    if (page) await page.close().catch(() => undefined);
-    if (context) await context.close().catch(() => undefined);
+    if (page) await page.close().catch((err: any) => warnIfError("playwright: page close", err));
+    if (context) await context.close().catch((err: any) => warnIfError("playwright: context close", err));
   }
 }
 
@@ -198,7 +201,8 @@ export async function fetchPagesPlaywright(
   try {
     const chromium = await getChromium();
     browser = await chromium.launch({ headless: true });
-  } catch {
+  } catch (err: any) {
+    warnIfError("playwright: failed to launch browser for batch", err);
     return [];
   }
 
@@ -229,11 +233,11 @@ export async function fetchPagesPlaywright(
           const content = await extractPageContent(page, url, maxChars);
           if (content) results.push(content);
         }
-      } catch {
-        // Silent failure — skip this URL
+      } catch (err: any) {
+        warnIfError(`playwright: batch fetch failed for ${url}`, err);
       } finally {
-        if (page) await page.close().catch(() => undefined);
-        if (context) await context.close().catch(() => undefined);
+        if (page) await page.close().catch((err: any) => warnIfError("playwright: batch page close", err));
+        if (context) await context.close().catch((err: any) => warnIfError("playwright: batch context close", err));
       }
     }
   };
@@ -242,54 +246,12 @@ export async function fetchPagesPlaywright(
   await Promise.all(workers);
 
   // Close the batch browser (separate from singleton)
-  await browser.close().catch(() => undefined);
+  await browser.close().catch((err: any) => warnIfError("playwright: batch browser close", err));
 
   return results;
 }
 
-/**
- * SSRF guard: reject private/local IPs and non-http(s) protocols.
- */
-function isSafeUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
-
-    const host = parsed.hostname.toLowerCase();
-    // Reject localhost, private IPs, link-local
-    if (
-      host === "localhost" ||
-      host === "0.0.0.0" ||
-      host.startsWith("127.") ||
-      host.startsWith("10.") ||
-      host.startsWith("192.168.") ||
-      // 172.16.0.0/12 block — more concisely handled via numeric comparison
-      isPrivate172(host) ||
-      host.startsWith("169.254.") ||
-      host === "::1" ||
-      host.startsWith("fe80:") ||
-      host.endsWith(".local") ||
-      host.endsWith(".internal")
-    ) {
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if host is in the 172.16.0.0/12 private range.
- * Replaces the 16 separate startsWith checks.
- */
-function isPrivate172(host: string): boolean {
-  if (!host.startsWith("172.")) return false;
-  const parts = host.split(".");
-  if (parts.length < 2) return false;
-  const second = parseInt(parts[1], 10);
-  return second >= 16 && second <= 31;
-}
+// isSafeUrl and isPrivate172 are now imported from ./ssrfGuard.js
 
 /**
  * Liveness check: HEAD request before expensive full fetch.
@@ -310,8 +272,9 @@ export async function checkLiveness(url: string, timeoutMs = 5_000): Promise<boo
     });
     clearTimeout(timer);
     return response.ok || (response.status >= 300 && response.status < 400);
-  } catch {
+  } catch (err: any) {
     clearTimeout(timer);
+    warnIfError(`playwright: liveness check failed for ${url}`, err);
     return false;
   }
 }

@@ -7,6 +7,8 @@
  * object from such responses.
  */
 
+import { warnIfError } from "./warn.js";
+
 /**
  * Strip markdown code fences surrounding JSON content.
  * Handles ```json, ```JSON, ``` (no lang), and variations.
@@ -65,7 +67,11 @@ export function extractJSON<T = any>(raw: string): T | null {
 function tryParse<T>(s: string): T | null {
   try {
     return JSON.parse(s) as T;
-  } catch {
+  } catch (err: any) {
+    // Expected for non-JSON strings — only warn for non-trivially long strings
+    if (s.length > 50) {
+      warnIfError("jsonRepair: parse attempt failed", err);
+    }
     return null;
   }
 }

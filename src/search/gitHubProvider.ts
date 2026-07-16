@@ -7,6 +7,7 @@
  */
 
 import type { WebSearchProvider, SearchResult } from "./types.js";
+import { warnIfError } from "../utils/warn.js";
 
 const GH_API_URL = "https://api.github.com/search/repositories";
 
@@ -39,7 +40,8 @@ export class GitHubProvider implements WebSearchProvider {
         url: repo.html_url,
         snippet: `${repo.description ?? ""} | Stars: ${repo.stargazers_count} | Forks: ${repo.forks_count} | Lang: ${repo.language ?? "N/A"} | Updated: ${repo.updated_at?.slice(0, 10) ?? "N/A"}`,
       }));
-    } catch {
+    } catch (err: any) {
+      warnIfError(`gitHub: search "${query}" failed`, err);
       return [];
     }
   }

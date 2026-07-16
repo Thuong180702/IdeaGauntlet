@@ -54,6 +54,6 @@ export async function usersCommand(
     }
   } catch (err: any) {
     console.error(`Error: ${err.message}`);
-    process.exit(3);
+    process.exit(1);
   }
 }

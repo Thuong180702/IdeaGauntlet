@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { detectAllTools } from "./detectTools.js";
 import { planSetupFiles } from "./planSetupFiles.js";
 import { readManifest, writeManifest, hashContent, verifyEntry } from "./manifest.js";
+import { warnIfError } from "../utils/warn.js";
 import {
   getManifestPath,
   getMcpConfigPath,
@@ -111,7 +112,8 @@ async function handleMcpClaudeConfig(
     try {
       existingConfig = JSON.parse(readFileSync(configPath, "utf-8"));
       existingEntry = existingConfig?.mcpServers?.["idea-gauntlet"];
-    } catch {
+    } catch (err: any) {
+      warnIfError(`globalSetup: failed to parse Claude config ${configPath}`, err);
       existingConfig = {};
     }
   }
@@ -207,8 +209,9 @@ function rollbackFiles(writtenPaths: string[], backups: Map<string, string>): vo
         // Only delete files we created new (no backup = no pre-existing file)
         unlinkSync(p);
       }
-    } catch {
+    } catch (err: any) {
       // Best-effort rollback
+      warnIfError(`globalSetup: rollback failed for ${p}`, err);
     }
   }
 }

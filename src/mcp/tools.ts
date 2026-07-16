@@ -9,7 +9,8 @@ import { runCompareEngine } from "../engines/compareEngine.js";
 import { resolveProvider } from "../providers/providerUtils.js";
 import { mcpToolDescriptions } from "../workflows/formatters/formatForMcpDescription.js";
 import { notifyResourcesChanged } from "./server.js";
-import { t } from "../utils/locale.js";
+import { t} from "../utils/locale.js";
+import { warnIfError } from "../utils/warn.js";
 
 import { loadReport, listReports } from "../history/historyStore.js";
 
@@ -24,7 +25,8 @@ export function getReport(id: string): GauntletReport | null {
   if (inMemory) return inMemory;
   try {
     return loadReport(id, process.cwd());
-  } catch {
+  } catch (err: any) {
+    warnIfError(`mcp: getReport failed for ${id}`, err);
     return null;
   }
 }
@@ -34,7 +36,8 @@ export function getReportIds(): string[] {
   try {
     const history = listReports(process.cwd()).map((entry) => entry.id);
     return [...new Set([...inMemory, ...history])];
-  } catch {
+  } catch (err: any) {
+    warnIfError("mcp: getReportIds failed", err);
     return inMemory;
   }
 }

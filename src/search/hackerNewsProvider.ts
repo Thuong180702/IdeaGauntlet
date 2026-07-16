@@ -7,6 +7,7 @@
  */
 
 import type { WebSearchProvider, SearchResult } from "./types.js";
+import { warnIfError } from "../utils/warn.js";
 
 const HN_SEARCH_URL = "https://hn.algolia.com/api/v1/search";
 
@@ -38,7 +39,8 @@ export class HackerNewsProvider implements WebSearchProvider {
           url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
           snippet: `${hit.points ?? 0} points | ${hit.num_comments ?? 0} comments | ${hit.author ? "by " + hit.author : ""} | ${hit.created_at?.slice(0, 10) ?? ""}`,
         }));
-    } catch {
+    } catch (err: any) {
+      warnIfError(`hackerNews: search "${query}" failed`, err);
       return [];
     }
   }

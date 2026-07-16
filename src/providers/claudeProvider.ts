@@ -1,5 +1,6 @@
 import type { LLMProvider, CompletionOptions, RetryConfig } from "../core/types.js";
 import { DEFAULT_RETRY } from "../core/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 export type ClaudeConfig = {
   apiKey: string;
@@ -77,7 +78,10 @@ export class ClaudeProvider implements LLMProvider {
 
         if (!response.ok) {
           const statusCode = response.status;
-          const text = await response.text().catch(() => "");
+          const text = await response.text().catch((err: any) => {
+            warnIfError("claude: failed to read error body", err);
+            return "";
+          });
 
           if (statusCode === 429 && attempt < retryCfg.maxRetries) {
             const delay = computeBackoff(attempt, retryCfg);
@@ -162,8 +166,9 @@ async function readClaudeSSEStream(
             fullContent += text;
             onToken(text);
           }
-        } catch {
+        } catch (err: any) {
           // Ignore non-JSON
+          warnIfError("claude: SSE stream parse skip", err);
         }
       }
     }

@@ -5,6 +5,7 @@ import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.j
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 const DEFAULT_PLAN: MVPPlan = {
   goal: "Test the riskiest assumption",
@@ -31,8 +32,8 @@ export async function runMvpPlanner(
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await performResearch(idea, "mvp");
-    } catch {
-      // Silent fallback
+    } catch (err: any) {
+      warnIfError("mvpPlanner: web research failed", err);
     }
   }
 
@@ -100,8 +101,9 @@ export async function runMvpPlanner(
     } else {
       verdict = "weak";
     }
-  } catch {
+  } catch (err: any) {
     // Use defaults — verdict stays "needs_real_evidence"
+    warnIfError("mvpPlanner: LLM response failed", err);
   }
 
   const report: GauntletReport = {

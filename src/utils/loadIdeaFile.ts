@@ -1,5 +1,6 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
+import { warnIfError } from "./warn.js";
 
 export function loadIdeaInput(ideaArg: string): string {
   const filePath = isAbsolute(ideaArg) ? ideaArg : resolve(process.cwd(), ideaArg);
@@ -13,7 +14,8 @@ export function loadIdeaInput(ideaArg: string): string {
       if (existsSync(filePath) && statSync(filePath).isFile()) {
         looksLikeFile = true;
       }
-    } catch {
+    } catch (err: any) {
+      warnIfError(`loadIdeaFile: stat check failed for ${ideaArg}`, err);
       looksLikeFile = false;
     }
   }

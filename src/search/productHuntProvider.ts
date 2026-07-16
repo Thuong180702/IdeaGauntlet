@@ -7,6 +7,7 @@
  */
 
 import type { WebSearchProvider, SearchResult } from "./types.js";
+import { warnIfError } from "../utils/warn.js";
 
 const PH_SEARCH_URL = "https://www.producthunt.com/frontend/graphql";
 const USER_AGENT =
@@ -64,7 +65,8 @@ export class ProductHuntProvider implements WebSearchProvider {
           snippet: product.description?.slice(0, 200) || product.tagline || "",
         };
       });
-    } catch {
+    } catch (err: any) {
+      warnIfError(`productHunt: search "${query}" failed`, err);
       return [];
     }
   }

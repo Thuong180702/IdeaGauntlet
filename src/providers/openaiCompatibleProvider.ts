@@ -1,5 +1,6 @@
 import type { LLMProvider, CompletionOptions, RetryConfig } from "../core/types.js";
 import { DEFAULT_RETRY } from "../core/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 export type OpenAICompatibleConfig = {
   apiKey: string;
@@ -86,7 +87,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
         // Check for retryable status codes.
         if (!response.ok) {
           const statusCode = response.status;
-          const text = await response.text().catch(() => "");
+          const text = await response.text().catch((err: any) => {
+            warnIfError("openaiCompatible: failed to read error body", err);
+            return "";
+          });
 
           // Parse Retry-After header for 429.
           if (statusCode === 429 && attempt < retryCfg.maxRetries) {
@@ -202,8 +206,9 @@ async function readSSEStream(
             fullContent += delta;
             onToken(delta);
           }
-        } catch {
+        } catch (err: any) {
           // Skip non-JSON lines
+          warnIfError("openaiCompatible: SSE stream parse skip", err);
         }
       }
     }

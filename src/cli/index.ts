@@ -18,6 +18,7 @@ import { statusCommand } from "./commands/status.js";
 import { batchCommand } from "./commands/batch.js";
 import { historyCommand } from "./commands/history.js";
 import { interactiveCommand } from "./interactive.js";
+import { setQuiet } from "../utils/warn.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -28,6 +29,9 @@ const cli = cac("idea-gauntlet");
 
 cli.version(pkg.version);
 cli.help();
+
+// Global --quiet option
+cli.option("--quiet", "Suppress warning messages (errors still shown)");
 
 const providerOptions = (cmd: any) => cmd
   .option("--model <model>", "LLM model override")
@@ -78,6 +82,7 @@ providerOptions(
 
 providerOptions(
   cli.command("compare <...ideas>", "Compare multiple product ideas")
+    .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--format <format>", "Output format: md, html (default: md)")
@@ -143,4 +148,8 @@ cli.command("history [id]", "View saved idea reports and track evolution")
 cli.command("interactive [idea]", "Interactive REPL — refine, re-run, drill-down")
   .action((idea: string | undefined) => interactiveCommand(idea ?? ""));
 
-cli.parse();
+// Set quiet mode before parsing commands
+const parsed = cli.parse();
+if (parsed.options?.quiet) {
+  setQuiet(true);
+}

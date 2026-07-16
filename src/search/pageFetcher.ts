@@ -1,4 +1,6 @@
 import type { PageContent } from "./types.js";
+import { isSafeUrl } from "./ssrfGuard.js";
+import { warnIfError } from "../utils/warn.js";
 
 /**
  * Page content fetcher — retrieves text from URLs so the LLM has
@@ -7,7 +9,8 @@ import type { PageContent } from "./types.js";
  * - fetch() with AbortController timeout
  * - HTML → text extraction (strip tags, grab main/article/p/h/li/td/span)
  * - Truncate to maxChars to avoid token explosion
- * - Silent fallback (return null on any error)
+ * - SSRF guard: rejects private/local IPs
+ * - Logged fallback (return null on any error, warn to stderr)
  */
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -32,6 +35,8 @@ export async function fetchPageContent(
 ): Promise<PageContent | null> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
+
+  if (!isSafeUrl(url)) return null;
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -61,8 +66,9 @@ export async function fetchPageContent(
     if (!text || text.length < 50) return null;
 
     return { url, title, text, description };
-  } catch {
+  } catch (err: any) {
     clearTimeout(timer);
+    warnIfError(`pageFetcher: failed to fetch ${url}`, err);
     return null;
   }
 }

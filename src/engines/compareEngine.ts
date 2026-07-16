@@ -5,6 +5,7 @@ import { compareWorkflow } from "../workflows/definitions/compare.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 export async function runCompareEngine(
   ideas: IdeaInput[],
@@ -28,7 +29,7 @@ export async function runCompareEngine(
       } else {
         // Run research for each idea in parallel and merge results.
         const researchResults = await Promise.all(
-          ideas.map((idea) => performResearch(idea, "compare").catch(() => null)),
+          ideas.map((idea) => performResearch(idea, "compare").catch((err: any) => { warnIfError(`compareEngine: research for "${idea.idea.slice(0, 40)}" failed`, err); return null; })),
         );
         const validResults = researchResults.filter((r): r is ResearchBrief => r !== null);
         if (validResults.length > 0) {
@@ -65,8 +66,8 @@ export async function runCompareEngine(
           };
         }
       }
-    } catch {
-      // Silent fallback — proceed without web research
+    } catch (err: any) {
+      warnIfError("compareEngine: parallel research failed", err);
     }
   }
 
@@ -127,8 +128,9 @@ export async function runCompareEngine(
       competitorLandscapePerIdea: parsed.competitorLandscapePerIdea,
       nicheOpportunitiesPerIdea: parsed.nicheOpportunitiesPerIdea,
     };
-  } catch {
+  } catch (err: any) {
     // Minimal fallback
+    warnIfError("compareEngine: LLM response failed", err);
     for (const idea of ideas) {
       results.push({
         title: idea.title ?? idea.idea.slice(0, 40),

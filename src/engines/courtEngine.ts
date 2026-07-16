@@ -12,6 +12,7 @@ import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.j
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
+import { warnIfError } from "../utils/warn.js";
 import {
   COURT_ROLES,
   buildOpeningPrompt,
@@ -85,8 +86,8 @@ export async function runCourtEngine(
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await performResearch(idea, "court");
-    } catch {
-      // Silent fallback
+    } catch (err: any) {
+      warnIfError("courtEngine: web research failed", err);
     }
   }
 
@@ -115,7 +116,8 @@ export async function runCourtEngine(
         roleName: role.name,
         argument: response.trim(),
       };
-    } catch {
+    } catch (err: any) {
+      warnIfError(`courtEngine: opening statement from ${role.name} failed`, err);
       return {
         roleId: role.id,
         roleName: role.name,
@@ -139,7 +141,8 @@ export async function runCourtEngine(
       keyConflicts: [],
       openQuestions: [],
     };
-  } catch {
+  } catch (err: any) {
+    warnIfError("courtEngine: cross-examination failed", err);
     crossExam = { keyConflicts: [], openQuestions: [] };
   }
 
@@ -163,7 +166,8 @@ export async function runCourtEngine(
         roleName: role.name,
         argument: response.trim(),
       };
-    } catch {
+    } catch (err: any) {
+      warnIfError(`courtEngine: rebuttal from ${role.name} failed`, err);
       return {
         roleId: role.id,
         roleName: role.name,
@@ -230,8 +234,9 @@ export async function runCourtEngine(
     };
 
     reportVerdict = mapVerdict(parsed.verdictDetail ?? "");
-  } catch {
+  } catch (err: any) {
     // Fallback — construct minimal debate from openings + rebuttals
+    warnIfError("courtEngine: verdict synthesis failed", err);
     for (const o of openings) {
       transcript.push({ role: o.roleName, argument: o.argument });
     }
@@ -295,8 +300,9 @@ Return ONLY a JSON array of these roles. No markdown code blocks, no other text.
     if (Array.isArray(parsed)) {
       return parsed.filter(r => r && r.id && r.name && r.mandate && Array.isArray(r.mustAddress));
     }
-  } catch (err) {
+  } catch (err: any) {
     // Silent fallback
+    warnIfError("courtEngine: domain role generation failed", err);
   }
   return [];
 }

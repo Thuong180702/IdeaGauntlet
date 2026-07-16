@@ -1,4 +1,5 @@
 import type { SearchResult, PageContent, CompetitorInfo, CompetitorLandscape } from "./types.js";
+import { warnIfError } from "../utils/warn.js";
 
 /**
  * Competitor analyzer — extracts structured competitor data from
@@ -252,7 +253,8 @@ function sameDomain(url1: string, url2: string): boolean {
     const d1 = new URL(url1).hostname.replace(/^www\./, "");
     const d2 = new URL(url2).hostname.replace(/^www\./, "");
     return d1 === d2;
-  } catch {
+  } catch (err: any) {
+    warnIfError("competitorAnalyzer: sameDomain URL parse failed", err);
     return false;
   }
 }

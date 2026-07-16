@@ -83,7 +83,7 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
     }
   } catch (err: any) {
     console.error(`Error: ${err.message}`);
-    process.exit(3);
+    process.exit(1);
   }
 }
 

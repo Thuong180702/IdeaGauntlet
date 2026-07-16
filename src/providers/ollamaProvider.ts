@@ -1,5 +1,6 @@
 import type { LLMProvider, CompletionOptions, RetryConfig } from "../core/types.js";
 import { DEFAULT_RETRY } from "../core/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 const DEFAULT_TIMEOUT_MS = 120000;
 
@@ -64,7 +65,10 @@ export class OllamaProvider implements LLMProvider {
         });
 
         if (!response.ok) {
-          const text = await response.text().catch(() => "");
+          const text = await response.text().catch((err: any) => {
+            warnIfError("ollama: failed to read error body", err);
+            return "";
+          });
           if (retryCfg.retryOnStatuses.includes(response.status) && attempt < retryCfg.maxRetries) {
             await sleep(computeBackoff(attempt, retryCfg));
             resetTimeout();
@@ -142,8 +146,9 @@ async function readOllamaStream(
             fullContent += delta;
             onToken(delta);
           }
-        } catch {
+        } catch (err: any) {
           // Skip non-JSON lines
+          warnIfError("ollama: stream parse skip", err);
         }
       }
     }

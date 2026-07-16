@@ -1,5 +1,6 @@
 import { execSync } from "child_process";
 import { globalSetup } from "./setup/globalSetup.js";
+import { warnIfError } from "./utils/warn.js";
 
 /**
  * Run the postinstall integration setup.
@@ -13,17 +14,33 @@ import { globalSetup } from "./setup/globalSetup.js";
  * install always succeeds regardless of integration setup outcome.
  */
 export async function runPostinstall(): Promise<void> {
-  // Install Playwright Chromium browser binary (best-effort, non-blocking)
+  // Install Playwright Chromium browser binary (mandatory for JS-rendered pages)
   console.log("  Installing Playwright Chromium browser...");
   try {
-    execSync("npx playwright install chromium", {
-      stdio: "ignore",
-      timeout: 120_000,
-    });
-    console.log("  ✓ Playwright Chromium browser installed.");
-  } catch {
-    console.log("  ! Playwright Chromium not installed — web fetch will use fallback mode.");
-    console.log("    Run `npx playwright install chromium` for full JS page rendering.");
+    // Check if npx is available before attempting install
+    const hasNpx = (() => {
+      try {
+        execSync("npx --version", { stdio: "ignore", timeout: 10_000 });
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+
+    if (!hasNpx) {
+      console.log("  ! npx not found — cannot install Playwright Chromium.");
+      console.log("    Install Node.js/npm, then run `npx playwright install chromium`.");
+    } else {
+      execSync("npx playwright install chromium", {
+        stdio: "ignore",
+        timeout: 120_000,
+      });
+      console.log("  ✓ Playwright Chromium browser installed.");
+    }
+  } catch (err: any) {
+    warnIfError("postinstall: Playwright Chromium install failed", err);
+    console.log("  ! Playwright Chromium not installed. JS-rendered pages may fail.");
+    console.log("    Run `npx playwright install chromium` to install manually.");
   }
   console.log("");
 

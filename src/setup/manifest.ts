@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 import type { InstallManifest, InstallEntry } from "./types.js";
+import { warnIfError } from "../utils/warn.js";
 
 export function hashContent(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
@@ -11,7 +12,8 @@ export function hashFile(filePath: string): string | null {
   try {
     const content = readFileSync(filePath);
     return createHash("sha256").update(content).digest("hex");
-  } catch {
+  } catch (err: any) {
+    warnIfError(`manifest: hashFile failed for ${filePath}`, err);
     return null;
   }
 }
@@ -28,7 +30,8 @@ export function readManifest(manifestPath: string): InstallManifest | null {
       return parsed as InstallManifest;
     }
     return null;
-  } catch {
+  } catch (err: any) {
+    warnIfError(`manifest: readManifest failed for ${manifestPath}`, err);
     return null;
   }
 }
@@ -64,7 +67,8 @@ export function verifyEntry(
       if (!igEntry) return "missing";
       const actualHash = hashContent(JSON.stringify(igEntry));
       return actualHash === entry.entrySha256 ? "present" : "modified";
-    } catch {
+    } catch (err: any) {
+      warnIfError(`manifest: verifyEntry MCP config read failed for ${entry.path}`, err);
       return "missing";
     }
   }

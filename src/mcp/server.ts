@@ -3,6 +3,7 @@ import { listResources, readMcpResource } from "./resources.js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { warnIfError } from "../utils/warn.js";
 
 // Read package version at startup to avoid hardcoding.
 // Traverse up until we find package.json, which is robust for both source and bundled files.
@@ -63,7 +64,8 @@ function handleMessage(line: string): void {
   let msg: any;
   try {
     msg = JSON.parse(trimmed);
-  } catch {
+  } catch (err: any) {
+    warnIfError("mcpServer: JSON-RPC parse failed", err);
     console.error("Failed to parse JSON-RPC message:", trimmed.slice(0, 200));
     return;
   }

@@ -12,6 +12,7 @@ import type {
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 export async function runUserLab(
   idea: IdeaInput,
@@ -33,8 +34,8 @@ export async function runUserLab(
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await performResearch(idea, "users");
-    } catch {
-      // Silent fallback
+    } catch (err: any) {
+      warnIfError("syntheticUserLab: web research failed", err);
     }
   }
 
@@ -150,7 +151,8 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
         evidence: clampScore(parsed.synthesis.fakeDoorTestIdeas?.length > 0 ? 3 : 1),
       };
     }
-  } catch {
+  } catch (err: any) {
+    warnIfError("syntheticUserLab: LLM response failed", err);
     users = [];
     enhancedUsers = [];
   }

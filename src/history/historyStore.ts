@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, openSync, readSync, closeSync } from "node:fs";
 import { resolve, join } from "node:path";
 import type { GauntletReport, Scorecard } from "../core/types.js";
+import { warnIfError } from "../utils/warn.js";
 
 /**
  * Idea history store — saves reports to `.idea-gauntlet/history/`.
@@ -56,7 +57,8 @@ export function loadReport(id: string, workspaceDir?: string): GauntletReport | 
   if (!existsSync(filePath)) return null;
   try {
     return JSON.parse(readFileSync(filePath, "utf-8")) as GauntletReport;
-  } catch {
+  } catch (err: any) {
+    warnIfError(`historyStore: failed to load report ${id}`, err);
     return null;
   }
 }
@@ -115,8 +117,9 @@ export function listReports(
         scores: parsed.scores,
         fileSizeBytes,
       });
-    } catch {
-      // Skip corrupt / unreadable files silently
+    } catch (err: any) {
+      // Skip corrupt / unreadable files — but log the issue
+      warnIfError(`historyStore: skipping corrupt report ${file}`, err);
     }
   }
 
@@ -213,7 +216,8 @@ function readPartialJson(filePath: string, maxBytes: number): Partial<GauntletRe
       verdict: verdict as any,
       input: idea ? ({ idea } as any) : undefined,
     };
-  } catch {
+  } catch (err: any) {
+    warnIfError("historyStore: partial JSON read failed", err);
     return null;
   }
 }

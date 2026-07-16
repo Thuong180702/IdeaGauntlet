@@ -1,6 +1,7 @@
 import { getApiKey, isNodeGte } from "../../utils/env.js";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { warnIfError } from "../../utils/warn.js";
 
 interface CheckResult {
   label: string;
@@ -103,7 +104,8 @@ async function checkOllama(): Promise<boolean> {
   try {
     const res = await fetch("http://localhost:11434/api/tags");
     return res.ok;
-  } catch {
+  } catch (err: any) {
+    warnIfError("doctor: Ollama check failed", err);
     return false;
   }
 }
@@ -112,7 +114,8 @@ async function checkMcpServer(): Promise<boolean> {
   try {
     const { startMcpServer } = await import("../../mcp/server.js");
     return typeof startMcpServer === "function";
-  } catch {
+  } catch (err: any) {
+    warnIfError("doctor: MCP server check failed", err);
     return false;
   }
 }
@@ -126,7 +129,8 @@ async function checkSearchLiveness(): Promise<boolean> {
       }
     });
     return res.ok;
-  } catch {
+  } catch (err: any) {
+    warnIfError("doctor: search liveness check failed", err);
     return false;
   }
 }
