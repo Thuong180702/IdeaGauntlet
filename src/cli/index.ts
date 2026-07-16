@@ -19,11 +19,24 @@ import { batchCommand } from "./commands/batch.js";
 import { historyCommand } from "./commands/history.js";
 import { interactiveCommand } from "./interactive.js";
 import { setQuiet } from "../utils/warn.js";
+import { loadConfig } from "../utils/config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
   readFileSync(resolve(__dirname, "../../package.json"), "utf-8")
 );
+
+// Load config file (.ideagauntlet.json) — values serve as defaults
+const fileConfig = loadConfig();
+if (fileConfig.model && !process.env.IDEAGAUNTLET_MODEL) {
+  process.env.IDEAGAUNTLET_MODEL = fileConfig.model;
+}
+if (fileConfig.baseUrl && !process.env.IDEAGAUNTLET_BASE_URL) {
+  process.env.IDEAGAUNTLET_BASE_URL = fileConfig.baseUrl;
+}
+if (fileConfig.apiKey && !process.env.IDEAGAUNTLET_API_KEY) {
+  process.env.IDEAGAUNTLET_API_KEY = fileConfig.apiKey;
+}
 
 const cli = cac("idea-gauntlet");
 
@@ -49,7 +62,7 @@ providerOptions(
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
-).action((idea: string, options: Record<string, unknown>) => quickCommand(idea, options));
+).action((idea: string, options: Record<string, unknown>) => quickCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(
   cli.command("court <idea>", "Run a court-style debate")
@@ -58,8 +71,9 @@ providerOptions(
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--roles <file>", "Load custom court roles from JSON file")
+    .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
-).action((idea: string, options: Record<string, unknown>) => courtCommand(idea, options));
+).action((idea: string, options: Record<string, unknown>) => courtCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(
   cli.command("users <idea>", "Generate synthetic user personas")
@@ -68,8 +82,9 @@ providerOptions(
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
+    .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
-).action((idea: string, options: Record<string, unknown>) => usersCommand(idea, options));
+).action((idea: string, options: Record<string, unknown>) => usersCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(
   cli.command("mvp <idea>", "Generate a validation/MVP plan")
@@ -77,16 +92,18 @@ providerOptions(
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
+    .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
-).action((idea: string, options: Record<string, unknown>) => mvpCommand(idea, options));
+).action((idea: string, options: Record<string, unknown>) => mvpCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(
   cli.command("compare <...ideas>", "Compare multiple product ideas")
     .option("--json", "Output JSON")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
+    .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
-).action((ideas: string[], options: Record<string, unknown>) => compareCommand(ideas, options));
+).action((ideas: string[], options: Record<string, unknown>) => compareCommand(ideas, { ...fileConfig, ...options }));
 
 cli.command("init [directory]", "Scaffold an IdeaGauntlet workspace template")
   .option("--name <name>", "Project name")
@@ -139,7 +156,8 @@ providerOptions(
     .option("--output <dir>", "Write all reports to directory")
     .option("--json", "Output JSON")
     .option("--no-search", "Disable web search before analysis")
-).action((file: string, options: Record<string, unknown>) => batchCommand(file, options));
+    .option("--format <format>", "Output format: md, html (default: md)")
+).action((file: string, options: Record<string, unknown>) => batchCommand(file, { ...fileConfig, ...options }));
 
 cli.command("history [id]", "View saved idea reports and track evolution")
   .option("--evolve <id>", "Compare against a saved report to see score delta")

@@ -4,6 +4,7 @@ import { resolveProvider, formatNoProviderError } from "../../providers/provider
 import { runUserLab } from "../../engines/syntheticUserLab.js";
 import { buildReport } from "../../core/report.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
+import { saveReport } from "../../history/historyStore.js";
 
 export async function usersCommand(
   ideaArg: string,
@@ -34,6 +35,11 @@ export async function usersCommand(
     const enableSearch = !options.noSearch;
     const report = await runUserLab(idea, providerRes.provider, count, { enableSearch });
     report.markdown = buildReport(report);
+
+    if (options.save) {
+      const savedPath = saveReport(report);
+      console.error(`Report saved to history: ${savedPath}`);
+    }
 
     const isJson = !!options.json;
     const format = options.format as string | undefined;

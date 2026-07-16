@@ -13,6 +13,7 @@ import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
+import { withProgress } from "../utils/progress.js";
 import {
   COURT_ROLES,
   buildOpeningPrompt,
@@ -85,7 +86,7 @@ export async function runCourtEngine(
   let research: ResearchBrief | undefined;
   if (options?.enableSearch !== false) {
     try {
-      research = options?.research ?? await performResearch(idea, "court");
+      research = options?.research ?? await withProgress("Researching market", () => performResearch(idea, "court"));
     } catch (err: any) {
       warnIfError("courtEngine: web research failed", err);
     }

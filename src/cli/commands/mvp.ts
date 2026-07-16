@@ -4,6 +4,7 @@ import { resolveProvider, formatNoProviderError } from "../../providers/provider
 import { runMvpPlanner } from "../../engines/mvpPlanner.js";
 import { buildReport } from "../../core/report.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
+import { saveReport } from "../../history/historyStore.js";
 
 export async function mvpCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
   const options = normalizeOptions(rawOptions);
@@ -22,6 +23,11 @@ export async function mvpCommand(ideaArg: string, rawOptions: Record<string, unk
   const enableSearch = !options.noSearch;
   const report = await runMvpPlanner(idea, providerRes.provider, { enableSearch });
   report.markdown = buildReport(report);
+
+  if (options.save) {
+    const savedPath = saveReport(report);
+    console.error(`Report saved to history: ${savedPath}`);
+  }
 
   const isJson = !!options.json;
   const format = options.format as string | undefined;

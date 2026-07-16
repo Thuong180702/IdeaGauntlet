@@ -18,6 +18,10 @@ import { analyzeCompetitors } from "./competitorAnalyzer.js";
 import { detectNiches } from "./nicheDetector.js";
 import type { IdeaInput, GauntletMode } from "../core/types.js";
 import { warnIfError } from "../utils/warn.js";
+import { SearchCache, searchCacheKey, pageCacheKey } from "./cache.js";
+
+/** Module-level cache — persists for CLI session lifetime. */
+const _cache = new SearchCache();
 
 /** Run async tasks with a concurrency limit. */
 async function withConcurrency<T>(
@@ -182,23 +186,43 @@ async function fetchPagesWithFallback(
   const aliveUrls = await checkLivenessBatch(urls, 5_000);
   if (aliveUrls.length === 0) return [];
 
+  // Check cache for already-fetched pages
+  const cachedPages: PageContent[] = [];
+  const uncachedUrls: string[] = [];
+  for (const url of aliveUrls) {
+    const cached = _cache.get<PageContent>(pageCacheKey(url));
+    if (cached) {
+      cachedPages.push(cached);
+    } else {
+      uncachedUrls.push(url);
+    }
+  }
+
+  if (uncachedUrls.length === 0) return cachedPages;
+
   // Step 2: Try cheap fetch() first
-  const cheapResults = await fetchPageContents(aliveUrls, {
+  const cheapResults = await fetchPageContents(uncachedUrls, {
     timeoutMs,
     maxChars,
     concurrency,
   });
 
-  // If we got good results from most URLs, return them
-  if (cheapResults.length >= Math.ceil(aliveUrls.length * 0.6)) {
-    return cheapResults;
+  // Cache fetched results
+  for (const r of cheapResults) {
+    _cache.set(pageCacheKey(r.url), r);
+  }
+
+  // If we got good results from most URLs, return them with cached
+  const allCheap = [...cachedPages, ...cheapResults];
+  if (cheapResults.length >= Math.ceil(uncachedUrls.length * 0.6)) {
+    return allCheap;
   }
 
   // Step 3: For URLs where cheap fetch failed, try Playwright
   const fetchedUrls = new Set(cheapResults.map((r) => r.url));
-  const missingUrls = aliveUrls.filter((url) => !fetchedUrls.has(url));
+  const missingUrls = uncachedUrls.filter((url) => !fetchedUrls.has(url));
 
-  if (missingUrls.length === 0) return cheapResults;
+  if (missingUrls.length === 0) return allCheap;
 
   const playwrightResults = await fetchPagesPlaywright(missingUrls, {
     timeoutMs,
@@ -206,8 +230,13 @@ async function fetchPagesWithFallback(
     concurrency,
   });
 
-  // Merge results, preferring Playwright for the missing URLs
-  return [...cheapResults, ...playwrightResults];
+  // Cache Playwright results too
+  for (const r of playwrightResults) {
+    _cache.set(pageCacheKey(r.url), r);
+  }
+
+  // Merge results — cached + cheap + playwright
+  return [...allCheap, ...playwrightResults];
 }
 
 /**
@@ -234,7 +263,10 @@ export async function performResearch(
   // DuckDuckGo rate-limits internally (500ms between calls per provider instance).
   const queryTasks = queries.map((query) => async () => {
     try {
-      const results = await searchProvider.search(query, cfg.maxResultsPerQuery);
+      const cacheKey = searchCacheKey(searchProvider.kind, query, cfg.maxResultsPerQuery);
+      const results = await _cache.getOrCompute(cacheKey, () =>
+        searchProvider.search(query, cfg.maxResultsPerQuery),
+      );
       perQueryResults[query] = results;
       return results;
     } catch (err: any) {

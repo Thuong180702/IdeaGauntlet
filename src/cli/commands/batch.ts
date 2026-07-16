@@ -88,17 +88,26 @@ export async function batchCommand(
   });
 
   // Save individual reports if output dir specified
+  const format = options.format as string | undefined;
   if (outputDir) {
     const absOut = resolve(outputDir);
     if (!existsSync(absOut)) {
       mkdirSync(absOut, { recursive: true });
     }
 
-    for (const r of result.results) {
-      if (r.report) {
-        r.report.markdown = buildReport(r.report);
-        const filename = `report-${(result.results.indexOf(r) + 1).toString().padStart(3, "0")}.md`;
-        const filepath = join(absOut, filename);
+    const { generateHtmlReport } = format === "html" ? await import("../../visualization/htmlReport.js") : { generateHtmlReport: null };
+
+    for (let i = 0; i < result.results.length; i++) {
+      const r = result.results[i];
+      if (!r.report) continue;
+      r.report.markdown = buildReport(r.report);
+      const idx = (i + 1).toString().padStart(3, "0");
+
+      if (format === "html" && generateHtmlReport) {
+        const filepath = join(absOut, `report-${idx}.html`);
+        writeFileSync(filepath, generateHtmlReport(r.report), "utf-8");
+      } else {
+        const filepath = join(absOut, `report-${idx}.md`);
         writeFileSync(filepath, r.report.markdown, "utf-8");
       }
     }

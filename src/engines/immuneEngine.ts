@@ -7,6 +7,7 @@ import { extractJSON, safeParseJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
+import { withProgress } from "../utils/progress.js";
 
 export async function runImmuneEngine(
   idea: IdeaInput,
@@ -24,7 +25,7 @@ export async function runImmuneEngine(
   let research: ResearchBrief | undefined;
   if (options?.enableSearch !== false) {
     try {
-      research = options?.research ?? await performResearch(idea, "quick");
+      research = options?.research ?? await withProgress("Researching market", () => performResearch(idea, "quick"));
     } catch (err: any) {
       warnIfError("immuneEngine: web research failed", err);
     }
@@ -44,11 +45,11 @@ export async function runImmuneEngine(
 
   let parsed: any = {};
   try {
-    const response = await provider.complete(userMessage, {
+    const response = await withProgress("Analyzing idea", () => provider.complete(userMessage, {
       system: structuredSystem,
       temperature: 0.4,
       maxTokens: 2048,
-    });
+    }));
     parsed = extractJSON(response) ?? {};
   } catch (err: any) {
     warnIfError("immuneEngine: LLM response failed", err);

@@ -6,6 +6,7 @@ import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
+import { withProgress } from "../utils/progress.js";
 
 const DEFAULT_PLAN: MVPPlan = {
   goal: "Test the riskiest assumption",
@@ -31,7 +32,7 @@ export async function runMvpPlanner(
   let research: ResearchBrief | undefined;
   if (options?.enableSearch !== false) {
     try {
-      research = options?.research ?? await performResearch(idea, "mvp");
+      research = options?.research ?? await withProgress("Researching market", () => performResearch(idea, "mvp"));
     } catch (err: any) {
       warnIfError("mvpPlanner: web research failed", err);
     }
@@ -48,11 +49,11 @@ export async function runMvpPlanner(
   let verdict: Verdict = "needs_real_evidence";
 
   try {
-    const response = await provider.complete(userMessage, {
+    const response = await withProgress("Planning MVP", () => provider.complete(userMessage, {
       system: structuredSystem,
       temperature: 0.4,
       maxTokens: 2048,
-    });
+    }));
     const parsed = extractJSON<any>(response);
 
     if (!parsed) throw new Error("Failed to parse MVP response");

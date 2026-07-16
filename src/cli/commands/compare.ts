@@ -4,6 +4,7 @@ import { resolveProvider, formatNoProviderError } from "../../providers/provider
 import { runCompareEngine } from "../../engines/compareEngine.js";
 import { buildReport } from "../../core/report.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
+import { saveReport } from "../../history/historyStore.js";
 
 export async function compareCommand(ideas: string[], rawOptions: Record<string, unknown>): Promise<void> {
   const options = normalizeOptions(rawOptions);
@@ -22,6 +23,11 @@ export async function compareCommand(ideas: string[], rawOptions: Record<string,
   const enableSearch = !options.noSearch;
   const report = await runCompareEngine(parsed, providerRes.provider, { enableSearch });
   report.markdown = buildReport(report);
+
+  if (options.save) {
+    const savedPath = saveReport(report);
+    console.error(`Report saved to history: ${savedPath}`);
+  }
 
   const isJson = !!options.json;
   const output = options.output as string | undefined;
