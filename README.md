@@ -9,6 +9,9 @@ Built for founders, indie hackers, and product engineers who want sharper pre-va
 > Most AI tools help you generate more ideas. IdeaGauntlet helps you survive the one you already have.
 
 [![npm version](https://img.shields.io/npm/v/idea-gauntlet)](https://www.npmjs.com/package/idea-gauntlet)
+[![CI](https://github.com/Thuong180702/IdeaGauntlet/actions/workflows/ci.yml/badge.svg)](https://github.com/Thuong180702/IdeaGauntlet/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/idea-gauntlet)](LICENSE)
+[![node](https://img.shields.io/node/v/idea-gauntlet)](https://nodejs.org)
 
 ---
 

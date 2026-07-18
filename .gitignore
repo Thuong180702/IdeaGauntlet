@@ -48,6 +48,7 @@ AGENTS.md
 # Temp files
 tmp/
 temp/
+scratch/
 .cache/
 .turbo/
 .vite/

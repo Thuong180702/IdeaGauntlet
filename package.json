@@ -42,6 +42,15 @@
     "idea"
   ],
   "license": "MIT",
+  "author": "Thuong180702 (https://github.com/Thuong180702)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Thuong180702/IdeaGauntlet.git"
+  },
+  "homepage": "https://github.com/Thuong180702/IdeaGauntlet#readme",
+  "bugs": {
+    "url": "https://github.com/Thuong180702/IdeaGauntlet/issues"
+  },
   "engines": {
     "node": ">=18"
   },
