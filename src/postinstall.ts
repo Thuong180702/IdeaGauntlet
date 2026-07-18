@@ -1,49 +1,21 @@
-import { execSync } from "child_process";
 import { globalSetup } from "./setup/globalSetup.js";
-import { warnIfError } from "./utils/warn.js";
 
 /**
  * Run the postinstall integration setup.
  *
  * Performs a best-effort global integration install for detected
- * Claude Code, Codex, Cursor, and MCP-compatible configs.
+ * Claude Code, Codex, Cursor, and MCP-compatible configs. All writes are
+ * non-destructive (never overwrites existing files) and reversible via
+ * `idea-gauntlet uninstall`.
  *
- * Also installs Playwright Chromium browser binary for headless web fetching.
+ * Does NOT download a browser or run any network install. Web-research falls
+ * back to a headless browser only if you opt in with `npx playwright install
+ * chromium`; without it, research degrades gracefully.
  *
  * NEVER throws — errors are caught and printed as warnings so npm
  * install always succeeds regardless of integration setup outcome.
  */
 export async function runPostinstall(): Promise<void> {
-  // Install Playwright Chromium browser binary (mandatory for JS-rendered pages)
-  console.log("  Installing Playwright Chromium browser...");
-  try {
-    // Check if npx is available before attempting install
-    const hasNpx = (() => {
-      try {
-        execSync("npx --version", { stdio: "ignore", timeout: 10_000 });
-        return true;
-      } catch {
-        return false;
-      }
-    })();
-
-    if (!hasNpx) {
-      console.log("  ! npx not found — cannot install Playwright Chromium.");
-      console.log("    Install Node.js/npm, then run `npx playwright install chromium`.");
-    } else {
-      execSync("npx playwright install chromium", {
-        stdio: "ignore",
-        timeout: 120_000,
-      });
-      console.log("  ✓ Playwright Chromium browser installed.");
-    }
-  } catch (err: any) {
-    warnIfError("postinstall: Playwright Chromium install failed", err);
-    console.log("  ! Playwright Chromium not installed. JS-rendered pages may fail.");
-    console.log("    Run `npx playwright install chromium` to install manually.");
-  }
-  console.log("");
-
   try {
     const result = await globalSetup({
       mode: "install",
@@ -75,6 +47,7 @@ export async function runPostinstall(): Promise<void> {
     console.log("");
     console.log(`  Run \`idea-gauntlet status\` to inspect integrations.`);
     console.log(`  Run \`idea-gauntlet uninstall\` before npm uninstall to remove generated files.`);
+    console.log(`  (Optional) For JS-rendered page research: \`npx playwright install chromium\`.`);
     console.log("");
   } catch (err) {
     // Never let postinstall fail npm install.

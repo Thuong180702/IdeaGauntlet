@@ -1,0 +1,54 @@
+# Example: run IdeaGauntlet on every PR that adds or edits IDEA.md,
+# and post the verdict as a single (auto-updating) PR comment.
+#
+# Setup:
+#   1. Copy this file into your repo at .github/workflows/idea-gauntlet.yml
+#   2. Add a repo secret IDEAGAUNTLET_API_KEY (Anthropic sk-ant-... or Groq gsk_...)
+#   3. Put your idea in IDEA.md and open a PR.
+name: IdeaGauntlet
+
+on:
+  pull_request:
+    paths:
+      - "IDEA.md"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  critique:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: gauntlet
+        # Pin to a released tag in your own repo, e.g. Thuong180702/IdeaGauntlet@v1
+        uses: Thuong180702/IdeaGauntlet@v1
+        with:
+          idea-file: IDEA.md
+          mode: court
+          api-key: ${{ secrets.IDEAGAUNTLET_API_KEY }}
+
+      - name: Post verdict as a PR comment
+        if: steps.gauntlet.outputs.skipped != 'true'
+        uses: actions/github-script@v7
+        env:
+          REPORT_FILE: ${{ steps.gauntlet.outputs.report-file }}
+        with:
+          script: |
+            const fs = require('fs');
+            const MARKER = '<!-- idea-gauntlet -->';
+            const MAX = 60000; // PR comment bodies cap at 65536 chars
+            let report = fs.readFileSync(process.env.REPORT_FILE, 'utf8');
+            if (report.length > MAX) report = report.slice(0, MAX) + '\n\n…report truncated.';
+            const body = `${MARKER}\n🤖 **IdeaGauntlet** stress-tested this idea:\n\n${report}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

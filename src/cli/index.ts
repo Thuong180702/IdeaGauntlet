@@ -61,7 +61,7 @@ providerOptions(
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
-    .option("--format <format>", "Output format: md, html (default: md)")
+    .option("--format <format>", "Output format: md, html, card (shareable image card) (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => quickCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(
@@ -72,7 +72,7 @@ providerOptions(
     .option("--no-search", "Disable web search before analysis")
     .option("--roles <file>", "Load custom court roles from JSON file")
     .option("--save", "Save report to history for evolution tracking")
-    .option("--format <format>", "Output format: md, html (default: md)")
+    .option("--format <format>", "Output format: md, html, card (shareable image card) (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => courtCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(

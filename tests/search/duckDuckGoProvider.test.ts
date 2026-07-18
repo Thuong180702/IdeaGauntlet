@@ -31,10 +31,8 @@ describe("DuckDuckGoProvider", () => {
   });
 
   it("returns empty array on fetch failure", async () => {
-    // First call fails, Google fallback also fails
-    mockFetch
-      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => "" })
-      .mockRejectedValueOnce(new Error("Google fallback failed"));
+    // DDG request fails → return [] (orchestrator relies on API providers instead)
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 503, text: async () => "" });
 
     const results = await provider.search("fail query", 5);
     expect(results).toEqual([]);

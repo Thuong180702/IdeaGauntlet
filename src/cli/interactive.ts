@@ -278,7 +278,7 @@ export async function interactiveCommand(
         console.log(YELLOW + "No scores available. Run an analysis first." + RESET + "\n");
         continue;
       }
-      const comparison = benchmarkScores(lastReport.scores);
+      const comparison = benchmarkScores(lastReport.scores, lastReport.unassessedDimensions);
       console.log(formatBenchmarkMarkdown(comparison));
       console.log();
       continue;

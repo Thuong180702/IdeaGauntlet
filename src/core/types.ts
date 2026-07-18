@@ -78,6 +78,17 @@ export interface Scorecard {
   evidence: number;
 }
 
+/**
+ * Grounded justification for a single score dimension.
+ * `evidence` cites what supports the number; `sensitivity` says what would move it.
+ */
+export interface ScoreRubricEntry {
+  /** Concrete grounding for this score (idea/competitor/research), not generic. */
+  evidence: string;
+  /** One sentence: what would push this score up ~2 and what would push it down ~2. */
+  sensitivity: string;
+}
+
 export interface Risk {
   title: string;
   severity: Severity;
@@ -197,6 +208,8 @@ export interface EnhancedCourtDebate {
     dimension: string;
     score: number;
     reason: string;
+    /** What would move this score up/down ~2 points. */
+    sensitivity?: string;
   }>;
   nextActions: string[];
   competitorLandscape?: CompetitorLandscape;
@@ -316,6 +329,12 @@ export interface GauntletReport {
   userSynthesis?: UserSynthesis;
   enhancedMvpPlan?: EnhancedMVPPlan;
   enhancedComparison?: EnhancedComparisonResult;
+  /** Grounded rubric (evidence + sensitivity) per scored dimension. */
+  scoreRubric?: Partial<Record<keyof Scorecard, ScoreRubricEntry>>;
+  /** Dimensions this mode does not evaluate — shown as "not assessed", never faked. */
+  unassessedDimensions?: (keyof Scorecard)[];
+  /** One punchy, quotable sentence — the sharpest takeaway (drives the share card). */
+  brutalTakeaway?: string;
   /** Web research brief gathered before LLM analysis. */
   webResearch?: import("../search/types.js").ResearchBrief;
 }

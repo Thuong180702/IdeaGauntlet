@@ -59,6 +59,12 @@ export async function courtCommand(
     if (isJson) {
       const r = safeWriteOutput(output, JSON.stringify(report, null, 2), "Report");
       if (!r.ok) { console.error(r.message); process.exit(2); }
+    } else if (format === "card") {
+      const { generateReportCard } = await import("../../visualization/reportCard.js");
+      const card = generateReportCard(report);
+      const cardOutput = output ? `${output.replace(/\.(md|html)$/i, "")}.card.html` : undefined;
+      const r = safeWriteOutput(cardOutput, card, "Report card");
+      if (!r.ok) { console.error(r.message); process.exit(2); }
     } else if (format === "html") {
       const { generateHtmlReport } = await import("../../visualization/htmlReport.js");
       const html = generateHtmlReport(report);

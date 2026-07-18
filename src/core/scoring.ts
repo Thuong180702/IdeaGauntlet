@@ -51,6 +51,28 @@ export function medianScore(scores: Scorecard): number {
   return values[3]; // middle of 7
 }
 
+const ALL_DIMENSIONS: (keyof Scorecard)[] = [
+  "clarity", "pain", "differentiation", "buildability",
+  "distribution", "monetization", "evidence",
+];
+
+/**
+ * Overall = median over dimensions the mode actually assessed. Unassessed
+ * dimensions are excluded so fake constants can't drag the overall up or down.
+ */
+export function overallScore(scores: Scorecard, unassessed?: (keyof Scorecard)[]): number {
+  const skip = new Set(unassessed ?? []);
+  const values = ALL_DIMENSIONS
+    .filter((d) => !skip.has(d))
+    .map((d) => scores[d])
+    .sort((a, b) => a - b);
+  if (values.length === 0) return 0;
+  const mid = Math.floor(values.length / 2);
+  return values.length % 2 === 0
+    ? Math.round((values[mid - 1] + values[mid]) / 2)
+    : values[mid];
+}
+
 export function formatScores(scores: Scorecard): string {
   const rows = [
     `Clarity:        ${scores.clarity}/10`,

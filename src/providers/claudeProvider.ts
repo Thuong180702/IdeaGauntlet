@@ -18,7 +18,7 @@ export class ClaudeProvider implements LLMProvider {
     if (!config.apiKey) throw new Error("API key is required for ClaudeProvider");
     this.config = {
       apiKey: config.apiKey,
-      model: config.model ?? "claude-3-5-sonnet-latest",
+      model: config.model ?? "claude-sonnet-5",
       timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     };
   }

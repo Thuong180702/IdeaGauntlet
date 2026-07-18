@@ -55,19 +55,13 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       }
 
       const html = await response.text();
-      const ddgResults = parseDuckDuckGoHtml(html, maxResults);
-      if (ddgResults.length > 0) {
-        return ddgResults;
-      }
-      throw new Error("DuckDuckGo returned empty parsed results");
+      return parseDuckDuckGoHtml(html, maxResults);
     } catch (err: any) {
-      // Catch DDG failures / bans and attempt Google fallback
-      try {
-        return await searchGoogleFallback(query, maxResults);
-      } catch (gErr: any) {
-        warnIfError(`duckDuckGo: Google fallback failed for "${query}"`, gErr);
-        return [];
-      }
+      // DDG failed or was rate-limited. Return empty; the orchestrator still
+      // gathers evidence from the reliable API providers (GitHub, Hacker News,
+      // Product Hunt, or Serper when a key is set).
+      warnIfError(`duckDuckGo: search failed for "${query}"`, err);
+      return [];
     }
   }
 }
@@ -109,54 +103,6 @@ function parseDuckDuckGoHtml(html: string, maxResults: number): SearchResult[] {
 
     if (title && url) {
       results.push({ title, url, snippet });
-    }
-  }
-
-  return results;
-}
-
-/**
- * Google Search Scraper Fallback
- */
-async function searchGoogleFallback(query: string, maxResults = 5): Promise<SearchResult[]> {
-  const params = new URLSearchParams({ q: query });
-  const url = `https://www.google.com/search?${params.toString()}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "User-Agent": rotateUserAgent(),
-      Accept: "text/html",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Google fallback returned ${response.status}`);
-  }
-
-  const html = await response.text();
-  return parseGoogleHtml(html, maxResults);
-}
-
-function parseGoogleHtml(html: string, maxResults: number): SearchResult[] {
-  const results: SearchResult[] = [];
-  const linkRegex = /<a[^>]*href="\/url\?q=([^&"]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = linkRegex.exec(html)) !== null && results.length < maxResults) {
-    const rawUrl = decodeURIComponent(match[1]);
-    const titleHtml = match[2];
-
-    if (rawUrl.includes("google.com/")) continue;
-
-    const title = stripHtml(titleHtml).trim();
-    const snippetStart = linkRegex.lastIndex;
-    const remainingHtml = html.slice(snippetStart, snippetStart + 1500);
-    const snippetMatch = remainingHtml.match(/<div[^>]*class="BNeawe s3v9rd AP7Wnd"[^>]*>([\s\S]*?)<\/div>/);
-    const snippet = snippetMatch ? stripHtml(snippetMatch[1]).trim() : "";
-
-    if (title && rawUrl) {
-      results.push({ title, url: rawUrl, snippet });
     }
   }
 

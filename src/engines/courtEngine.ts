@@ -102,32 +102,42 @@ export async function runCourtEngine(
   const combinedCustom = [...(options?.customRoles ?? []), ...generatedRoles];
   const roles = mergeRoles(COURT_ROLES, combinedCustom);
 
-  // ─── Phase 1: Opening Statements (rate-limited parallel) ────────
-  // Use concurrency limiter to avoid hitting rate limits with 7 simultaneous calls.
-  const openingTasks = roles.map((role) => async () => {
+  // ─── Phase 1: Opening Statements — Steelman first ───────────────
+  // The Business Defender opens first and builds the STEELMAN (strongest,
+  // fairest version of the idea). Skeptics then attack that steelman rather
+  // than a strawman. Remaining roles run rate-limited-parallel.
+  const runOpening = async (role: RoleDefinition, steelman?: string) => {
     try {
-      const { system, user } = buildOpeningPrompt(role, idea, research, { defenseArguments: options?.defenseArguments });
-      const response = await provider.complete(user, {
-        system,
-        temperature: 0.5,
-        maxTokens: 1024,
+      const { system, user } = buildOpeningPrompt(role, idea, research, {
+        defenseArguments: options?.defenseArguments,
+        steelman,
       });
-      return {
-        roleId: role.id,
-        roleName: role.name,
-        argument: response.trim(),
-      };
+      const response = await provider.complete(user, { system, temperature: 0.5, maxTokens: 1024 });
+      return { roleId: role.id, roleName: role.name, argument: response.trim() };
     } catch (err: any) {
       warnIfError(`courtEngine: opening statement from ${role.name} failed`, err);
-      return {
-        roleId: role.id,
-        roleName: role.name,
-        argument: `[${role.name} could not present opening statement]`,
-      };
+      return { roleId: role.id, roleName: role.name, argument: `[${role.name} could not present opening statement]` };
     }
-  });
+  };
 
-  const openings = await withConcurrency(openingTasks, COURT_CONCURRENCY);
+  const defenderRole = roles.find((r) => r.stance === "defender");
+  const defenderOpening = defenderRole ? await runOpening(defenderRole) : null;
+  const steelman =
+    defenderOpening && !defenderOpening.argument.startsWith("[") ? defenderOpening.argument : undefined;
+
+  const otherRoles = roles.filter((r) => r !== defenderRole);
+  const otherOpenings = await withConcurrency(
+    otherRoles.map((role) => () => runOpening(role, steelman)),
+    COURT_CONCURRENCY,
+  );
+
+  // Preserve original role order in the openings array.
+  const openingById = new Map<string, { roleId: string; roleName: string; argument: string }>();
+  if (defenderOpening) openingById.set(defenderOpening.roleId, defenderOpening);
+  for (const o of otherOpenings) openingById.set(o.roleId, o);
+  const openings = roles
+    .map((r) => openingById.get(r.id))
+    .filter((o): o is { roleId: string; roleName: string; argument: string } => Boolean(o));
 
   // ─── Phase 2: Cross-Examination (single call) ───────────────────
   let crossExam: { keyConflicts: any[]; openQuestions: string[] };
@@ -182,6 +192,7 @@ export async function runCourtEngine(
   // ─── Phase 4: Final Verdict (single call) ────────────────────────
   let courtDebate: EnhancedCourtDebate;
   let reportVerdict: Verdict = "unclear";
+  let brutalTakeaway: string | undefined;
 
   try {
     const { system, user } = buildVerdictPrompt(
@@ -235,6 +246,7 @@ export async function runCourtEngine(
     };
 
     reportVerdict = mapVerdict(parsed.verdictDetail ?? "");
+    if (typeof parsed.brutalTakeaway === "string") brutalTakeaway = parsed.brutalTakeaway;
   } catch (err: any) {
     // Fallback — construct minimal debate from openings + rebuttals
     warnIfError("courtEngine: verdict synthesis failed", err);
@@ -275,6 +287,7 @@ export async function runCourtEngine(
       unresolvedQuestions: crossExam.openQuestions,
     },
     courtDebate,
+    brutalTakeaway,
     webResearch: research,
     markdown: "",
   };

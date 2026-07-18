@@ -113,15 +113,18 @@ export function buildOpeningPrompt(
   role: RoleDefinition,
   idea: IdeaInput,
   research: ResearchBrief | undefined,
-  options?: { defenseArguments?: string[] },
+  options?: { defenseArguments?: string[]; steelman?: string },
 ): { system: string; user: string } {
+  const isDefender = role.stance === "defender";
   const system = [
     `You are ${role.name} in an IdeaGauntlet Court debate.`,
     `Your stance: ${role.stance}.`,
     `Your mandate: ${role.mandate}`,
     ``,
-    `You must address these questions:`,
-    ...role.mustAddress.map((q) => `- ${q}`),
+    isDefender
+      ? `You open FIRST — build the STEELMAN: present the strongest, most charitable, most credible version of this idea. Sharpest wedge, best-fit early adopter, clearest value. This is the version the rest of the court must argue against, so make it genuinely strong — no strawman, but also no hype that isn't defensible.`
+      : `You must address these questions:`,
+    ...(isDefender ? [] : role.mustAddress.map((q) => `- ${q}`)),
     ``,
     `Keep your opening statement to 200-300 words. Be specific and rigorous.`,
     `Use the web research below to ground your arguments with evidence.`,
@@ -137,6 +140,9 @@ export function buildOpeningPrompt(
     ``,
     options?.defenseArguments && options.defenseArguments.length > 0
       ? `=== FOUNDER'S DEFENSE ARGUMENTS ===\n${options.defenseArguments.map((d, i) => `${i + 1}. ${d}`).join("\n")}\n`
+      : "",
+    !isDefender && options?.steelman
+      ? `=== STEELMAN (the strongest version of this idea, argued by the Business Defender) ===\n${options.steelman}\n\nAttack THIS version at its strongest — do not knock down a weaker strawman.\n`
       : "",
     `Present your opening statement as ${role.name}.`,
   ].filter(Boolean).join("\n");
@@ -228,11 +234,12 @@ export function buildVerdictPrompt(
     `ideaSnapshot (object: idea, targetUser, market, stage, keyPromise)`,
     `assumptionsMap (array: { assumption, riskLevel, whyItMatters })`,
     `roleArguments (array: { roleId, roleName, argument })`,
-    `crossExamination (string — summary of key conflicts)`,
+    `crossExamination (string — summary of key conflicts; attribute each to the roles involved by name)`,
     `evidenceAudit (string — what's backed by evidence vs assumption)`,
     `killTests (array: { title, method, timeframe, successSignal, killSignal })`,
-    `scoresDetailed (array: { dimension, score 0-10, reason })`,
-    `verdictDetail (string — start with verdict prefix: 'strong', 'promising but risky', 'unclear', 'weak', 'needs real evidence', or 'pivot recommended')`,
+    `scoresDetailed (array: { dimension, score 0-10, reason — grounded evidence for the score, sensitivity — one sentence: what would raise it ~2 and what would drop it ~2 })`,
+    `verdictDetail (string — start with verdict prefix: 'strong', 'promising but risky', 'unclear', 'weak', 'needs real evidence', or 'pivot recommended'. Attribute the decisive points to the roles that made them, e.g. "The Market Skeptic argued X; the Business Defender countered Y" — no floating conclusions)`,
+    `brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea)`,
     `nextActions (array of string)`,
     `competitorLandscape (object: { competitors: [{ name, url, type, pricing, features, weaknesses }], saturationLevel: "low"|"medium"|"high"|"unknown", analysisNote }) — use data from research brief competitor landscape, add your analysis from the debate`,
     `nicheOpportunities (array: { type: "underserved_segment"|"feature_gap"|"pricing_gap"|"use_case_gap"|"geographic_gap", description, evidence, wedgeIdea, whyNow }) — 3-5 niches if market is saturated, or explain why niches aren't needed`,

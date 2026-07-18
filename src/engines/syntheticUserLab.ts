@@ -141,11 +141,14 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
       const diffScore = clampScore(parsed.synthesis.differentiationScore ?? 5);
       const objectionPenalty = Math.min(synthesis.recurringObjections.length * 0.5, 2);
 
+      // Users mode does not evaluate clarity or buildability — do NOT fake them.
+      // They are reported as unassessed (see unassessedDimensions below) and
+      // excluded from the overall/benchmark rather than filled with a constant.
       scores = {
-        clarity: 6, // Users mode doesn't assess clarity directly
+        clarity: 0,
         pain: clampScore(adoptionScore + (synthesis.surprisingSegments.length > 0 ? 1 : 0)),
         differentiation: diffScore,
-        buildability: 5, // Not assessed in users mode
+        buildability: 0,
         distribution: clampScore(adoptionScore - objectionPenalty),
         monetization: wtpScore,
         evidence: clampScore(parsed.synthesis.fakeDoorTestIdeas?.length > 0 ? 3 : 1),
@@ -167,6 +170,7 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
     input: idea,
     verdict,
     scores: scores,
+    unassessedDimensions: scores ? ["clarity", "buildability"] : undefined,
     syntheticUsers: users,
     enhancedSyntheticUsers: enhancedUsers,
     userSynthesis: synthesis,

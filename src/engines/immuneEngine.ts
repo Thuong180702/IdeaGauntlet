@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Verdict, Severity, Confidence, Scorecard, EnhancedQuickReport } from "../core/types.js";
+import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Verdict, Severity, Confidence, Scorecard, ScoreRubricEntry, EnhancedQuickReport } from "../core/types.js";
 import { calculateScores, medianScore } from "../core/scoring.js";
 import { quickWorkflow } from "../workflows/definitions/quick.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
@@ -40,7 +40,7 @@ export async function runImmuneEngine(
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
-    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), nextStep",
+    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), scoreRubric ({clarity:{evidence, sensitivity}, pain:{...}, differentiation:{...}, buildability:{...}, distribution:{...}, monetization:{...}, evidence:{...}}) — for EACH dimension: `evidence` = one concrete sentence grounding the score in the idea/competitors/research (not generic), `sensitivity` = one sentence stating what would raise it ~2 points and what would drop it ~2 points, brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea), nextStep",
   ].filter(Boolean).join("\n");
 
   let parsed: any = {};
@@ -81,7 +81,13 @@ export async function runImmuneEngine(
   );
 
   const scoreOverrides = parsed.scores ?? {};
-  const { scores } = calculateScores({ hasEvidence: false, overrides: scoreOverrides });
+  const { evidenceStrength, hasEvidence } = assessEvidence(research);
+  const { scores } = calculateScores({
+    hasEvidence,
+    evidenceStrength,
+    overrides: scoreOverrides,
+  });
+  const scoreRubric = sanitizeRubric(parsed.scoreRubric);
   const verdict = determineVerdict(scores);
 
   const quickReport: EnhancedQuickReport = {
@@ -104,6 +110,8 @@ export async function runImmuneEngine(
     id, createdAt: now, mode: "quick", input: idea,
     verdict,
     scores,
+    scoreRubric,
+    brutalTakeaway: typeof parsed.brutalTakeaway === "string" ? parsed.brutalTakeaway : undefined,
     coreInsight: parsed.oneLineVerdict ?? "Analysis complete.",
     strongestCase: parsed.bestCase ?? "",
     weakestAssumption: assumptions[0]?.title ?? "",
@@ -115,6 +123,46 @@ export async function runImmuneEngine(
     webResearch: research,
     markdown: "",
   };
+}
+
+/**
+ * Derive an evidence signal from the web-research brief. Used as the fallback
+ * evidence score when the model omits its own — grounded in what was actually
+ * found rather than a hardcoded assumption.
+ */
+function assessEvidence(research?: ResearchBrief): {
+  hasEvidence: boolean;
+  evidenceStrength: "weak" | "medium" | "strong";
+} {
+  const results = research?.results?.length ?? 0;
+  const competitors = research?.competitorLandscape?.competitors?.length ?? 0;
+  const pages = research?.pageContents?.length ?? 0;
+  const signal = results + competitors * 2 + pages * 2;
+  if (signal === 0) return { hasEvidence: false, evidenceStrength: "weak" };
+  if (signal >= 12) return { hasEvidence: true, evidenceStrength: "strong" };
+  if (signal >= 5) return { hasEvidence: true, evidenceStrength: "medium" };
+  return { hasEvidence: true, evidenceStrength: "weak" };
+}
+
+const RUBRIC_DIMENSIONS: (keyof Scorecard)[] = [
+  "clarity", "pain", "differentiation", "buildability",
+  "distribution", "monetization", "evidence",
+];
+
+/** Coerce loose LLM rubric output into typed entries; drop malformed dimensions. */
+function sanitizeRubric(raw: any): Partial<Record<keyof Scorecard, ScoreRubricEntry>> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Partial<Record<keyof Scorecard, ScoreRubricEntry>> = {};
+  for (const dim of RUBRIC_DIMENSIONS) {
+    const e = raw[dim];
+    if (e && typeof e === "object" && (e.evidence || e.sensitivity)) {
+      out[dim] = {
+        evidence: typeof e.evidence === "string" ? e.evidence : "",
+        sensitivity: typeof e.sensitivity === "string" ? e.sensitivity : "",
+      };
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function determineVerdict(scores: Scorecard): Verdict {

@@ -1,0 +1,62 @@
+name: "IdeaGauntlet"
+description: "Stress-test a product idea file with adversarial agents and produce a verdict report — for use in CI / on pull requests."
+author: "IdeaGauntlet"
+branding:
+  icon: "check-circle"
+  color: "purple"
+
+inputs:
+  idea-file:
+    description: "Path to the idea file to critique (Markdown or text)."
+    required: false
+    default: "IDEA.md"
+  mode:
+    description: "Analysis mode: 'court' (deep multi-role debate) or 'quick' (fast critique, fewer tokens)."
+    required: false
+    default: "court"
+  api-key:
+    description: "LLM API key. Anthropic (sk-ant-...) or Groq (gsk_...). Pass a repo secret — never hardcode."
+    required: true
+  model:
+    description: "Optional model override (e.g. claude-haiku-4-5-20251001 to save tokens)."
+    required: false
+    default: ""
+  version:
+    description: "idea-gauntlet npm version or dist-tag to run."
+    required: false
+    default: "latest"
+  output-file:
+    description: "Where to write the generated Markdown report."
+    required: false
+    default: "idea-gauntlet-report.md"
+
+outputs:
+  report-file:
+    description: "Path to the generated Markdown report (empty if the idea file was missing)."
+    value: ${{ steps.run.outputs.report-file }}
+  skipped:
+    description: "'true' when the idea file did not exist and nothing ran."
+    value: ${{ steps.run.outputs.skipped }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run IdeaGauntlet
+      id: run
+      shell: bash
+      env:
+        # The CLI reads the key from IDEAGAUNTLET_API_KEY; it is never logged.
+        IDEAGAUNTLET_API_KEY: ${{ inputs.api-key }}
+        IDEAGAUNTLET_MODEL: ${{ inputs.model }}
+      run: |
+        set -euo pipefail
+        if [ ! -f "${{ inputs.idea-file }}" ]; then
+          echo "IdeaGauntlet: idea file '${{ inputs.idea-file }}' not found — skipping."
+          echo "skipped=true" >> "$GITHUB_OUTPUT"
+          echo "report-file=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        npx --yes "idea-gauntlet@${{ inputs.version }}" "${{ inputs.mode }}" "${{ inputs.idea-file }}" \
+          --output "${{ inputs.output-file }}"
+        echo "skipped=false" >> "$GITHUB_OUTPUT"
+        echo "report-file=${{ inputs.output-file }}" >> "$GITHUB_OUTPUT"

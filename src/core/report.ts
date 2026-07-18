@@ -1,7 +1,7 @@
-import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, CourtSession, MVPPlan, ComparisonResult, ComparedIdea } from "./types.js";
+import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, ComparedIdea } from "./types.js";
 import type { EnhancedCourtDebate, EnhancedQuickReport, EnhancedPersona, UserSynthesis, EnhancedMVPPlan, EnhancedComparisonResult } from "./types.js";
 import type { CompetitorLandscape, NicheOpportunity } from "../search/types.js";
-import { medianScore } from "./scoring.js";
+import { overallScore } from "./scoring.js";
 
 export function buildReport(report: GauntletReport): string {
   const lines: string[] = [];
@@ -16,10 +16,11 @@ export function buildReport(report: GauntletReport): string {
 
   lines.push(`## Verdict\n\n${report.verdict}\n`);
 
+  if (report.brutalTakeaway) { lines.push(`> 🔪 **${report.brutalTakeaway}**\n`); }
   if (report.coreInsight) { lines.push(`## Core Insight\n\n${report.coreInsight}\n`); }
   if (report.strongestCase) { lines.push(`## Strongest Case\n\n${report.strongestCase}\n`); }
   if (report.weakestAssumption) { lines.push(`## Weakest Assumption\n\n${report.weakestAssumption}\n`); }
-  if (report.scores) { lines.push(`## Scorecard\n\n${buildScorecardTable(report.scores)}\n`); }
+  if (report.scores) { lines.push(`## Scorecard\n\n${buildScorecardTable(report.scores, report.scoreRubric, report.unassessedDimensions)}\n`); }
   if (report.risks && report.risks.length > 0) { lines.push(`## Top Failure Modes\n\n${buildRiskList(report.risks)}\n`); }
   if (report.assumptions && report.assumptions.length > 0) { lines.push(`## Dangerous Assumptions\n\n${buildAssumptionList(report.assumptions)}\n`); }
   if (report.killTests && report.killTests.length > 0) { lines.push(`## Kill Tests\n\n${buildKillTestList(report.killTests)}\n`); }
@@ -62,18 +63,42 @@ export function buildReport(report: GauntletReport): string {
   return lines.join("\n");
 }
 
-function buildScorecardTable(scores: Scorecard): string {
-  const rows = ["| Dimension | Score |", "|-----------|-------|"];
+function buildScorecardTable(
+  scores: Scorecard,
+  rubric?: Partial<Record<keyof Scorecard, ScoreRubricEntry>>,
+  unassessed?: (keyof Scorecard)[],
+): string {
   const labels: Record<keyof Scorecard, string> = {
     clarity: "Clarity", pain: "Pain", differentiation: "Differentiation",
     buildability: "Buildability", distribution: "Distribution",
     monetization: "Monetization", evidence: "Evidence",
   };
+  const skip = new Set(unassessed ?? []);
+  const cell = (s?: string) => (s ?? "").replace(/\|/g, "\\|").replace(/\n+/g, " ");
+  const hasRubric = rubric && Object.keys(rubric).length > 0;
+  const rows = hasRubric
+    ? ["| Dimension | Score | Evidence | What would move it |", "|---|---|---|---|"]
+    : ["| Dimension | Score |", "|-----------|-------|"];
   for (const [key, label] of Object.entries(labels)) {
-    const val = scores[key as keyof Scorecard];
-    rows.push(`| ${label} | ${val}/10 |`);
+    const dim = key as keyof Scorecard;
+    if (skip.has(dim)) {
+      rows.push(hasRubric
+        ? `| ${label} | — | _not assessed in this mode_ | |`
+        : `| ${label} | — |`);
+      continue;
+    }
+    const val = `${scores[dim]}/10`;
+    if (hasRubric) {
+      const entry = rubric[dim];
+      rows.push(`| ${label} | ${val} | ${cell(entry?.evidence)} | ${cell(entry?.sensitivity)} |`);
+    } else {
+      rows.push(`| ${label} | ${val} |`);
+    }
   }
-  rows.push(`| **Overall** | **${medianScore(scores)}/10** |`);
+  const overall = `${overallScore(scores, unassessed)}/10`;
+  rows.push(hasRubric
+    ? `| **Overall** | **${overall}** | Median of assessed dimensions | |`
+    : `| **Overall** | **${overall}** |`);
   return rows.join("\n");
 }
 
@@ -173,9 +198,15 @@ function buildEnhancedCourtDebate(debate: EnhancedCourtDebate): string {
 
   if (debate.scoresDetailed.length > 0) {
     parts.push("### Scores\n");
-    const rows = ["| Dimension | Score | Reason |", "|---|---|---|"];
+    const esc = (s?: string) => (s ?? "").replace(/\|/g, "\\|").replace(/\n+/g, " ");
+    const hasSensitivity = debate.scoresDetailed.some((s) => s.sensitivity);
+    const rows = hasSensitivity
+      ? ["| Dimension | Score | Evidence | What would move it |", "|---|---|---|---|"]
+      : ["| Dimension | Score | Reason |", "|---|---|---|"];
     for (const s of debate.scoresDetailed) {
-      rows.push(`| ${s.dimension} | ${s.score}/10 | ${s.reason} |`);
+      rows.push(hasSensitivity
+        ? `| ${esc(s.dimension)} | ${s.score}/10 | ${esc(s.reason)} | ${esc(s.sensitivity)} |`
+        : `| ${esc(s.dimension)} | ${s.score}/10 | ${esc(s.reason)} |`);
     }
     parts.push(rows.join("\n"));
   }

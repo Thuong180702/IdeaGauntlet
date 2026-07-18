@@ -1,12 +1,13 @@
 import type { Scorecard } from "../core/types.js";
 
 /**
- * Score Benchmark — internal reference dataset for score calibration.
- * Contains ~50 known startup ideas with outcome data + scores.
- * Used to show percentile ranking when a user runs analysis.
+ * Score Benchmark — a SYNTHETIC calibration reference for score context.
  *
- * Sources: YC companies, indie hacker projects, failed startup post-mortems.
- * Scores are retrospective — assigned by analysts based on idea quality at napkin stage.
+ * These ~50 entries are illustrative archetypes (loosely inspired by common
+ * startup patterns), NOT real companies, and the scores/outcomes are
+ * hand-authored estimates — not measured data. They exist only to give a
+ * user's scores a rough distributional context ("above/below this reference
+ * set"), never to predict success. Do not present percentiles as evidence.
  */
 
 export interface BenchmarkEntry {
@@ -109,8 +110,12 @@ export interface BenchmarkComparison {
  * Compare user scores against the benchmark dataset.
  * Returns percentile for each dimension + overall.
  */
-export function benchmarkScores(scores: Scorecard): BenchmarkComparison {
-  const dimensions: (keyof Scorecard)[] = [
+export function benchmarkScores(
+  scores: Scorecard,
+  unassessed?: (keyof Scorecard)[],
+): BenchmarkComparison {
+  const skip = new Set(unassessed ?? []);
+  const dimensions: (keyof Scorecard)[] = ([
     "clarity",
     "pain",
     "differentiation",
@@ -118,7 +123,7 @@ export function benchmarkScores(scores: Scorecard): BenchmarkComparison {
     "distribution",
     "monetization",
     "evidence",
-  ];
+  ] as (keyof Scorecard)[]).filter((d) => !skip.has(d));
 
   const percentiles: PercentileResult[] = dimensions.map((dim) => {
     const userScore = scores[dim] ?? 0;
@@ -176,7 +181,7 @@ export function benchmarkScores(scores: Scorecard): BenchmarkComparison {
 export function formatBenchmarkMarkdown(comparison: BenchmarkComparison): string {
   const lines: string[] = [];
   lines.push("### 📊 Score Benchmark Comparison\n");
-  lines.push(`Compared against **${comparison.totalCompared} known ideas** (success/failure outcomes).\n`);
+  lines.push(`Compared against a **synthetic reference set of ${comparison.totalCompared} idea archetypes** (illustrative, not real companies).\n`);
 
   lines.push("| Dimension | Your Score | Percentile | Interpretation |");
   lines.push("|-----------|-----------|------------|----------------|");

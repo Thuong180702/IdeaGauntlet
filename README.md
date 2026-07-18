@@ -18,7 +18,7 @@ Built for founders, indie hackers, and product engineers who want sharper pre-va
 npm install -g idea-gauntlet
 ```
 
-On global install, IdeaGauntlet performs best-effort integration setup for detected Claude Code, Codex, Cursor, and MCP-compatible clients.
+On global install, IdeaGauntlet performs best-effort integration setup for detected Claude Code, Codex, Cursor, and MCP-compatible clients. All writes are non-destructive (never overwriting your files) and fully reversible via `idea-gauntlet uninstall`. The install downloads no browser and runs no network install; if postinstall was skipped (e.g. `--ignore-scripts`), run `idea-gauntlet install` yourself.
 
 ---
 
@@ -63,7 +63,7 @@ See [Provider setup](#provider-setup).
 | **History & evolution** | Save reports, track score deltas over time | You want to measure idea improvement | Saved reports, score deltas, evolution timeline |
 | **Interactive mode** | REPL for iterative refinement, drill-down, mode switching | You want to refine an idea live | Re-runs, benchmark, diagrams, exports |
 | **HTML export** | Styled dark-mode HTML report with radar chart + diagrams | You need shareable visual reports | Self-contained HTML page |
-| **Score benchmarking** | Compare scores against 50 real startup ideas | You want context for your scores | Percentile ranking, similar ideas |
+| **Score benchmarking** | Compare scores against a synthetic reference set of 50 idea archetypes | You want rough distributional context for your scores | Percentile ranking, similar archetypes |
 
 Synthetic users are fictional — not research evidence. Scores are diagnostic signals, not predictions.
 
@@ -146,8 +146,8 @@ Simply set your Anthropic API key, or provide a key with the prefix `sk-ant-` as
 
 ```bash
 export ANTHROPIC_API_KEY="your-anthropic-key"
-# Optional model override (default: claude-3-5-sonnet-latest)
-export IDEAGAUNTLET_MODEL="claude-3-5-sonnet-latest"
+# Optional model override (default: claude-sonnet-5)
+export IDEAGAUNTLET_MODEL="claude-sonnet-5"
 ```
 
 **Groq (Native):**
@@ -156,8 +156,8 @@ Set your Groq API key, or provide a key with the prefix `gsk_` as `IDEAGAUNTLET_
 
 ```bash
 export GROQ_API_KEY="your-groq-key"
-# Optional model override (default: llama-3.1-70b-versatile)
-export IDEAGAUNTLET_MODEL="llama-3.1-70b-versatile"
+# Optional model override (default: llama-3.3-70b-versatile)
+export IDEAGAUNTLET_MODEL="llama-3.3-70b-versatile"
 ```
 
 **OpenAI-compatible:**
@@ -202,6 +202,7 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 |---|---|---|
 | `--json` | quick, court, users, mvp | Output JSON |
 | `--format html` | quick, court, users, mvp, compare | Output styled HTML report |
+| `--format card` | quick, court | Output a shareable 1200×630 verdict card (screenshot & post) |
 | `--output <file>` | Most commands | Save to file |
 | `--ollama` | Generation commands | Use local Ollama |
 | `--model <name>` | Generation commands | Override LLM model |
@@ -271,6 +272,68 @@ The HTML report includes:
 - **Mermaid diagrams** — MVP flowchart, timeline Gantt, court mindmap (rendered via CDN)
 - **Dark-mode design** — styled CSS, glassmorphism header, responsive layout
 
+### Shareable Report Card
+
+Generate a single, self-contained **1200×630 card** (OG / Twitter preview size) built to
+screenshot and share — verdict badge, overall score, score radar, top risks, and the
+one-line **brutal takeaway**:
+
+```bash
+idea-gauntlet quick "Your idea" --format card -o idea.html   # writes idea.card.html
+idea-gauntlet court "Your idea" --format card -o idea.html
+```
+
+Open the file, screenshot it, and post it. The card carries the tool name and install
+line, so every share is a link back.
+
+---
+
+## Use in CI (GitHub Action)
+
+Run IdeaGauntlet automatically on every pull request that touches `IDEA.md` and post the
+verdict as a single, auto-updating PR comment — idea review as part of your workflow, like
+code review.
+
+```yaml
+# .github/workflows/idea-gauntlet.yml
+name: IdeaGauntlet
+on:
+  pull_request:
+    paths: ["IDEA.md"]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  critique:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: gauntlet
+        uses: Thuong180702/IdeaGauntlet@v1   # pin to a released tag
+        with:
+          idea-file: IDEA.md
+          mode: court                         # or 'quick' to save tokens
+          api-key: ${{ secrets.IDEAGAUNTLET_API_KEY }}
+      - uses: actions/github-script@v7
+        if: steps.gauntlet.outputs.skipped != 'true'
+        env:
+          REPORT_FILE: ${{ steps.gauntlet.outputs.report-file }}
+        with:
+          script: |
+            const fs = require('fs');
+            const MARKER = '<!-- idea-gauntlet -->';
+            const body = MARKER + '\n🤖 **IdeaGauntlet** stress-tested this idea:\n\n' + fs.readFileSync(process.env.REPORT_FILE, 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+            if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+```
+
+A copy-pasteable version lives at [`.github/workflows/example-idea-gauntlet.yml`](.github/workflows/example-idea-gauntlet.yml).
+Add your key as a repo secret named `IDEAGAUNTLET_API_KEY` (Anthropic `sk-ant-…` or Groq `gsk_…`) — it is passed via env and never logged.
+
 ---
 
 ## Interactive mode
@@ -300,7 +363,7 @@ Commands:
 
 ## Score benchmarking
 
-Compare your scores against a dataset of 50 real startup ideas with known outcomes (success, failure, pivot).
+Compare your scores against a **synthetic reference set** of 50 idea archetypes with illustrative (hand-authored, not measured) outcomes and scores. This gives rough distributional context — it is **not** real-company data and must not be read as a prediction.
 
 In interactive mode, run `/benchmark` after analysis to see:
 - Per-dimension percentile ranking

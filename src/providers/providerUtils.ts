@@ -24,7 +24,7 @@ export function resolveProvider(options?: {
       return {
         provider: new ClaudeProvider({
           apiKey: key,
-          model: options?.model || process.env.IDEAGAUNTLET_MODEL || "claude-3-5-sonnet-latest",
+          model: options?.model || process.env.IDEAGAUNTLET_MODEL || "claude-sonnet-5",
         }),
         source: "claude",
       };
@@ -38,7 +38,7 @@ export function resolveProvider(options?: {
         provider: new OpenAICompatibleProvider({
           apiKey: key,
           baseUrl: options?.baseUrl || "https://api.groq.com/openai/v1",
-          model: options?.model || process.env.IDEAGAUNTLET_MODEL || "llama-3.1-70b-versatile",
+          model: options?.model || process.env.IDEAGAUNTLET_MODEL || "llama-3.3-70b-versatile",
         }),
         source: "groq",
       };
@@ -49,7 +49,7 @@ export function resolveProvider(options?: {
     return {
       provider: new ClaudeProvider({
         apiKey: process.env.ANTHROPIC_API_KEY,
-        model: options?.model || process.env.IDEAGAUNTLET_MODEL || "claude-3-5-sonnet-latest",
+        model: options?.model || process.env.IDEAGAUNTLET_MODEL || "claude-sonnet-5",
       }),
       source: "claude",
     };
@@ -60,7 +60,7 @@ export function resolveProvider(options?: {
       provider: new OpenAICompatibleProvider({
         apiKey: process.env.GROQ_API_KEY,
         baseUrl: "https://api.groq.com/openai/v1",
-        model: options?.model || process.env.IDEAGAUNTLET_MODEL || "llama-3.1-70b-versatile",
+        model: options?.model || process.env.IDEAGAUNTLET_MODEL || "llama-3.3-70b-versatile",
       }),
       source: "groq",
     };
@@ -83,7 +83,7 @@ export function resolveProvider(options?: {
       return {
         provider: new ClaudeProvider({
           apiKey: envKey,
-          model: options?.model ?? getModel() ?? "claude-3-5-sonnet-latest",
+          model: options?.model ?? getModel() ?? "claude-sonnet-5",
         }),
         source: "claude",
       };
@@ -92,7 +92,7 @@ export function resolveProvider(options?: {
         provider: new OpenAICompatibleProvider({
           apiKey: envKey,
           baseUrl: "https://api.groq.com/openai/v1",
-          model: options?.model ?? getModel() ?? "llama-3.1-70b-versatile",
+          model: options?.model ?? getModel() ?? "llama-3.3-70b-versatile",
         }),
         source: "groq",
       };
