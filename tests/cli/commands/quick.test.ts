@@ -36,11 +36,11 @@ describe("provider error message", () => {
   it("formatNoProviderError contains helpful guidance", () => {
     const msg = formatNoProviderError();
     expect(msg).toContain("No provider configured");
+    expect(msg).toContain("ANTHROPIC_API_KEY");
+    expect(msg).toContain("npx idea-gauntlet");
     expect(msg).toContain("IDEAGAUNTLET_API_KEY");
-    expect(msg).toContain("--api-key");
     expect(msg).toContain("--ollama");
     expect(msg).toContain("Claude Code, Codex, or Cursor");
-    expect(msg).toContain("do not run the CLI command directly");
   });
 
   it("NoProviderError uses the formatted message", () => {

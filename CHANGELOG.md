@@ -5,6 +5,28 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-18
+
+### Added
+- **Report Card**: `--format card` on `quick`/`court` renders a self-contained, screenshot-ready 1200×630 verdict card (verdict, overall score, radar, top risks, brutal takeaway, install line).
+- **GitHub Action**: composite `action.yml` + example workflow that runs IdeaGauntlet on PRs touching `IDEA.md` and posts an auto-updating verdict comment.
+- **Court steelman phase**: the Business Defender opens first with the strongest, fairest version of the idea; skeptics then attack that steelman instead of a strawman.
+- **Judge citations**: court verdicts must attribute decisive points to the roles that made them.
+- **Grounded rubric scoring**: every assessed dimension now carries `evidence` + a `sensitivity` line ("what would move it ±2"), rendered in reports.
+- **Brutal takeaway**: one quotable, sharpest-critique line per report (drives the share card).
+- **Examples**: runnable [`examples/IDEA.md`](examples/IDEA.md) plus real agent-native sample [quick](examples/sample-quick-report.md) and [court](examples/sample-court-report.md) reports.
+- **Zero-friction start**: no-provider guidance now leads with a copy-paste `npx` one-liner; the `quick` command no longer blocks on an interactive menu in non-TTY (piped/CI) contexts.
+
+### Changed
+- **Model defaults updated**: Claude default `claude-3-5-sonnet-latest` → `claude-sonnet-5`; Groq default `llama-3.1-70b-versatile` (decommissioned) → `llama-3.3-70b-versatile`.
+- **Honest benchmark labeling**: the score benchmark is now presented as a *synthetic reference set of idea archetypes*, not "real startup ideas with known outcomes".
+- **postinstall**: no longer downloads a Chromium browser (~150MB); Playwright is opt-in via `npx playwright install chromium` and web research degrades gracefully without it.
+- **users mode scoring**: no longer fills `clarity`/`buildability` with constants — these are marked as unassessed and excluded from the overall score and benchmark.
+- **Quick mode evidence**: derives a real evidence signal from the research brief instead of a hardcoded `false`.
+
+### Removed
+- Dead Google-scrape fallback in the DuckDuckGo provider (stale HTML selectors; risked flagging the user's IP).
+
 ## [0.2.6] - 2026-07-15
 
 ### Added

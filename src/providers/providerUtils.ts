@@ -134,12 +134,15 @@ export function formatNoProviderError(): string {
   return [
     "No provider configured for direct CLI analysis.",
     "",
-    "Direct CLI commands need one of:",
-    "  - IDEAGAUNTLET_API_KEY with IDEAGAUNTLET_BASE_URL / IDEAGAUNTLET_MODEL",
-    "  - --api-key / --base-url / --model",
-    "  - --ollama --model <local-model>",
+    "Fastest start — one command (Anthropic):",
+    '  ANTHROPIC_API_KEY=sk-ant-... npx idea-gauntlet quick "your idea"',
     "",
-    "If you are using IdeaGauntlet inside Claude Code, Codex, or Cursor, do not run the CLI command directly. Ask naturally:",
+    "Or configure a provider once, then run normally:",
+    "  - ANTHROPIC_API_KEY (sk-ant-…) or GROQ_API_KEY (gsk_…)",
+    "  - IDEAGAUNTLET_API_KEY + IDEAGAUNTLET_BASE_URL + IDEAGAUNTLET_MODEL (any OpenAI-compatible)",
+    "  - --ollama --model <local-model>  (free, local — needs Ollama running)",
+    "",
+    "Using IdeaGauntlet inside Claude Code, Codex, or Cursor? No key needed — just ask:",
     '  Use IdeaGauntlet court mode to stress-test this idea: ...',
   ].join("\n");
 }

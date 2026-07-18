@@ -26,6 +26,12 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
     ollama: !!options.ollama,
   });
 
+  if (!providerRes && !process.stdin.isTTY) {
+    // Non-interactive (piped / CI / `npx ... | ...`): don't block on a menu.
+    console.error(formatNoProviderError());
+    process.exit(2);
+  }
+
   if (!providerRes) {
     const choice = await showOnboardingMenu();
     switch (choice) {
