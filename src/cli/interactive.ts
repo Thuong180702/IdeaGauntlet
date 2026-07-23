@@ -40,7 +40,8 @@ export async function interactiveCommand(
     const choice = await rl.question("Choice (1-3): ");
     const trimmedChoice = choice.trim();
     if (trimmedChoice === "1") {
-      const apiKey = await rl.question("Enter API Key: ");
+      console.log("Note: Your API key will be hidden as you type.");
+      const apiKey = await maskedQuestion(rl, "Enter API Key: ");
       const baseUrl = await rl.question("Enter Base URL (default: https://api.openai.com/v1): ");
       const model = await rl.question("Enter Model Name (default: gpt-4o-mini): ");
       
@@ -417,4 +418,34 @@ function printHelp(): void {
   console.log("  /drill <n>        - Drill down into risk #n + optional court re-run");
   console.log("  /help             - Show this help");
   console.log("  /quit             - Exit interactive mode\n");
+}
+
+// ponytail: simplified masking — relies on Node suppressing echo when
+// stdout is a TTY. For full masking use readline with terminal:false.
+// Upgrade path: use node:readline with { terminal: false } for raw mode.
+async function maskedQuestion(rl: import("node:readline/promises").Interface, prompt: string): Promise<string> {
+  // Suppress echo by muting output stream during input
+  const stdout = process.stdout;
+  const wasTTY = stdout.isTTY;
+  if (wasTTY) {
+    // Write prompt manually then pause stdout to suppress echo
+    stdout.write(prompt);
+  }
+  // Use raw question with suppressed echo
+  const oldWrite = stdout.write.bind(stdout);
+  if (wasTTY) {
+    stdout.write = ((data: any) => {
+      // Only suppress echoed characters, allow prompt and control sequences
+      if (typeof data === "string" && data.length === 1 && data !== "\n" && data !== "\r") {
+        return true; // swallow single chars (echoed keystrokes)
+      }
+      return oldWrite(data);
+    }) as any;
+  }
+  const answer = await rl.question(wasTTY ? "" : prompt);
+  if (wasTTY) {
+    stdout.write = oldWrite;
+    stdout.write("\n");
+  }
+  return answer.trim();
 }

@@ -141,6 +141,22 @@ export class OpenAICompatibleProvider implements LLMProvider {
     clearTimeout(activeTimeoutId);
     throw lastError ?? new Error("Provider request failed after all retries");
   }
+
+  // W-10: Quick key validation via GET /models — 5s timeout, no retry.
+  async validateKey(): Promise<boolean> {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5_000);
+      const res = await fetch(`${this.config.baseUrl}/models`, {
+        headers: { "Authorization": `Bearer ${this.config.apiKey}` },
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
 }
 
 /**

@@ -97,11 +97,12 @@ export async function runCompareEngine(
     if (parsed.comparisonMatrix) {
       for (const row of parsed.comparisonMatrix) {
         const scores = row.criteria ?? {};
-        const clarity = scores.clarity ?? 5;
-        const pain = scores.pain ?? 5;
-        const diff = scores.differentiation ?? 5;
         const evidence = scores.evidence ?? 1;
-        const avg = Math.round((clarity + pain + diff) / 3);
+        // BUG-03: Average ALL available numeric criteria, not just 3 out of 12+.
+        const numericValues = Object.values(scores).filter((v: any) => typeof v === "number" && !isNaN(v)) as number[];
+        const avg = numericValues.length > 0
+          ? Math.round(numericValues.reduce((a, b) => a + b, 0) / numericValues.length)
+          : 5;
         // Determine per-idea verdict from aggregate score
         const ideaVerdict = computeIdeaVerdict(avg, evidence);
         results.push({

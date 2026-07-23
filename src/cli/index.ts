@@ -57,11 +57,14 @@ providerOptions(
     .option("--stage <stage>", "Idea stage: napkin, pre-mvp, mvp, growth")
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
+    .option("--template <id>", "Use a pre-built idea template: b2b-saas, devtool, marketplace, consumer-app, ai-ml, healthtech, fintech, ecommerce")
+    .option("--lang <lang>", "Output language: en, vi, es, fr, de, ja, zh, ko, pt, it, ru, ar (default: en)")
     .option("--json", "Output JSON instead of Markdown")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
-    .option("--format <format>", "Output format: md, html, card (shareable image card) (default: md)")
+    .option("--stream", "Stream LLM tokens to stderr in real-time")
+    .option("--format <format>", "Output format: md, html, pdf, card (shareable image card) (default: md)")
 ).action((idea: string, options: Record<string, unknown>) => quickCommand(idea, { ...fileConfig, ...options }));
 
 providerOptions(
@@ -161,10 +164,47 @@ providerOptions(
 
 cli.command("history [id]", "View saved idea reports and track evolution")
   .option("--evolve <id>", "Compare against a saved report to see score delta")
+  .option("--diff", "Auto-find oldest report with same idea and show evolution")
   .action((id: string | undefined, options: Record<string, unknown>) => historyCommand(id, options));
 
 cli.command("interactive [idea]", "Interactive REPL — refine, re-run, drill-down")
   .action((idea: string | undefined) => interactiveCommand(idea ?? ""));
+
+providerOptions(
+  cli.command("serve", "Start REST API server")
+    .option("--port <port>", "HTTP port (default: 3000)")
+).action((options: Record<string, unknown>) => {
+  import("./commands/serve.js").then(({ serveCommand }) =>
+    serveCommand({ port: options.port as string, apiKey: options.apiKey as string, baseUrl: options.baseUrl as string, model: options.model as string })
+  );
+});
+
+// F-12: Template list command
+cli.command("templates", "List available idea templates")
+  .action(async () => {
+    const { listTemplateIds } = await import("../core/templates.js");
+    const templates = listTemplateIds();
+    console.log("Available idea templates:");
+    for (const t of templates) {
+      console.log(`  ${t.id} — ${t.label}`);
+    }
+  });
+
+// F-07: Trend monitoring command
+cli.command("trend [id]", "Re-research a saved idea and compare against historical data")
+  .action((id: string | undefined, options: Record<string, unknown>) => {
+    import("./commands/trend.js").then(({ trendCommand }) => trendCommand(id, options));
+  });
+
+// F-13: Team collaboration command
+cli.command("team <action> [idea]", "Team collaboration: submit, vote, comment, list ideas")
+  .option("--user <name>", "Your name/user ID")
+  .option("--score <1-10>", "Vote score (for 'vote' action)")
+  .option("--comment <text>", "Comment (for 'vote' action)")
+  .option("--text <text>", "Comment text (for 'comment' action)")
+  .action((action: string, idea: string | undefined, options: Record<string, unknown>) => {
+    import("./commands/team.js").then(({ teamCommand }) => teamCommand(action, idea, options));
+  });
 
 // Set quiet mode before parsing commands
 const parsed = cli.parse();

@@ -95,10 +95,17 @@ function buildScorecardTable(
       rows.push(`| ${label} | ${val} |`);
     }
   }
-  const overall = `${overallScore(scores, unassessed)}/10`;
+  const overall = overallScore(scores, unassessed);
+  // F-02: Confidence interval — ±2 reflects inherent LLM scoring uncertainty.
+  const confLow = Math.max(1, overall - 2);
+  const confHigh = Math.min(10, overall + 2);
+  const overallStr = hasRubric
+    ? `| **Overall** | **${overall}/10** | Median of assessed dimensions | |`
+    : `| **Overall** | **${overall}/10** |`;
   rows.push(hasRubric
-    ? `| **Overall** | **${overall}** | Median of assessed dimensions | |`
-    : `| **Overall** | **${overall}** |`);
+    ? `| **Confidence** | **${confLow}–${confHigh}/10** | ±2 reflects LLM scoring uncertainty | |`
+    : `| **Confidence** | **${confLow}–${confHigh}/10** |`);
+  rows.push(overallStr);
   return rows.join("\n");
 }
 

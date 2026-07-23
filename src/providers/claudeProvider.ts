@@ -6,6 +6,8 @@ export type ClaudeConfig = {
   apiKey: string;
   model?: string;
   timeoutMs?: number;
+  // BUG-08: Allow custom endpoint for proxy/gateway setups.
+  baseUrl?: string;
 };
 
 const DEFAULT_TIMEOUT_MS = 60000;
@@ -20,6 +22,7 @@ export class ClaudeProvider implements LLMProvider {
       apiKey: config.apiKey,
       model: config.model ?? "claude-sonnet-5",
       timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      baseUrl: (config.baseUrl ?? "https://api.anthropic.com").replace(/\/$/, ""),
     };
   }
 
@@ -65,7 +68,7 @@ export class ClaudeProvider implements LLMProvider {
 
     for (let attempt = 0; attempt <= retryCfg.maxRetries; attempt++) {
       try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
+        const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -126,6 +129,32 @@ export class ClaudeProvider implements LLMProvider {
 
     clearTimeout(activeTimeoutId);
     throw lastError ?? new Error("Claude API request failed after all retries");
+  }
+
+  // W-10: Quick key validation — minimal message call with 5s timeout.
+  async validateKey(): Promise<boolean> {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5_000);
+      const res = await fetch(`${this.config.baseUrl ?? "https://api.anthropic.com"}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.config.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: this.config.model ?? "claude-sonnet-4-20250514",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      return res.ok || res.status === 400; // 400 = key valid, bad model still means auth OK
+    } catch {
+      return false;
+    }
   }
 }
 

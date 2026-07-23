@@ -11,12 +11,33 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
   const options = normalizeOptions(rawOptions);
   const ideaText = loadIdeaInput(ideaArg);
 
+  // F-10: Multi-language support — prepend language instruction to LLM prompt.
+  let langInstruction: string | undefined;
+  if (options.lang && typeof options.lang === "string" && options.lang !== "en") {
+    const { withLanguagePrompt } = await import("../../core/i18n.js");
+    langInstruction = withLanguagePrompt("", options.lang).trim();
+  }
+
+  // F-12: Apply template defaults (only if not already provided via flags).
+  let templateMarket = options.market as string | undefined;
+  let templateTargetUsers = options.targetUsers as string | undefined;
+  let templateStage = options.stage as string | undefined;
+  if (options.template) {
+    const { applyTemplate } = await import("../../core/templates.js");
+    const tmpl = applyTemplate(ideaText, options.template as string);
+    if (tmpl) {
+      if (!templateMarket) templateMarket = tmpl.market;
+      if (!templateTargetUsers) templateTargetUsers = tmpl.targetUsers?.join(", ");
+      if (!templateStage) templateStage = tmpl.stage;
+    }
+  }
+
   const idea = parseIdeaInput({
     idea: ideaText,
     mode: "quick",
-    stage: options.stage as string,
-    market: options.market as string,
-    targetUsers: options.targetUsers as string,
+    stage: templateStage,
+    market: templateMarket,
+    targetUsers: templateTargetUsers,
   });
 
   let providerRes = resolveProvider({
@@ -61,7 +82,10 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
 
   try {
     const enableSearch = !options.noSearch;
-    const report = await runImmuneEngine(idea, providerRes.provider, { enableSearch });
+    // F-04: Streaming output — show LLM tokens in real-time.
+    const onToken = options.stream ? (chunk: string) => process.stderr.write(chunk) : undefined;
+    const report = await runImmuneEngine(idea, providerRes.provider, { enableSearch, onToken, systemPromptExtra: langInstruction });
+    if (onToken) process.stderr.write("\n"); // newline after stream
     report.markdown = buildReport(report);
 
     // Save to history if --save flag
@@ -89,6 +113,14 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
       const htmlOutput = output?.replace(/\.md$/, ".html") ?? undefined;
       const r = safeWriteOutput(htmlOutput, html, "Report");
       if (!r.ok) { console.error(r.message); process.exit(2); }
+    } else if (format === "pdf") {
+      // F-08: PDF export — print-optimized HTML, open in browser → Ctrl+P → Save as PDF.
+      const { generatePrintableHtml } = await import("../../visualization/pdfExport.js");
+      const html = generatePrintableHtml(report);
+      const pdfOutput = output?.replace(/\.(md|html)$/i, ".print.html") ?? "report.print.html";
+      const r = safeWriteOutput(pdfOutput, html, "Report (printable HTML for PDF)");
+      if (!r.ok) { console.error(r.message); process.exit(2); }
+      console.error(`Printable HTML saved to ${pdfOutput}. Open in browser → Ctrl+P → "Save as PDF".`);
     } else {
       const r = safeWriteOutput(output, report.markdown, "Report");
       if (!r.ok) { console.error(r.message); process.exit(2); }

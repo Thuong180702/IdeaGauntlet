@@ -1,5 +1,5 @@
 import type { PageContent } from "./types.js";
-import { isSafeUrl } from "./ssrfGuard.js";
+import { isSafeUrlAsync } from "./ssrfGuard.js";
 import { warnIfError } from "../utils/warn.js";
 
 /**
@@ -14,7 +14,11 @@ import { warnIfError } from "../utils/warn.js";
  */
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_MAX_CHARS = 2_000;
+// Increased from 2,000 to 4,000 — richer text for LLM research context.
+const DEFAULT_MAX_CHARS = 4_000;
+// SEC-06: Cap response body to 5MB — enough for rich content pages,
+// while still preventing OOM from oversized/malicious responses.
+const MAX_RESPONSE_BYTES = 5_000_000;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
@@ -36,7 +40,7 @@ export async function fetchPageContent(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
 
-  if (!isSafeUrl(url)) return null;
+  if (!(await isSafeUrlAsync(url))) return null;
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -56,7 +60,28 @@ export async function fetchPageContent(
       return null;
     }
 
-    const html = await response.text();
+    // SEC-06: Read response body with size limit to prevent OOM
+    let responseHtml = "";
+    const reader = response.body?.getReader();
+    if (reader) {
+      const decoder = new TextDecoder();
+      let totalBytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          warnIfError(`pageFetcher: response exceeded ${MAX_RESPONSE_BYTES} bytes for ${url}`, undefined);
+          return null;
+        }
+        responseHtml += decoder.decode(value, { stream: true });
+      }
+      responseHtml += decoder.decode(); // flush
+    } else {
+      responseHtml = await response.text();
+    }
+    const html = responseHtml;
     clearTimeout(timer);
 
     const title = extractTitle(html);

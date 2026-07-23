@@ -44,12 +44,12 @@ describe("configIntegration", () => {
     expect(merged.apiKey).toBe("key123"); // config-only
   });
 
-  it("mergeConfig — false values don't override config", () => {
+  it("mergeConfig — explicit false overrides config (BUG-07 fix)", () => {
     const config = { enableSearch: true };
     const cli = { enableSearch: false };
 
     const merged = mergeConfig(config, cli);
-    // false values should NOT override — per mergeConfig implementation
-    expect(merged.enableSearch).toBe(true);
+    // BUG-07: explicit false from CLI should override config (was previously skipped).
+    expect(merged.enableSearch).toBe(false);
   });
 });

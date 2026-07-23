@@ -8,9 +8,11 @@ import { warnIfError } from "../utils/warn.js";
  * from the returned HTML. This is the default search provider.
  *
  * Rate limiting: built-in 500ms delay between requests.
+ * Timeout: 10s per request (SEC-07).
  */
 
 const DDG_HTML_URL = "https://html.duckduckgo.com/html/";
+const REQUEST_TIMEOUT_MS = 10_000;
 
 const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -42,13 +44,19 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       const params = new URLSearchParams({ q: query });
       const url = `${DDG_HTML_URL}?${params.toString()}`;
 
+      // SEC-07: Add timeout to prevent indefinite hang on unresponsive endpoints.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
           "User-Agent": userAgent,
           Accept: "text/html",
         },
+        signal: ctrl.signal,
       });
+      clearTimeout(timer);
 
       if (!response.ok) {
         throw new Error(`DuckDuckGo returned ${response.status}`);

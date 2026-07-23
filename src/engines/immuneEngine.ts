@@ -12,7 +12,7 @@ import { withProgress } from "../utils/progress.js";
 export async function runImmuneEngine(
   idea: IdeaInput,
   provider: LLMProvider,
-  options?: { enableSearch?: boolean; research?: ResearchBrief },
+  options?: { enableSearch?: boolean; research?: ResearchBrief; onToken?: (chunk: string) => void; systemPromptExtra?: string },
 ): Promise<GauntletReport> {
   if (!idea?.idea?.trim()) {
     throw new Error("A non-empty product idea is required for quick mode.");
@@ -46,9 +46,10 @@ export async function runImmuneEngine(
   let parsed: any = {};
   try {
     const response = await withProgress("Analyzing idea", () => provider.complete(userMessage, {
-      system: structuredSystem,
+      system: options?.systemPromptExtra ? `${structuredSystem}\n\n${options.systemPromptExtra}` : structuredSystem,
       temperature: 0.4,
-      maxTokens: 2048,
+      maxTokens: 4096,
+      onToken: options?.onToken,
     }));
     parsed = extractJSON(response) ?? {};
   } catch (err: any) {

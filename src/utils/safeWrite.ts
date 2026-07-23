@@ -1,5 +1,5 @@
 import { existsSync, writeFileSync, mkdirSync } from "node:fs";
-import { isAbsolute, resolve, sep } from "node:path";
+import { resolve, sep } from "node:path";
 
 export type SafeWriteResult =
   | { ok: true; path: string }
@@ -22,30 +22,24 @@ export function safeWriteOutput(
   }
 
   const resolved = resolve(process.cwd(), outputPath);
-  const parts = outputPath.split(/[\\/]/);
+  const cwd = process.cwd();
+  const isWindows = process.platform === "win32";
+  const resStr = isWindows ? resolved.toLowerCase() : resolved;
+  const cwdStr = isWindows ? cwd.toLowerCase() : cwd;
 
-  // Detect genuine path traversal: raw `..` segments that escape cwd
-  // These are almost always malicious (e.g. `../../../etc/passwd`)
-  // Allow absolute paths and sibling references that resolve normally.
-  if (parts.includes("..")) {
-    const cwd = process.cwd();
-    const isWindows = process.platform === "win32";
-    const resStr = isWindows ? resolved.toLowerCase() : resolved;
-    const cwdStr = isWindows ? cwd.toLowerCase() : cwd;
+  // SEC-03: Always check if resolved path is within CWD, regardless of path content.
+  // Previously only checked when path contained '..' segments, allowing absolute
+  // paths like /etc/cron.d/evil to bypass the traversal check entirely.
+  const isWithinCwd = resStr === cwdStr ||
+    resStr.startsWith(cwdStr) &&
+    (resStr[cwdStr.length] === sep || cwdStr.endsWith(sep));
 
-    // Check if resolved path is within CWD (matching either exact CWD or inside CWD subfolder)
-    const isWithinCwd = resStr.startsWith(cwdStr) && 
-      (resStr.length === cwdStr.length || 
-       resStr[cwdStr.length] === sep || 
-       cwdStr.endsWith(sep));
-
-    if (!isWithinCwd) {
-      return {
-        ok: false,
-        reason: "traversal",
-        message: `Path traversal detected: '${outputPath}'. Use an absolute path or a path within the working directory.`,
-      };
-    }
+  if (!isWithinCwd) {
+    return {
+      ok: false,
+      reason: "traversal",
+      message: `Path traversal detected: '${outputPath}'. Use a path within the working directory.`,
+    };
   }
 
   // Warn before overwriting
@@ -70,10 +64,24 @@ export function safeWriteReport(
   content: string,
   workspaceDir: string,
 ): SafeWriteResult {
+  // SEC-04: Validate report ID format to prevent path traversal via crafted IDs.
+  if (!/^[a-zA-Z0-9_-]+$/.test(reportId)) {
+    return {
+      ok: false,
+      reason: "traversal",
+      message: "Invalid report ID: must be alphanumeric with optional hyphens/underscores.",
+    };
+  }
+
   const baseDir = resolve(workspaceDir, ".idea-gauntlet", "reports");
   const filePath = resolve(baseDir, `${reportId}.md`);
 
-  if (!filePath.startsWith(baseDir)) {
+  // SEC-04: Case-insensitive comparison on Windows
+  const isWindows = process.platform === "win32";
+  const filePathNorm = isWindows ? filePath.toLowerCase() : filePath;
+  const baseDirNorm = isWindows ? baseDir.toLowerCase() : baseDir;
+
+  if (!filePathNorm.startsWith(baseDirNorm)) {
     return {
       ok: false,
       reason: "traversal",

@@ -6,6 +6,7 @@ import type {
   CourtTurn,
   Verdict,
   EnhancedCourtDebate,
+  Scorecard,
 } from "../core/types.js";
 import { courtWorkflow } from "../workflows/definitions/court.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
@@ -120,6 +121,10 @@ export async function runCourtEngine(
     }
   };
 
+  // W-09: Progress indicator for court mode (15+ LLM calls total).
+  const courtProgress = (msg: string) => console.log(`  [court] ${msg}...`);
+
+  courtProgress("Phase 1/4: Opening statements");
   const defenderRole = roles.find((r) => r.stance === "defender");
   const defenderOpening = defenderRole ? await runOpening(defenderRole) : null;
   const steelman =
@@ -140,6 +145,7 @@ export async function runCourtEngine(
     .filter((o): o is { roleId: string; roleName: string; argument: string } => Boolean(o));
 
   // ─── Phase 2: Cross-Examination (single call) ───────────────────
+  courtProgress("Phase 2/4: Cross-examination");
   let crossExam: { keyConflicts: any[]; openQuestions: string[] };
   try {
     const { system, user } = buildCrossExaminationPrompt(openings, idea);
@@ -163,6 +169,7 @@ export async function runCourtEngine(
   const rebuttalRoles = roles.filter(
     (r) => r.stance === "skeptic" || r.stance === "defender" || r.stance === "user",
   );
+  courtProgress(`Phase 3/4: Rebuttals (${rebuttalRoles.length} roles)`);
 
   const rebuttalTasks = rebuttalRoles.map((role) => async () => {
     try {
@@ -190,6 +197,7 @@ export async function runCourtEngine(
   const rebuttals = await withConcurrency(rebuttalTasks, COURT_CONCURRENCY);
 
   // ─── Phase 4: Final Verdict (single call) ────────────────────────
+  courtProgress("Phase 4/4: Verdict synthesis");
   let courtDebate: EnhancedCourtDebate;
   let reportVerdict: Verdict = "unclear";
   let brutalTakeaway: string | undefined;
@@ -275,12 +283,16 @@ export async function runCourtEngine(
 
   const verdictText = courtDebate.verdictDetail || "Court debate completed.";
 
+  // W-04: Build Scorecard from scoresDetailed for quantitative comparison.
+  const courtScores = buildCourtScorecard(courtDebate.scoresDetailed);
+
   const report: GauntletReport = {
     id,
     createdAt: now,
     mode: "court",
     input: idea,
     verdict: reportVerdict,
+    scores: courtScores,
     court: {
       transcript,
       verdict: verdictText,
@@ -309,7 +321,7 @@ For each role, provide:
 Return ONLY a JSON array of these roles. No markdown code blocks, no other text.`;
 
   try {
-    const response = await provider.complete(prompt, { temperature: 0.2 });
+    const response = await provider.complete(prompt, { temperature: 0.2, maxTokens: 1024 });
     const parsed = extractJSON<RoleDefinition[]>(response);
     if (Array.isArray(parsed)) {
       return parsed.filter(r => r && r.id && r.name && r.mandate && Array.isArray(r.mustAddress));
@@ -334,4 +346,38 @@ function mergeRoles(
   const customIds = new Set(custom.map((r) => r.id));
   const kept = defaults.filter((r) => !customIds.has(r.id));
   return [...kept, ...custom];
+}
+
+/**
+ * W-04: Build a Scorecard from courtDebate.scoresDetailed.
+ * Maps LLM-provided dimension names to Scorecard keys, clamps to 1-10.
+ * Returns undefined if no scores found.
+ */
+function buildCourtScorecard(
+  scoresDetailed: Array<{ dimension: string; score: number }>,
+): Scorecard | undefined {
+  if (!scoresDetailed || scoresDetailed.length === 0) return undefined;
+
+  const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
+  const map: Record<string, keyof Scorecard> = {
+    clarity: "clarity", pain: "pain", differentiation: "differentiation",
+    buildability: "buildability", distribution: "distribution",
+    monetization: "monetization", evidence: "evidence",
+  };
+
+  const scorecard: Scorecard = {
+    clarity: 5, pain: 5, differentiation: 5,
+    buildability: 5, distribution: 5, monetization: 5, evidence: 5,
+  };
+
+  let found = 0;
+  for (const s of scoresDetailed) {
+    const key = map[s.dimension?.toLowerCase()?.trim()];
+    if (key && typeof s.score === "number" && !isNaN(s.score)) {
+      scorecard[key] = clamp(s.score);
+      found++;
+    }
+  }
+
+  return found > 0 ? scorecard : undefined;
 }

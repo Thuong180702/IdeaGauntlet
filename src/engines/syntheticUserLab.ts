@@ -205,8 +205,13 @@ function deriveWtpScore(users: SyntheticPersona[]): number {
 function computeUsersVerdict(scores: Scorecard | undefined, users: SyntheticPersona[]): Verdict {
   if (!scores || users.length === 0) return "unclear";
 
-  const median = [scores.pain, scores.monetization, scores.differentiation, scores.distribution]
-    .sort((a, b) => a - b)[2]; // middle of 4
+  const values = [scores.pain, scores.monetization, scores.differentiation, scores.distribution]
+    .sort((a, b) => a - b);
+  // W-05: Dynamic midpoint instead of hardcoded [2].
+  const mid = Math.floor(values.length / 2);
+  const median = values.length % 2 === 0
+    ? Math.round((values[mid - 1] + values[mid]) / 2)
+    : values[mid];
 
   if (median >= 7 && scores.monetization >= 6) return "promising_but_risky";
   if (median >= 5) return "unclear";

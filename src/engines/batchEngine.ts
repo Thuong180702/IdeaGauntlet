@@ -41,10 +41,11 @@ export async function runBatchEngine(
   let done = 0;
 
   // Run each idea's engine and build its markdown report.
-  const runOne = async (idea: IdeaInput): Promise<{ idea: string; report?: GauntletReport; error?: string }> => {
+  // BUG-02: Track original index for stable sort instead of findIndex.
+  const runOne = async (idea: IdeaInput, originalIndex: number): Promise<{ idea: string; report?: GauntletReport; error?: string; originalIndex: number }> => {
     const ideaText = idea.idea?.trim();
     if (!ideaText) {
-      return { idea: idea.idea ?? "", error: "Empty idea — skipped" };
+      return { idea: idea.idea ?? "", error: "Empty idea — skipped", originalIndex };
     }
 
     try {
@@ -68,9 +69,9 @@ export async function runBatchEngine(
       }
       // Fix: build the markdown so callers always get a populated report.markdown.
       report.markdown = buildReport(report);
-      return { idea: idea.idea, report };
+      return { idea: idea.idea, report, originalIndex };
     } catch (err: any) {
-      return { idea: idea.idea, error: err.message };
+      return { idea: idea.idea, error: err.message, originalIndex };
     } finally {
       done++;
       if (options?.onProgress) {
@@ -80,13 +81,13 @@ export async function runBatchEngine(
   };
 
   // Concurrency limiter
-  const results: Array<{ idea: string; report?: GauntletReport; error?: string }> = [];
+  const results: Array<{ idea: string; report?: GauntletReport; error?: string; originalIndex: number }> = [];
   let index = 0;
 
   async function runNext(): Promise<void> {
     while (index < ideas.length) {
       const currentIndex = index++;
-      const result = await runOne(ideas[currentIndex]);
+      const result = await runOne(ideas[currentIndex], currentIndex);
       results.push(result);
     }
   }
@@ -95,15 +96,16 @@ export async function runBatchEngine(
   const workers = Array.from({ length: Math.min(concurrency, ideas.length) }, () => runNext());
   await Promise.all(workers);
 
-  // Preserve original order
-  results.sort((a, b) =>
-    ideas.findIndex((i) => i.idea === a.idea) - ideas.findIndex((i) => i.idea === b.idea),
-  );
+  // Preserve original order using tracked index (stable, O(n log n) not O(n²))
+  results.sort((a, b) => a.originalIndex - b.originalIndex);
+
+  // Strip originalIndex from results
+  const finalResults = results.map(({ idea, report, error }) => ({ idea, report, error }));
 
   return {
-    results,
+    results: finalResults,
     total,
-    succeeded: results.filter((r) => r.report).length,
-    failed: results.filter((r) => r.error).length,
+    succeeded: finalResults.filter((r) => r.report).length,
+    failed: finalResults.filter((r) => r.error).length,
   };
 }

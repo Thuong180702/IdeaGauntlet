@@ -683,7 +683,16 @@ function inlineMd(text: string): string {
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\[(.+?)\]\((.+?)\)/g, (_, label, url) => {
-      const cleanUrl = url.trim().toLowerCase().startsWith("javascript:") ? "#" : url;
-      return `<a href="${cleanUrl}" target="_blank">${label}</a>`;
+      // BUG-05: Allowlist http/https only instead of blocklist javascript:.
+      // Also blocks data:, vbscript:, and other dangerous schemes.
+      const trimmed = url.trim();
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return `${label}`;
+      } catch {
+        // Not a valid URL — render as text, not a link.
+        return `${label}`;
+      }
+      return `<a href="${trimmed}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     });
 }

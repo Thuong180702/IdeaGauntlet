@@ -374,4 +374,6 @@ export const DEFAULT_RETRY: Required<RetryConfig> = {
 export interface LLMProvider {
   kind: "openai" | "ollama" | "custom";
   complete(prompt: string, options?: CompletionOptions): Promise<string>;
+  // W-10: Optional early key validation — quick test call to fail before engine runs.
+  validateKey?(): Promise<boolean>;
 }

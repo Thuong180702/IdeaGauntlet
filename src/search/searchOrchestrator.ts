@@ -178,7 +178,8 @@ async function fetchPagesWithFallback(
   urls: string[],
   options?: { timeoutMs?: number; maxChars?: number; concurrency?: number },
 ): Promise<PageContent[]> {
-  const maxChars = options?.maxChars ?? 8_000;
+  // Increased from 8,000 to 15,000 for richer research context (~3,750 tokens/page).
+  const maxChars = options?.maxChars ?? 15_000;
   const timeoutMs = options?.timeoutMs ?? 15_000;
   const concurrency = options?.concurrency ?? 3;
 
@@ -245,12 +246,31 @@ async function fetchPagesWithFallback(
  * then fetches page contents with Playwright fallback,
  * runs competitor analysis and niche detection.
  */
+// W-03: Research-level cache — keyed by idea+mode, TTL 30 minutes.
+// Avoids redundant research when running multiple modes on same idea.
+const RESEARCH_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const _researchCache = new SearchCache(RESEARCH_CACHE_TTL_MS);
+
+function researchCacheKey(idea: string, mode: string): string {
+  // Simple hash — good enough for caching, not security.
+  let hash = 0;
+  for (let i = 0; i < idea.length; i++) {
+    hash = ((hash << 5) - hash + idea.charCodeAt(i)) | 0;
+  }
+  return `research:${mode}:${hash}`;
+}
+
 export async function performResearch(
   idea: IdeaInput,
   mode: GauntletMode,
   config?: Partial<SearchConfig>,
   provider?: WebSearchProvider,
 ): Promise<ResearchBrief> {
+  // W-03: Check research cache first.
+  const cacheKey = researchCacheKey(idea.idea, mode);
+  const cached = _researchCache.get<ResearchBrief>(cacheKey);
+  if (cached) return cached;
+
   const cfg = { ...DEFAULT_SEARCH_CONFIG, ...config };
   const searchProvider = provider ?? resolveSearchProvider(cfg);
   const queries = generateQueries(idea, mode).slice(0, cfg.maxQueries);
@@ -309,7 +329,7 @@ export async function performResearch(
 
   const pageContents = await fetchPagesWithFallback(urlsToFetch, {
     timeoutMs: 15_000,
-    maxChars: 8_000,
+    maxChars: 15_000,
     concurrency: 3,
   });
 
@@ -336,7 +356,7 @@ export async function performResearch(
     nicheOpportunities,
   );
 
-  return {
+  const brief: ResearchBrief = {
     queries,
     results: allResults,
     summary,
@@ -345,6 +365,11 @@ export async function performResearch(
     competitorLandscape,
     nicheOpportunities: nicheOpportunities.length > 0 ? nicheOpportunities : undefined,
   };
+
+  // W-03: Cache research for 30 minutes to avoid redundant work across modes.
+  _researchCache.set(cacheKey, brief);
+
+  return brief;
 }
 
 /**
@@ -425,16 +450,25 @@ function formatResearchBrief(
     });
   }
 
-  // Deep page content excerpts (increased to 2000 chars per page for richer context)
+  // Deep page content excerpts — W-01: Use constant instead of hardcoded 2000.
+  // W-08: Cap total brief size to ~32,000 chars to avoid exceeding small model context windows.
+  const DEEP_CONTENT_CHARS = 4_000;
+  const MAX_BRIEF_CHARS = 32_000;
   if (pageContents.length > 0) {
-    lines.push("=== DEEP PAGE CONTENT ===");
-    lines.push("Excerpts from competitor/relevant pages (up to 2000 chars each):");
+    lines.push(`=== DEEP PAGE CONTENT ===`);
+    lines.push(`Excerpts from competitor/relevant pages (up to ${DEEP_CONTENT_CHARS} chars each):`);
     lines.push("");
+    let briefSize = lines.join("\n").length;
     for (const page of pageContents.slice(0, 6)) {
+      if (briefSize > MAX_BRIEF_CHARS) {
+        lines.push("[... additional pages truncated to fit context limit]");
+        break;
+      }
       lines.push(`--- ${page.title} (${page.url}) ---`);
       if (page.description) lines.push(`Description: ${page.description}`);
-      lines.push(page.text.slice(0, 2000));
+      lines.push(page.text.slice(0, DEEP_CONTENT_CHARS));
       lines.push("");
+      briefSize = lines.join("\n").length;
     }
   }
 

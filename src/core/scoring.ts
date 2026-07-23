@@ -42,13 +42,21 @@ function evidenceScore(hasEvidence: boolean, strength?: "weak" | "medium" | "str
   }
 }
 
-export function medianScore(scores: Scorecard): number {
+export function medianScore(scores: Scorecard, unassessed?: (keyof Scorecard)[]): number {
+  const skip = new Set(unassessed ?? []);
   const values = [
-    scores.clarity, scores.pain, scores.differentiation,
-    scores.buildability, scores.distribution, scores.monetization,
-    scores.evidence,
-  ].sort((a, b) => a - b);
-  return values[3]; // middle of 7
+    "clarity", "pain", "differentiation",
+    "buildability", "distribution", "monetization",
+    "evidence",
+  ]
+    .filter((d) => !skip.has(d as keyof Scorecard))
+    .map((d) => scores[d as keyof Scorecard])
+    .sort((a, b) => a - b);
+  if (values.length === 0) return 0;
+  const mid = Math.floor(values.length / 2);
+  return values.length % 2 === 0
+    ? Math.round((values[mid - 1] + values[mid]) / 2)
+    : values[mid];
 }
 
 const ALL_DIMENSIONS: (keyof Scorecard)[] = [

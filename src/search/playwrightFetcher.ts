@@ -17,12 +17,13 @@
  */
 
 import type { PageContent } from "./types.js";
-import { isSafeUrl } from "./ssrfGuard.js";
+import { isSafeUrlAsync } from "./ssrfGuard.js";
 import { warnIfError, warn } from "../utils/warn.js";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const HYDRATION_WAIT_MS = 2_000;
-const DEFAULT_MAX_CHARS = 8_000;
+// Increased from 8,000 to 15,000 — richer research context for LLM.
+const DEFAULT_MAX_CHARS = 15_000;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
@@ -62,6 +63,11 @@ export async function closeSingletonBrowser(): Promise<void> {
     _singletonBrowser = null;
   }
 }
+
+// W-06: Auto-cleanup singleton browser on process exit.
+ process.on("beforeExit", () => {
+   void closeSingletonBrowser();
+ });
 
 // Tokens to check in text for liveness
 const MIN_TEXT_LENGTH = 50;
@@ -143,7 +149,7 @@ export async function fetchPagePlaywright(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
 
-  if (!isSafeUrl(url)) return null;
+  if (!(await isSafeUrlAsync(url))) return null;
 
   let context: import("playwright").BrowserContext | null = null;
   let page: import("playwright").Page | null = null;
@@ -192,15 +198,16 @@ export async function fetchPagesPlaywright(
   const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  // Filter unsafe URLs upfront
-  const safeUrls = urls.filter(isSafeUrl);
+  // Filter unsafe URLs upfront with DNS resolution
+  const safeUrlCheckResults = await Promise.all(urls.map(async (url) => ({ url, safe: await isSafeUrlAsync(url) })));
+  const safeUrls = safeUrlCheckResults.filter(r => r.safe).map(r => r.url);
   if (safeUrls.length === 0) return [];
 
   // Launch a single shared browser for this batch.
-  let browser: import("playwright").Browser | null = null;
+  // BUG-06: Reuse singleton browser instead of launching a new one.
+  let browser: import("playwright").Browser;
   try {
-    const chromium = await getChromium();
-    browser = await chromium.launch({ headless: true });
+    browser = await getSingletonBrowser();
   } catch (err: any) {
     warnIfError("playwright: failed to launch browser for batch", err);
     return [];
@@ -245,8 +252,8 @@ export async function fetchPagesPlaywright(
   const workers = Array.from({ length: Math.min(concurrency, safeUrls.length) }, () => runNext());
   await Promise.all(workers);
 
-  // Close the batch browser (separate from singleton)
-  await browser.close().catch((err: any) => warnIfError("playwright: batch browser close", err));
+  // BUG-06: Don't close the browser — it's the singleton shared across calls.
+  // It will be cleaned up by closeSingletonBrowser() at process exit.
 
   return results;
 }
@@ -258,7 +265,7 @@ export async function fetchPagesPlaywright(
  * Returns true if URL responds with 2xx/3xx.
  */
 export async function checkLiveness(url: string, timeoutMs = 5_000): Promise<boolean> {
-  if (!isSafeUrl(url)) return false;
+  if (!(await isSafeUrlAsync(url))) return false;
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);

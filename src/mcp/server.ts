@@ -124,8 +124,32 @@ function handleMessage(line: string): void {
 
 export function startMcpServer(): void {
   let buffer = "";
+  // SEC-08: Limit message size to prevent OOM via oversized JSON-RPC messages.
+  // 10MB allows large LLM-generated payloads (full idea analysis, research context).
+  const MAX_MESSAGE_BYTES = 10_000_000; // 10MB
+  // SEC-08: Rate limiting — track request timestamps.
+  // 300 messages per 10s allows burst-heavy MCP workflows.
+  const RATE_WINDOW_MS = 10_000; // 10 seconds
+  const RATE_MAX_MESSAGES = 300; // max 300 messages per 10s
+  let requestTimes: number[] = [];
+
+  function isRateLimited(): boolean {
+    const now = Date.now();
+    requestTimes = requestTimes.filter((t) => now - t < RATE_WINDOW_MS);
+    if (requestTimes.length >= RATE_MAX_MESSAGES) {
+      return true;
+    }
+    requestTimes.push(now);
+    return false;
+  }
 
   process.stdin.on("data", (chunk: Buffer) => {
+    // SEC-08: Reject chunks that would overflow the buffer beyond 1MB.
+    if (buffer.length + chunk.length > MAX_MESSAGE_BYTES) {
+      console.error("MCP server: message too large, discarding buffer");
+      buffer = "";
+      return;
+    }
     buffer += chunk.toString("utf-8");
 
     const lines = buffer.split("\n");
@@ -133,6 +157,10 @@ export function startMcpServer(): void {
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
+      if (isRateLimited()) {
+        console.error("MCP server: rate limit exceeded, dropping message");
+        continue;
+      }
       handleMessage(line);
     }
   });

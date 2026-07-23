@@ -14,11 +14,37 @@ export async function historyCommand(
   options: Record<string, unknown>,
 ): Promise<void> {
   const evolveId = options.evolve as string | undefined;
+  const diffMode = !!options.diff;
 
   // --evolve mode: compare two reports
   if (evolveId && id) {
     const delta = compareReports(evolveId, id);
     printScoreDelta(delta);
+    return;
+  }
+
+  // F-06: --diff mode — auto-find oldest report with same idea text.
+  if (diffMode && id) {
+    const currentReport = loadReport(id);
+    if (!currentReport) {
+      console.error(`Report not found: ${id}`);
+      process.exit(2);
+    }
+    const allReports = listReports();
+    const sameIdea = allReports
+      .filter((e) => e.idea === currentReport.input?.idea?.slice(0, 80) && e.id !== id)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (sameIdea.length === 0) {
+      console.log("No previous reports found for this idea. Run the same idea again with --save to track evolution.");
+      return;
+    }
+    const oldest = sameIdea[0];
+    console.log(`Found oldest report: ${oldest.id} (${oldest.createdAt})\n`);
+    const delta = compareReports(oldest.id, id);
+    printScoreDelta(delta);
+    if (oldest.verdict !== currentReport.verdict) {
+      console.log(`\n  Verdict: ${oldest.verdict} → ${currentReport.verdict}`);
+    }
     return;
   }
 

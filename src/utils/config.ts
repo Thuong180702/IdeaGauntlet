@@ -60,7 +60,8 @@ export function mergeConfig(
   const result: Record<string, unknown> = { ...config };
 
   for (const [key, value] of Object.entries(cliOptions)) {
-    if (value !== undefined && value !== false) {
+    // BUG-07: Only skip undefined — allow explicit false to override config.
+    if (value !== undefined) {
       result[key] = value;
     }
   }
