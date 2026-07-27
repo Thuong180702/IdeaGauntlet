@@ -25,20 +25,41 @@ interface ServeOptions {
   apiKey?: string;
   baseUrl?: string;
   model?: string;
+  /** SEC-1: Bearer token required for engine endpoints. Set via --api-token. */
+  apiToken?: string;
+  /** SEC-1: Explicit CORS origin (default: same-origin). Use "*" for dev only. */
+  corsOrigin?: string;
+  /** SEC-1: Bind host. Default 127.0.0.1 (localhost only). Use 0.0.0.0 for LAN. */
+  host?: string;
 }
 
 export async function serveCommand(options: ServeOptions): Promise<void> {
   const port = parseInt(options.port ?? "3000", 10);
 
   const server = createServer(async (req, res) => {
-    // CORS
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    // SEC-1: CORS — restricted to explicit origin or same-origin.
+    const origin = options.corsOrigin ?? "";
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
       return;
+    }
+
+    // SEC-1: Auth check — Bearer token required for engine endpoints when apiToken set.
+    const requireAuth = !!options.apiToken;
+    const isPublicEndpoint = req.url === "/health" || req.url === "/api/templates";
+    if (requireAuth && !isPublicEndpoint) {
+      const auth = req.headers["authorization"] ?? "";
+      if (auth !== `Bearer ${options.apiToken}`) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized — provide Authorization: Bearer <token>" }));
+        return;
+      }
     }
 
     try {
@@ -131,8 +152,12 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     }
   });
 
-  server.listen(port, () => {
-    console.log(`IdeaGauntlet API server running on http://localhost:${port}`);
+  const host = options.host ?? "127.0.0.1";
+  if (!options.apiToken) {
+    console.warn("⚠ SEC-1: No --api-token set. Engine endpoints are unauthenticated.");
+  }
+  server.listen(port, host, () => {
+    console.log(`IdeaGauntlet API server running on http://${host}:${port}`);
     console.log(`Endpoints: /api/quick, /api/court, /api/users, /api/mvp, /api/compare, /api/history, /api/templates, /health`);
   });
 }

@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, ComparedIdea, Verdict, EnhancedComparisonResult } from "../core/types.js";
+import type { LLMProvider, IdeaInput, GauntletReport, ComparisonResult, ComparedIdea, Verdict, EnhancedComparisonResult, Scorecard } from "../core/types.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { compareWorkflow } from "../workflows/definitions/compare.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
+import { wrapIdea, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
+import { computeVerdict } from "../core/verdictMapping.js";
 
 export async function runCompareEngine(
   ideas: IdeaInput[],
@@ -22,6 +24,7 @@ export async function runCompareEngine(
   // Web research — run for ALL ideas in parallel and merge the summaries.
   // Previously only researched ideas[0], missing context for subsequent ideas.
   let research: ResearchBrief | undefined;
+  const warnings: string[] = [];
   if (options?.enableSearch !== false) {
     try {
       if (options?.research) {
@@ -68,15 +71,16 @@ export async function runCompareEngine(
       }
     } catch (err: any) {
       warnIfError("compareEngine: parallel research failed", err);
+      warnings.push("Web research failed — comparison based on LLM knowledge only.");
     }
   }
 
   const systemPrompt = formatForCliPrompt(compareWorkflow, "compare");
   const researchContext = research?.summary ?? "";
-  const structuredSystem = `You are the Comparison Analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+  const structuredSystem = `You are the Comparison Analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\n${IDEA_INJECTION_SYSTEM}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
   const ideasText = ideas.map((idea, i) =>
-    `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\nDescription: ${idea.idea}`
+    `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\n${wrapIdea(idea.idea)}`
   ).join("\n\n");
 
   const userMessage = `${ideasText}\n\nCompare these ideas. Return JSON with: comparisonMatrix (array of {ideaTitle, criteria: {clarity, pain, urgency, marketAccessibility, distribution, monetization, differentiation, buildComplexity, timeToValidate, evidence, competitiveAdvantage, nichePotential}}), perIdeaStrengths (array of {ideaTitle, strengths}), perIdeaRisks (array of {ideaTitle, risks}), bestForFastValidation ({ideaTitle, reasoning}), bestForLongTermUpside ({ideaTitle, reasoning}), killTestsPerIdea (array of {ideaTitle, killTests}), competitorLandscapePerIdea (array of {ideaTitle, landscape: {competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}}) — name real competitors for each idea, nicheOpportunitiesPerIdea (array of {ideaTitle, niches: [{type, description, evidence, wedgeIdea, whyNow}]}) — 3-5 niches per idea if market saturated, recommendation ({pick, caveats, reasoning})`;
@@ -103,8 +107,16 @@ export async function runCompareEngine(
         const avg = numericValues.length > 0
           ? Math.round(numericValues.reduce((a, b) => a + b, 0) / numericValues.length)
           : 5;
-        // Determine per-idea verdict from aggregate score
-        const ideaVerdict = computeIdeaVerdict(avg, evidence);
+        const ideaScores: Scorecard = {
+          clarity: scores.clarity ?? 5,
+          pain: scores.pain ?? scores.urgency ?? 5,
+          differentiation: scores.differentiation ?? scores.competitiveAdvantage ?? 5,
+          buildability: scores.buildability ?? scores.buildComplexity ?? 5,
+          distribution: scores.distribution ?? 5,
+          monetization: scores.monetization ?? 5,
+          evidence: evidence,
+        };
+        const ideaVerdict = computeVerdict({ scores: ideaScores, evidenceScoreOverride: evidence });
         results.push({
           title: row.ideaTitle ?? "Unknown",
           verdict: ideaVerdict,
@@ -132,6 +144,7 @@ export async function runCompareEngine(
   } catch (err: any) {
     // Minimal fallback
     warnIfError("compareEngine: LLM response failed", err);
+    warnings.push("LLM response failed — report contains default comparison values.");
     for (const idea of ideas) {
       results.push({
         title: idea.title ?? idea.idea.slice(0, 40),
@@ -161,18 +174,9 @@ export async function runCompareEngine(
     enhancedComparison,
     nextActions: [`Validate "${comparison.recommendedPick}" first`],
     webResearch: research,
+    partial: warnings.length > 0 || undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
     markdown: "",
   };
   return report;
-}
-
-/**
- * Compute a meaningful Verdict for a single idea from its aggregate score and evidence score.
- */
-function computeIdeaVerdict(score: number, evidenceScore: number): Verdict {
-  if (score >= 8 && evidenceScore >= 5) return "strong";
-  if (score >= 7) return "promising_but_risky";
-  if (score >= 5) return "unclear";
-  if (evidenceScore <= 2 && score < 5) return "needs_real_evidence";
-  return "weak";
 }

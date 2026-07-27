@@ -10,13 +10,23 @@ export interface ScoreReasons {
   evidence?: string;
 }
 
+/**
+ * P1-5: Calculate scores with optional LLM evidence override.
+ * pon ytail: If the LLM provides its own evidence score (1-10), trust it over
+ * the heuristic — the model has context the heuristic can't see.
+ */
 export function calculateScores(params: {
   hasEvidence: boolean;
   evidenceStrength?: "weak" | "medium" | "strong";
   overrides?: Partial<Scorecard>;
   reasons?: Partial<ScoreReasons>;
+  /** P1-5: LLM-provided evidence score (1-10). Preferred over heuristic. */
+  llmEvidenceOverride?: number;
 }): { scores: Scorecard; reasons: Partial<ScoreReasons> } {
-  const { hasEvidence, evidenceStrength, overrides, reasons } = params;
+  const { hasEvidence, evidenceStrength, overrides, reasons, llmEvidenceOverride } = params;
+  const evidenceVal = (typeof llmEvidenceOverride === "number" && llmEvidenceOverride >= 1 && llmEvidenceOverride <= 10)
+    ? Math.round(llmEvidenceOverride)
+    : evidenceScore(hasEvidence, evidenceStrength);
   const defaults = {
     clarity: 6,
     pain: 5,
@@ -24,7 +34,7 @@ export function calculateScores(params: {
     buildability: 6,
     distribution: 3,
     monetization: 3,
-    evidence: evidenceScore(hasEvidence, evidenceStrength),
+    evidence: evidenceVal,
   };
   return { 
     scores: { ...defaults, ...overrides },
@@ -32,6 +42,15 @@ export function calculateScores(params: {
   };
 }
 
+/**
+ * ponytail: Heuristic evidence score — fallback when LLM doesn't provide one.
+ * Thresholds calibrated against typical research brief depth:
+ * - no evidence → 1 (idea is ungrounded)
+ * - weak → 3 (few results, some signal)
+ * - medium → 5 (decent results + some pages fetched)
+ * - strong → 8 (many results + competitors + pages)
+ * Upgrade: replace with ML model or learned weights when data available.
+ */
 function evidenceScore(hasEvidence: boolean, strength?: "weak" | "medium" | "strong"): number {
   if (!hasEvidence) return 1;
   switch (strength) {

@@ -72,19 +72,19 @@ export function detectNiches(
     }
   };
 
-  // All text combined for scanning
+  // P3-11: Precompute combined text once — avoids 8x join+lowercase.
   const allSnippets = searchResults.map((r) => `${r.title} ${r.snippet ?? ""}`);
   const allPageText = pageContents?.map((p) => p.text.slice(0, 1000)) ?? [];
   const combinedText = [...allSnippets, ...allPageText].join(" ").toLowerCase();
 
-  addUnique(findComplaintGaps(searchResults, pageContents));
-  addUnique(findUnderservedSegments(landscape, searchResults, pageContents));
+  addUnique(findComplaintGaps(searchResults, pageContents, combinedText));
+  addUnique(findUnderservedSegments(landscape, searchResults, pageContents, combinedText));
   addUnique(findPricingGaps(landscape));
-  addUnique(findUseCaseGaps(searchResults, pageContents));
-  addUnique(findGeographicGaps(searchResults, pageContents));
-  addUnique(findIntegrationGaps(landscape, searchResults, pageContents));
-  addUnique(findWorkflowGaps(landscape, searchResults, pageContents));
-  addUnique(findIndustryVerticalGaps(landscape, searchResults, pageContents));
+  addUnique(findUseCaseGaps(searchResults, pageContents, combinedText));
+  addUnique(findGeographicGaps(searchResults, pageContents, combinedText));
+  addUnique(findIntegrationGaps(landscape, searchResults, pageContents, combinedText));
+  addUnique(findWorkflowGaps(landscape, searchResults, pageContents, combinedText));
+  addUnique(findIndustryVerticalGaps(landscape, searchResults, pageContents, combinedText));
 
   return niches.slice(0, 12);
 }
@@ -94,6 +94,7 @@ export function detectNiches(
 function findComplaintGaps(
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  _cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
   const complaints: string[] = [];
@@ -147,11 +148,13 @@ function findUnderservedSegments(
   landscape: CompetitorLandscape,
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
   const mentionedSegments = new Set<string>();
 
-  const allText = [
+  // P3-11: Use cached text instead of rebuilding.
+  const allText = cachedText ?? [
     ...landscape.competitors.map((c) => `${c.name} ${c.notes ?? ""} ${(c.features ?? []).join(" ")}`),
     ...searchResults.map((r) => r.snippet ?? ""),
     ...(pageContents?.map((p) => p.text.slice(0, 500)) ?? []),
@@ -234,11 +237,13 @@ function findPricingGaps(
 function findUseCaseGaps(
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
   const useCaseHints: string[] = [];
 
-  const allText = [
+  // P3-11: Use cached text instead of rebuilding.
+  const allText = cachedText ?? [
     ...searchResults.map((r) => `${r.title} ${r.snippet}`),
     ...(pageContents?.map((p) => p.text.slice(0, 500)) ?? []),
   ].join(" ").toLowerCase();
@@ -278,10 +283,12 @@ function findUseCaseGaps(
 function findGeographicGaps(
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
 
-  const allText = [
+  // P3-11: Use cached text instead of rebuilding.
+  const allText = cachedText ?? [
     ...searchResults.map((r) => `${r.title} ${r.snippet}`),
     ...(pageContents?.map((p) => p.text.slice(0, 500)) ?? []),
   ].join(" ").toLowerCase();
@@ -315,11 +322,13 @@ function findIntegrationGaps(
   landscape: CompetitorLandscape,
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
   const integrationComplaints: string[] = [];
 
-  const allText = [
+  // P3-11: Use cached text instead of rebuilding.
+  const allText = cachedText ?? [
     ...searchResults.map((r) => `${r.title} ${r.snippet ?? ""}`),
     ...(pageContents?.map((p) => p.text.slice(0, 1000)) ?? []),
   ].join(" ").toLowerCase();
@@ -374,11 +383,13 @@ function findWorkflowGaps(
   landscape: CompetitorLandscape,
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
   const workflowComplaints: string[] = [];
 
-  const allText = [
+  // P3-11: Use cached text instead of rebuilding.
+  const allText = cachedText ?? [
     ...searchResults.map((r) => `${r.title} ${r.snippet ?? ""}`),
     ...(pageContents?.map((p) => p.text.slice(0, 1000)) ?? []),
   ].join(" ").toLowerCase();
@@ -410,10 +421,12 @@ function findIndustryVerticalGaps(
   landscape: CompetitorLandscape,
   searchResults: SearchResult[],
   pageContents?: PageContent[],
+  cachedText?: string,
 ): NicheOpportunity[] {
   const niches: NicheOpportunity[] = [];
 
-  const allText = [
+  // P3-11: Use cached text (already includes competitor+search+pages).
+  const allText = cachedText ?? [
     ...landscape.competitors.map((c) => `${c.name} ${c.notes ?? ""} ${(c.features ?? []).join(" ")}`),
     ...searchResults.map((r) => `${r.title} ${r.snippet ?? ""}`),
     ...(pageContents?.map((p) => p.text.slice(0, 500)) ?? []),

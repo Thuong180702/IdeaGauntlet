@@ -7,6 +7,7 @@ import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
 import { withProgress } from "../utils/progress.js";
+import { buildSafeUserMessage, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
 
 const DEFAULT_PLAN: MVPPlan = {
   goal: "Test the riskiest assumption",
@@ -30,19 +31,23 @@ export async function runMvpPlanner(
 
   // Web research — always-on unless explicitly disabled
   let research: ResearchBrief | undefined;
+  const warnings: string[] = [];
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await withProgress("Researching market", () => performResearch(idea, "mvp"));
     } catch (err: any) {
       warnIfError("mvpPlanner: web research failed", err);
+      warnings.push("Web research failed — MVP plan based on LLM knowledge only.");
     }
   }
 
   const systemPrompt = formatForCliPrompt(mvpWorkflow, "mvp");
   const researchContext = research?.summary ?? "";
-  const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+  const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\n${IDEA_INJECTION_SYSTEM}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  const userMessage = `Product idea: ${idea.idea}\n\nReturn JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string), timeline (string — realistic days/weeks to first validation, e.g. "7 days" or "3 weeks"), competitiveWedge (string — based on competitor analysis from research brief, cite competitors by name), nicheStrategy ({niche, whyUnderserved, howToReach} — identify a specific underserved niche to target first)`;
+  const userMessage = buildSafeUserMessage(idea.idea, [
+    `Return JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string), timeline (string — realistic days/weeks to first validation, e.g. "7 days" or "3 weeks"), competitiveWedge (string — based on competitor analysis from research brief, cite competitors by name), nicheStrategy ({niche, whyUnderserved, howToReach} — identify a specific underserved niche to target first)`,
+  ]);
 
   let plan: MVPPlan = { ...DEFAULT_PLAN };
   let enhancedMvpPlan: EnhancedMVPPlan | undefined;
@@ -105,6 +110,7 @@ export async function runMvpPlanner(
   } catch (err: any) {
     // Use defaults — verdict stays "needs_real_evidence"
     warnIfError("mvpPlanner: LLM response failed", err);
+    warnings.push("LLM response failed — report contains default MVP plan.");
   }
 
   const report: GauntletReport = {
@@ -114,6 +120,8 @@ export async function runMvpPlanner(
     enhancedMvpPlan,
     nextActions: plan.scope,
     webResearch: research,
+    partial: warnings.length > 0 || undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
     markdown: "",
   };
   return report;

@@ -75,15 +75,18 @@ Use the current single-package structure:
 
 ```txt
 src/
-  agents/       prompt builders and role definitions
-  cli/          cac CLI commands
-  core/         shared types, report builder, scoring, dispatch
-  engines/      mode orchestration
+  cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall)
+  core/         shared types, report builder, scoring, dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
+  engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases)
   integrations/ Claude/Cursor/Codex/GitHub generators
+  history/      report history store + score delta tracking
   mcp/          MCP server, tools, resources
-  providers/    production providers
-  prompts/      reusable prompt templates
-  utils/        input parsing, env, safe writes
+  providers/    production providers (openaiCompatible, claude, ollama) + providerUtils
+  search/       web research pipeline (searchOrchestrator, SSRF guard, providers, nicheDetector, competitorAnalyzer, pageFetcher, playwrightFetcher)
+  setup/        onboarding + init wizard
+  utils/        promptGuard, jsonRepair, warn, progress, env, safeOutput
+  visualization/ htmlReport, pdfExport, radarChart, mermaidDiagram, reportCard
+  workflows/    workflow definitions (quick, court, users, mvp, compare) + formatters
 ```
 
 ## Provider model

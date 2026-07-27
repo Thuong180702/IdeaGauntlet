@@ -8,6 +8,8 @@ import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
 import { withProgress } from "../utils/progress.js";
+import { buildSafeUserMessage, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
+import { computeVerdict } from "../core/verdictMapping.js";
 
 export async function runImmuneEngine(
   idea: IdeaInput,
@@ -23,25 +25,26 @@ export async function runImmuneEngine(
 
   // Web research — always-on unless explicitly disabled
   let research: ResearchBrief | undefined;
+  const warnings: string[] = [];
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await withProgress("Researching market", () => performResearch(idea, "quick"));
     } catch (err: any) {
       warnIfError("immuneEngine: web research failed", err);
+      warnings.push("Web research failed — analysis based on LLM knowledge only.");
     }
   }
 
   const systemPrompt = formatForCliPrompt(quickWorkflow, "quick");
   const researchContext = research?.summary ?? "";
-  const structuredSystem = `You are the Quick Critique analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
+  const structuredSystem = `You are the Quick Critique analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\n${IDEA_INJECTION_SYSTEM}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  const userMessage = [
-    `Product idea: ${idea.idea}`,
+  const userMessage = buildSafeUserMessage(idea.idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
     "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), scoreRubric ({clarity:{evidence, sensitivity}, pain:{...}, differentiation:{...}, buildability:{...}, distribution:{...}, monetization:{...}, evidence:{...}}) — for EACH dimension: `evidence` = one concrete sentence grounding the score in the idea/competitors/research (not generic), `sensitivity` = one sentence stating what would raise it ~2 points and what would drop it ~2 points, brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea), nextStep",
-  ].filter(Boolean).join("\n");
+  ]);
 
   let parsed: any = {};
   try {
@@ -51,10 +54,15 @@ export async function runImmuneEngine(
       maxTokens: 4096,
       onToken: options?.onToken,
     }));
-    parsed = extractJSON(response) ?? {};
+    const extracted = extractJSON(response);
+    parsed = extracted ?? {};
+    if (!extracted) {
+      warnings.push("LLM returned malformed JSON — falling back to default scores.");
+    }
   } catch (err: any) {
     warnIfError("immuneEngine: LLM response failed", err);
     parsed = {};
+    warnings.push("LLM response failed — report contains default/empty values.");
   }
 
   const risks: Risk[] = (parsed.topRisks ?? parsed.risks ?? []).map((r: any) => ({
@@ -87,9 +95,14 @@ export async function runImmuneEngine(
     hasEvidence,
     evidenceStrength,
     overrides: scoreOverrides,
+    llmEvidenceOverride: typeof parsed.scores?.evidence === "number" ? parsed.scores.evidence : undefined,
   });
   const scoreRubric = sanitizeRubric(parsed.scoreRubric);
-  const verdict = determineVerdict(scores);
+  const verdict = computeVerdict({
+    scores,
+    evidenceScoreOverride: typeof parsed.scores?.evidence === "number" ? parsed.scores.evidence : undefined,
+    llmVerdictText: parsed.oneLineVerdict,
+  });
 
   const quickReport: EnhancedQuickReport = {
     oneLineVerdict: parsed.oneLineVerdict ?? "",
@@ -122,6 +135,8 @@ export async function runImmuneEngine(
     quickReport,
     nextActions: parsed.nextStep ? [parsed.nextStep] : [],
     webResearch: research,
+    partial: warnings.length > 0 || undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
     markdown: "",
   };
 }
@@ -164,14 +179,4 @@ function sanitizeRubric(raw: any): Partial<Record<keyof Scorecard, ScoreRubricEn
     }
   }
   return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function determineVerdict(scores: Scorecard): Verdict {
-  const median = medianScore(scores);
-  if (median >= 8 && scores.evidence >= 5) return "strong";
-  if (median >= 6) return "promising_but_risky";
-  if (median >= 4) return "unclear";
-  if (scores.evidence <= 1 && scores.clarity <= 3) return "pivot_recommended" as Verdict;
-  if (scores.evidence <= 2 && median < 5) return "needs_real_evidence" as Verdict;
-  return "weak";
 }

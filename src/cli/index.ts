@@ -206,6 +206,21 @@ cli.command("team <action> [idea]", "Team collaboration: submit, vote, comment, 
     import("./commands/team.js").then(({ teamCommand }) => teamCommand(action, idea, options));
   });
 
+// F-05/P3-12: Ensemble — multi-model analysis
+providerOptions(
+  cli.command("ensemble <idea>", "Run idea through multiple LLM models and show consensus + disagreement")
+    .option("--models <m1,m2>", "Comma-separated model names (at least 2)")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/ensemble.js").then(({ ensembleCommand }) =>
+    ensembleCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
 // Set quiet mode before parsing commands
 const parsed = cli.parse();
 if (parsed.options?.quiet) {

@@ -1,5 +1,6 @@
 import type { IdeaInput, GauntletMode } from "../core/types.js";
 import type { ResearchBrief } from "../search/types.js";
+import { IDEA_INJECTION_SYSTEM, wrapIdea } from "../utils/promptGuard.js";
 
 /**
  * Court 2.0 — Multi-turn debate prompt builders.
@@ -130,10 +131,12 @@ export function buildOpeningPrompt(
     `Use the web research below to ground your arguments with evidence.`,
     ``,
     research?.summary ?? "No web research available. Use your knowledge.",
+    "",
+    IDEA_INJECTION_SYSTEM,
   ].join("\n");
 
   const user = [
-    `Product idea: ${idea.idea}`,
+    wrapIdea(idea.idea),
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
@@ -162,6 +165,8 @@ export function buildCrossExaminationPrompt(
     `Press on the weakest arguments and highlight the strongest.`,
     `Return JSON: { "keyConflicts": [{ "roles": ["role1", "role2"], "conflict": "description", "significance": "high|medium|low" }], "openQuestions": ["question1", "question2"] }`,
     `No markdown fences. JSON only.`,
+    "",
+    IDEA_INJECTION_SYSTEM,
   ].join("\n");
 
   const openingsText = openings
@@ -169,7 +174,7 @@ export function buildCrossExaminationPrompt(
     .join("\n\n");
 
   const user = [
-    `Product idea: ${idea.idea}`,
+    wrapIdea(idea.idea),
     ``,
     `=== OPENING STATEMENTS ===`,
     openingsText,
@@ -200,6 +205,8 @@ export function buildRebuttalPrompt(
     `This is the REBUTTAL phase. Respond to the other roles' opening statements and the judge's cross-examination.`,
     `Address the key conflicts that involve your area. Be specific and cite evidence where possible.`,
     `Keep your rebuttal to 150-250 words.`,
+    "",
+    IDEA_INJECTION_SYSTEM,
   ].join("\n");
 
   const user = [
@@ -246,6 +253,8 @@ export function buildVerdictPrompt(
     `No markdown fences. JSON only.`,
     ``,
     research?.summary ?? "",
+    ``,
+    IDEA_INJECTION_SYSTEM,
   ].join("\n");
 
   const openingsText = openings
@@ -261,7 +270,7 @@ export function buildVerdictPrompt(
     .join("\n");
 
   const user = [
-    `Product idea: ${idea.idea}`,
+    wrapIdea(idea.idea),
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",

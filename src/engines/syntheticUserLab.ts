@@ -13,6 +13,8 @@ import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
+import { buildSafeUserMessage, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
+import { computeVerdict } from "../core/verdictMapping.js";
 
 export async function runUserLab(
   idea: IdeaInput,
@@ -31,11 +33,13 @@ export async function runUserLab(
 
   // Web research — always-on unless explicitly disabled
   let research: ResearchBrief | undefined;
+  const warnings: string[] = [];
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await performResearch(idea, "users");
     } catch (err: any) {
       warnIfError("syntheticUserLab: web research failed", err);
+      warnings.push("Web research failed — personas based on LLM knowledge only.");
     }
   }
 
@@ -75,9 +79,14 @@ Also return a synthesis object with:
 - differentiationScore (number 1-10 — how differentiated the product is vs workarounds)
 
 Return a JSON object with keys: "users" (array), "synthesis" (object). Only valid JSON.
-IMPORTANT: These are fictional archetypes for hypothesis generation.`;
+IMPORTANT: These are fictional archetypes for hypothesis generation.
+${IDEA_INJECTION_SYSTEM}`;
 
-  const userMessage = `Product idea: ${idea.idea}${idea.targetUsers ? `\nTarget users: ${idea.targetUsers.join(", ")}` : ""}\n\nGenerate ${safeCount} fictional user archetypes with synthesis as JSON.`;
+  const userMessage = buildSafeUserMessage(idea.idea, [
+    idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
+    ``,
+    `Generate ${safeCount} fictional user archetypes with synthesis as JSON.`,
+  ]);
 
   let users: SyntheticPersona[] = [];
   let enhancedUsers: EnhancedPersona[] = [];
@@ -158,6 +167,7 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
     warnIfError("syntheticUserLab: LLM response failed", err);
     users = [];
     enhancedUsers = [];
+    warnings.push("LLM response failed — report contains empty personas.");
   }
 
   // Compute a meaningful verdict from the scorecard (not always "unclear").
@@ -178,6 +188,8 @@ IMPORTANT: These are fictional archetypes for hypothesis generation.`;
       (u) => `Interview a real user like "${u.name}": ${u.interviewQuestion}`,
     ),
     webResearch: research,
+    partial: warnings.length > 0 || undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
     markdown: "",
   };
   return report;
@@ -199,22 +211,14 @@ function deriveWtpScore(users: SyntheticPersona[]): number {
 }
 
 /**
- * Compute a meaningful Verdict from the users mode scorecard and personas.
- * Falls back to "unclear" only when there is genuinely not enough signal.
+ * P1-4: Compute verdict via unified computeVerdict.
+ * Users mode assesses pain, monetization, differentiation, distribution.
+ * clarity + buildability are unassessed.
  */
 function computeUsersVerdict(scores: Scorecard | undefined, users: SyntheticPersona[]): Verdict {
   if (!scores || users.length === 0) return "unclear";
-
-  const values = [scores.pain, scores.monetization, scores.differentiation, scores.distribution]
-    .sort((a, b) => a - b);
-  // W-05: Dynamic midpoint instead of hardcoded [2].
-  const mid = Math.floor(values.length / 2);
-  const median = values.length % 2 === 0
-    ? Math.round((values[mid - 1] + values[mid]) / 2)
-    : values[mid];
-
-  if (median >= 7 && scores.monetization >= 6) return "promising_but_risky";
-  if (median >= 5) return "unclear";
-  if (scores.monetization <= 2) return "needs_real_evidence";
-  return "weak";
+  return computeVerdict({
+    scores,
+    unassessed: ["clarity", "buildability"],
+  });
 }

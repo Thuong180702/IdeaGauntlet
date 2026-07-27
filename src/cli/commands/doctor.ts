@@ -1,5 +1,5 @@
 import { getApiKey, isNodeGte } from "../../utils/env.js";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { warnIfError } from "../../utils/warn.js";
 
@@ -75,6 +75,24 @@ export async function doctorCommand(
     detail: verbose && !searchOk ? "Fetch to html.duckduckgo.com returned non-ok status or failed" : undefined,
   });
 
+  // P2-9: Playwright browser check
+  const playwrightOk = await checkPlaywright();
+  results.push({
+    label: "Playwright browser (page fetch fallback)",
+    status: playwrightOk ? "pass" : "warn",
+    message: playwrightOk ? "Installed" : "Not installed (page fetch will skip JS-rendered pages)",
+    detail: verbose ? playwrightOk ? "chromium executable found" : "Run: npx playwright install chromium" : undefined,
+  });
+
+  // P2-9: Workflow config schema check
+  const configOk = checkWorkflowConfig();
+  results.push({
+    label: ".ideagauntlet-workflow.json",
+    status: configOk.status,
+    message: configOk.message,
+    detail: verbose ? configOk.detail : undefined,
+  });
+
   console.log("\nIdeaGauntlet Doctor");
   console.log("──────────────────");
   for (const r of results) {
@@ -132,5 +150,43 @@ async function checkSearchLiveness(): Promise<boolean> {
   } catch (err: any) {
     warnIfError("doctor: search liveness check failed", err);
     return false;
+  }
+}
+
+/** P2-9: Check if Playwright chromium browser is installed. */
+async function checkPlaywright(): Promise<boolean> {
+  try {
+    const pw = await import("playwright");
+    const browser = await pw.chromium.launch({ headless: true }).catch(() => null);
+    if (browser) {
+      await browser.close();
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** P2-9: Check .ideagauntlet-workflow.json exists and is valid JSON. */
+function checkWorkflowConfig(): { status: "pass" | "warn" | "fail"; message: string; detail?: string } {
+  const configPath = resolve(process.cwd(), ".ideagauntlet-workflow.json");
+  if (!existsSync(configPath)) {
+    return { status: "pass", message: "Not found (using defaults)" };
+  }
+  try {
+    const raw = readFileSync(configPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) {
+      return { status: "fail", message: "Invalid: root is not an object" };
+    }
+    const knownKeys = ["scoreWeights", "customRoles", "research", "llm"];
+    const unknown = Object.keys(parsed).filter((k) => !knownKeys.includes(k));
+    if (unknown.length > 0) {
+      return { status: "warn", message: `Valid but unknown keys: ${unknown.join(", ")}`, detail: `Known keys: ${knownKeys.join(", ")}` };
+    }
+    return { status: "pass", message: "Valid" };
+  } catch (err: any) {
+    return { status: "fail", message: `Invalid JSON: ${err.message}` };
   }
 }

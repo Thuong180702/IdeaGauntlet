@@ -15,6 +15,7 @@ import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
 import { withProgress } from "../utils/progress.js";
+import { computeVerdict, mapVerdictFromText } from "../core/verdictMapping.js";
 import {
   COURT_ROLES,
   buildOpeningPrompt,
@@ -51,17 +52,10 @@ async function withConcurrency<T>(
 
 /**
  * Maps a verdict string from LLM output to the Verdict enum.
+ * P1-4: Delegates to unified mapVerdictFromText in verdictMapping.ts.
  */
 function mapVerdict(text: string): Verdict {
-  if (!text) return "unclear";
-  const lower = text.toLowerCase();
-  if (lower.includes("strong") && !lower.includes("risky")) return "strong";
-  if (lower.includes("promising") && lower.includes("risky")) return "promising_but_risky";
-  if (lower.includes("pivot")) return "pivot_recommended";
-  if (lower.includes("needs") && lower.includes("evidence")) return "needs_real_evidence";
-  if (lower.includes("weak")) return "weak";
-  if (lower.includes("unclear") || lower.includes("not clear") || lower.includes("unknown")) return "unclear";
-  return "unclear";
+  return mapVerdictFromText(text) ?? "unclear";
 }
 
 export async function runCourtEngine(
@@ -85,11 +79,13 @@ export async function runCourtEngine(
 
   // Web research — always-on unless explicitly disabled
   let research: ResearchBrief | undefined;
+  const warnings: string[] = [];
   if (options?.enableSearch !== false) {
     try {
       research = options?.research ?? await withProgress("Researching market", () => performResearch(idea, "court"));
     } catch (err: any) {
       warnIfError("courtEngine: web research failed", err);
+      warnings.push("Web research failed — court debate based on LLM knowledge only.");
     }
   }
 
@@ -258,6 +254,7 @@ export async function runCourtEngine(
   } catch (err: any) {
     // Fallback — construct minimal debate from openings + rebuttals
     warnIfError("courtEngine: verdict synthesis failed", err);
+    warnings.push("Verdict synthesis failed — report contains partial debate only.");
     for (const o of openings) {
       transcript.push({ role: o.roleName, argument: o.argument });
     }
@@ -301,6 +298,8 @@ export async function runCourtEngine(
     courtDebate,
     brutalTakeaway,
     webResearch: research,
+    partial: warnings.length > 0 || undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
     markdown: "",
   };
   return report;

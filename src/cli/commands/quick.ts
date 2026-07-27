@@ -94,6 +94,10 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
       console.error(`Report saved to history: ${savedPath}`);
     }
 
+    if (report.partial && report.warnings) {
+      console.error(`\n⚠ PARTIAL REPORT — ${report.warnings.length} warning(s):\n${report.warnings.map((w: string) => `  - ${w}`).join("\n")}\n`);
+    }
+
     const isJson = !!options.json;
     const format = options.format as string | undefined;
     const output = options.output as string | undefined;
