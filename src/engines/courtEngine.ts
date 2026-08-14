@@ -24,31 +24,10 @@ import {
   buildVerdictPrompt,
   type RoleDefinition,
 } from "./courtPhases.js";
+import { withConcurrency } from "../utils/concurrency.js";
 
 /** Maximum number of LLM requests to run in parallel (avoids rate-limit 429s). */
 const COURT_CONCURRENCY = 3;
-
-/**
- * Run an array of async tasks with a concurrency limit.
- */
-async function withConcurrency<T>(
-  tasks: Array<() => Promise<T>>,
-  concurrency: number,
-): Promise<T[]> {
-  const results: T[] = [];
-  let index = 0;
-
-  async function runNext(): Promise<void> {
-    while (index < tasks.length) {
-      const current = index++;
-      results[current] = await tasks[current]();
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => runNext());
-  await Promise.all(workers);
-  return results;
-}
 
 /**
  * Maps a verdict string from LLM output to the Verdict enum.

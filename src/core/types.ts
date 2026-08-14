@@ -235,6 +235,16 @@ export interface EnhancedQuickReport {
   nextStep: string;
   competitorAnalysis?: CompetitorLandscape;
   nicheOpportunities?: NicheOpportunity[];
+  timingRisk?: {
+    window: string;
+    urgency: string;
+    whatChangesIfDelayed: string;
+  };
+  defensibility?: {
+    moatType: string;
+    strength: string;
+    timeline: string;
+  };
 }
 
 export interface EnhancedPersona {
@@ -321,6 +331,43 @@ export interface EnhancedComparisonResult {
   nicheOpportunitiesPerIdea?: Array<{ ideaTitle: string; niches: NicheOpportunity[] }>;
 }
 
+export interface MarketSizing {
+  tam: string;
+  sam: string;
+  som: string;
+  cagr?: string;
+  assumptions: string[];
+  methodology: string;
+  sourcesCited?: string[];
+  confidence: Confidence;
+}
+
+export interface UnitEconomics {
+  cacEstimate: string;
+  ltvEstimate: string;
+  ltvToCacRatio: string;
+  paybackPeriodMonths: string;
+  grossMarginEstimate: string;
+  pricingStrategy: string;
+  sustainabilityVerdict: "healthy" | "risky" | "unviable" | "unclear";
+  keyRisks: string[];
+}
+
+export interface AntiPatternResult {
+  patternId: string;
+  name: string;
+  matched: boolean;
+  severity: Severity;
+  explanation: string;
+  preventionAdvice: string;
+}
+
+export interface AntiPatternReport {
+  detectedPatterns: AntiPatternResult[];
+  overallRiskLevel: Severity;
+  summary: string;
+}
+
 // Enhanced fields added via declaration merging — keeps original interface unchanged
 export interface GauntletReport {
   courtDebate?: EnhancedCourtDebate;
@@ -329,6 +376,9 @@ export interface GauntletReport {
   userSynthesis?: UserSynthesis;
   enhancedMvpPlan?: EnhancedMVPPlan;
   enhancedComparison?: EnhancedComparisonResult;
+  marketSizing?: MarketSizing;
+  unitEconomics?: UnitEconomics;
+  antiPatterns?: AntiPatternReport;
   /** Grounded rubric (evidence + sensitivity) per scored dimension. */
   scoreRubric?: Partial<Record<keyof Scorecard, ScoreRubricEntry>>;
   /** Dimensions this mode does not evaluate — shown as "not assessed", never faked. */
@@ -376,7 +426,7 @@ export const DEFAULT_RETRY: Required<RetryConfig> = {
 };
 
 export interface LLMProvider {
-  kind: "openai" | "ollama" | "custom";
+  kind: "openai" | "ollama" | "claude" | "custom";
   complete(prompt: string, options?: CompletionOptions): Promise<string>;
   // W-10: Optional early key validation — quick test call to fail before engine runs.
   validateKey?(): Promise<boolean>;

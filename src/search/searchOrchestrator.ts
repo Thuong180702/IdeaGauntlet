@@ -17,29 +17,13 @@ import { checkLivenessBatch } from "./playwrightFetcher.js";
 import { analyzeCompetitors } from "./competitorAnalyzer.js";
 import { detectNiches } from "./nicheDetector.js";
 import type { IdeaInput, GauntletMode } from "../core/types.js";
+import { createHash } from "node:crypto";
 import { warnIfError } from "../utils/warn.js";
 import { SearchCache, searchCacheKey, pageCacheKey } from "./cache.js";
+import { withConcurrency } from "../utils/concurrency.js";
 
 /** Module-level cache — persists for CLI session lifetime. */
 const _cache = new SearchCache();
-
-/** Run async tasks with a concurrency limit. */
-async function withConcurrency<T>(
-  tasks: Array<() => Promise<T>>,
-  concurrency: number,
-): Promise<T[]> {
-  const results: T[] = [];
-  let index = 0;
-  async function runNext(): Promise<void> {
-    while (index < tasks.length) {
-      const current = index++;
-      results[current] = await tasks[current]();
-    }
-  }
-  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => runNext());
-  await Promise.all(workers);
-  return results;
-}
 
 /**
  * Resolves the search provider based on env vars and config.
@@ -252,11 +236,7 @@ const RESEARCH_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const _researchCache = new SearchCache(RESEARCH_CACHE_TTL_MS);
 
 function researchCacheKey(idea: string, mode: string): string {
-  // Simple hash — good enough for caching, not security.
-  let hash = 0;
-  for (let i = 0; i < idea.length; i++) {
-    hash = ((hash << 5) - hash + idea.charCodeAt(i)) | 0;
-  }
+  const hash = createHash("sha256").update(idea).digest("hex").slice(0, 16);
   return `research:${mode}:${hash}`;
 }
 

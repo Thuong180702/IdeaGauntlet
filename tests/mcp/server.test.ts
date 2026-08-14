@@ -10,9 +10,12 @@ describe("MCP server", () => {
     expect(names).toContain("generate_users");
     expect(names).toContain("plan_mvp");
     expect(names).toContain("compare_ideas");
+    expect(names).toContain("estimate_market_size");
+    expect(names).toContain("analyze_unit_economics");
+    expect(names).toContain("detect_anti_patterns");
     expect(names).not.toContain("create_prompt");
     expect(names).toContain("save_report");
-    expect(toolDefinitions.length).toBe(6);
+    expect(toolDefinitions.length).toBe(9);
   });
 
   it("court tool description mentions roles", async () => {

@@ -14,6 +14,10 @@ export async function ensembleCommand(idea: string, options: Record<string, unkn
   }
 
   const apiKeyRaw = (options.apiKey as string) ?? getApiKey();
+  if (!apiKeyRaw) {
+    console.error("Missing API key. Set ANTHROPIC_API_KEY, GROQ_API_KEY, or IDEAGAUNTLET_API_KEY.");
+    process.exit(1);
+  }
   const baseUrl = options.baseUrl as string | undefined;
   const model = options.model as string | undefined;
 

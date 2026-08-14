@@ -28,6 +28,24 @@ export function wrapIdea(idea: string): string {
  * Build a safe user message that embeds the idea as data.
  * Extra lines (target users, market, etc.) are appended after the block.
  */
+const INJECTION_PATTERNS = [
+  /ignore\s+(previous|prior|above)\s+instructions/i,
+  /you\s+are\s+now\s+/i,
+  /system\s*:/i,
+  /assistant\s*:/i,
+  /\[INST\]/i,
+  /<\|im_start\|>/i,
+];
+
+/** Detect common prompt injection patterns. Returns matched pattern sources. */
+export function detectInjectionAttempts(idea: string): string[] {
+  const hits: string[] = [];
+  for (const p of INJECTION_PATTERNS) {
+    if (p.test(idea)) hits.push(p.source);
+  }
+  return hits;
+}
+
 export function buildSafeUserMessage(idea: string, extras?: string[]): string {
   const lines: string[] = [wrapIdea(idea)];
   if (extras) {

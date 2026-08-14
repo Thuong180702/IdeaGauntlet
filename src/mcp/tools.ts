@@ -6,10 +6,13 @@ import { runCourtEngine } from "../engines/courtEngine.js";
 import { runUserLab } from "../engines/syntheticUserLab.js";
 import { runMvpPlanner } from "../engines/mvpPlanner.js";
 import { runCompareEngine } from "../engines/compareEngine.js";
+import { runMarketSizingEngine } from "../engines/marketSizingEngine.js";
+import { runUnitEconomicsEngine } from "../engines/unitEconomicsEngine.js";
+import { runAntiPatternDetector } from "../engines/antiPatternDetector.js";
 import { resolveProvider } from "../providers/providerUtils.js";
 import { mcpToolDescriptions } from "../workflows/formatters/formatForMcpDescription.js";
 import { notifyResourcesChanged } from "./server.js";
-import { t} from "../utils/locale.js";
+import { t } from "../utils/locale.js";
 import { warnIfError } from "../utils/warn.js";
 
 import { loadReport, listReports } from "../history/historyStore.js";
@@ -63,7 +66,6 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "run_court": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const report = await runCourtEngine({ idea: args.idea }, requireProvider());
-      // Fix: build markdown — was missing, causing empty responses.
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
@@ -77,7 +79,6 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
         requireProvider(),
         args.personas ?? 6,
       );
-      // Fix: build markdown — was missing, causing empty responses.
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
@@ -87,7 +88,6 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "plan_mvp": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const report = await runMvpPlanner({ idea: args.idea }, requireProvider());
-      // Fix: build markdown — was missing, causing empty responses.
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
@@ -99,11 +99,28 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
         throw new Error(t("mcp.ideas_required"));
       const ideas = args.ideas.map((i: string) => ({ idea: i }));
       const report = await runCompareEngine(ideas, requireProvider());
-      // Fix: build markdown — was missing, causing empty responses.
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
       return { type: "text", text: report.markdown };
+    }
+
+    case "estimate_market_size": {
+      if (!args.idea) throw new Error(t("mcp.idea_required"));
+      const result = await runMarketSizingEngine({ idea: args.idea, market: args.market }, requireProvider());
+      return { type: "text", text: JSON.stringify(result, null, 2) };
+    }
+
+    case "analyze_unit_economics": {
+      if (!args.idea) throw new Error(t("mcp.idea_required"));
+      const result = await runUnitEconomicsEngine({ idea: args.idea, market: args.market }, requireProvider());
+      return { type: "text", text: JSON.stringify(result, null, 2) };
+    }
+
+    case "detect_anti_patterns": {
+      if (!args.idea) throw new Error(t("mcp.idea_required"));
+      const result = await runAntiPatternDetector({ idea: args.idea, market: args.market }, requireProvider());
+      return { type: "text", text: JSON.stringify(result, null, 2) };
     }
 
     case "save_report": {
@@ -169,6 +186,42 @@ export const toolDefinitions = [
         ideas: { type: "array", items: { type: "string" } },
       },
       required: ["ideas"],
+    },
+  },
+  {
+    name: "estimate_market_size",
+    description: "Estimate TAM, SAM, SOM, CAGR, and market sizing breakdown",
+    inputSchema: {
+      type: "object",
+      properties: {
+        idea: { type: "string" },
+        market: { type: "string" },
+      },
+      required: ["idea"],
+    },
+  },
+  {
+    name: "analyze_unit_economics",
+    description: "Estimate CAC, LTV, LTV:CAC ratio, payback period, and unit viability",
+    inputSchema: {
+      type: "object",
+      properties: {
+        idea: { type: "string" },
+        market: { type: "string" },
+      },
+      required: ["idea"],
+    },
+  },
+  {
+    name: "detect_anti_patterns",
+    description: "Audit idea against 10 common startup anti-patterns and failure traps",
+    inputSchema: {
+      type: "object",
+      properties: {
+        idea: { type: "string" },
+        market: { type: "string" },
+      },
+      required: ["idea"],
     },
   },
   {

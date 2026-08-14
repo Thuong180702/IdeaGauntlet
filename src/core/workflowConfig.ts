@@ -3,7 +3,7 @@
  * court roles, and research defaults via .ideagauntlet-workflow.json.
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 export interface CustomWorkflowConfig {
@@ -34,26 +34,38 @@ export interface CustomWorkflowConfig {
 const CONFIG_FILE = ".ideagauntlet-workflow.json";
 
 let _cachedConfig: CustomWorkflowConfig | null = null;
-let _cached = false;
+let _cachedMtime: number = 0;
+let _cachedPath: string = "";
+
+export function clearWorkflowConfigCache(): void {
+  _cachedConfig = null;
+  _cachedMtime = 0;
+  _cachedPath = "";
+}
 
 export function loadWorkflowConfig(workspaceDir?: string): CustomWorkflowConfig {
-  if (_cached) return _cachedConfig ?? {};
-
   const configPath = resolve(workspaceDir ?? process.cwd(), CONFIG_FILE);
   if (!existsSync(configPath)) {
     _cachedConfig = {};
-    _cached = true;
+    _cachedMtime = 0;
+    _cachedPath = configPath;
     return {};
   }
 
   try {
+    const stats = statSync(configPath);
+    if (_cachedConfig && _cachedPath === configPath && _cachedMtime === stats.mtimeMs) {
+      return _cachedConfig;
+    }
     const raw = readFileSync(configPath, "utf-8");
     _cachedConfig = JSON.parse(raw);
-    _cached = true;
+    _cachedMtime = stats.mtimeMs;
+    _cachedPath = configPath;
     return _cachedConfig ?? {};
   } catch {
     _cachedConfig = {};
-    _cached = true;
+    _cachedMtime = 0;
+    _cachedPath = configPath;
     return {};
   }
 }

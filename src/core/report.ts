@@ -1,4 +1,4 @@
-import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, ComparedIdea } from "./types.js";
+import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, ComparedIdea, MarketSizing, UnitEconomics, AntiPatternReport } from "./types.js";
 import type { EnhancedCourtDebate, EnhancedQuickReport, EnhancedPersona, UserSynthesis, EnhancedMVPPlan, EnhancedComparisonResult } from "./types.js";
 import type { CompetitorLandscape, NicheOpportunity } from "../search/types.js";
 import { overallScore } from "./scoring.js";
@@ -55,6 +55,15 @@ export function buildReport(report: GauntletReport): string {
   }
   if (report.enhancedComparison) {
     lines.push(`## Enhanced Comparison\n\n${buildEnhancedComparison(report.enhancedComparison)}\n`);
+  }
+  if (report.marketSizing) {
+    lines.push(`## Market Sizing (TAM / SAM / SOM)\n\n${buildMarketSizing(report.marketSizing)}\n`);
+  }
+  if (report.unitEconomics) {
+    lines.push(`## Unit Economics & Financial Viability\n\n${buildUnitEconomics(report.unitEconomics)}\n`);
+  }
+  if (report.antiPatterns) {
+    lines.push(`## Startup Anti-Pattern & Trap Audit\n\n${buildAntiPatternReport(report.antiPatterns)}\n`);
   }
   if (report.nextActions && report.nextActions.length > 0) { lines.push(`## Next Actions\n\n${buildActionList(report.nextActions)}\n`); }
 
@@ -388,4 +397,52 @@ function buildNicheOpportunities(niches: NicheOpportunity[]): string {
     parts.push(`${i + 1}. **[${n.type}]** ${n.description}\n   - **Evidence:** ${n.evidence}\n   - **Wedge:** ${n.wedgeIdea}\n   - **Why now:** ${n.whyNow}`);
   });
   return parts.join("\n\n");
+}
+
+function buildMarketSizing(ms: MarketSizing): string {
+  const parts: string[] = [];
+  parts.push(`- **TAM (Total Addressable Market):** ${ms.tam}`);
+  parts.push(`- **SAM (Serviceable Addressable Market):** ${ms.sam}`);
+  parts.push(`- **SOM (Serviceable Obtainable Market):** ${ms.som}`);
+  if (ms.cagr) parts.push(`- **CAGR / Growth Rate:** ${ms.cagr}`);
+  parts.push(`- **Confidence:** ${ms.confidence}`);
+  parts.push(`- **Methodology:** ${ms.methodology}`);
+  if (ms.assumptions.length > 0) {
+    parts.push("\n**Key Assumptions:**\n" + ms.assumptions.map((a) => `- ${a}`).join("\n"));
+  }
+  if (ms.sourcesCited && ms.sourcesCited.length > 0) {
+    parts.push("\n**Sources Cited:**\n" + ms.sourcesCited.map((s) => `- ${s}`).join("\n"));
+  }
+  return parts.join("\n");
+}
+
+function buildUnitEconomics(ue: UnitEconomics): string {
+  const parts: string[] = [];
+  parts.push(`- **Sustainability Verdict:** **${ue.sustainabilityVerdict.toUpperCase()}**`);
+  parts.push(`- **CAC Estimate:** ${ue.cacEstimate}`);
+  parts.push(`- **LTV Estimate:** ${ue.ltvEstimate}`);
+  parts.push(`- **LTV : CAC Ratio:** ${ue.ltvToCacRatio}`);
+  parts.push(`- **Payback Period:** ${ue.paybackPeriodMonths}`);
+  parts.push(`- **Gross Margin:** ${ue.grossMarginEstimate}`);
+  parts.push(`- **Pricing Strategy:** ${ue.pricingStrategy}`);
+  if (ue.keyRisks.length > 0) {
+    parts.push("\n**Unit Economics Risks:**\n" + ue.keyRisks.map((r) => `- ${r}`).join("\n"));
+  }
+  return parts.join("\n");
+}
+
+function buildAntiPatternReport(ap: AntiPatternReport): string {
+  const parts: string[] = [];
+  parts.push(`**Overall Trap Risk Level:** **${ap.overallRiskLevel.toUpperCase()}**\n`);
+  parts.push(`**Summary:** ${ap.summary}\n`);
+  const matched = ap.detectedPatterns.filter((p) => p.matched);
+  if (matched.length > 0) {
+    parts.push("### ⚠️ Matched Startup Traps\n");
+    for (const p of matched) {
+      parts.push(`#### 🚨 ${p.name} (${p.severity.toUpperCase()})\n- **Why this matches:** ${p.explanation}\n- **Prevention advice:** ${p.preventionAdvice}\n`);
+    }
+  } else {
+    parts.push("✅ **No severe startup anti-pattern traps detected.**\n");
+  }
+  return parts.join("\n");
 }

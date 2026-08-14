@@ -13,7 +13,7 @@ export type ClaudeConfig = {
 const DEFAULT_TIMEOUT_MS = 60000;
 
 export class ClaudeProvider implements LLMProvider {
-  kind = "custom" as const;
+  kind = "claude" as const;
   private config: Required<ClaudeConfig>;
 
   constructor(config: ClaudeConfig) {

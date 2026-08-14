@@ -43,7 +43,7 @@ export async function runImmuneEngine(
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
-    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), scoreRubric ({clarity:{evidence, sensitivity}, pain:{...}, differentiation:{...}, buildability:{...}, distribution:{...}, monetization:{...}, evidence:{...}}) — for EACH dimension: `evidence` = one concrete sentence grounding the score in the idea/competitors/research (not generic), `sensitivity` = one sentence stating what would raise it ~2 points and what would drop it ~2 points, brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea), nextStep",
+    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, timingRisk ({window, urgency, whatChangesIfDelayed}) — does this idea depend on a time window? defensibility ({moatType, strength, timeline}) — what prevents copycats in 6-12 months?, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), scoreRubric ({clarity:{evidence, sensitivity}, pain:{...}, differentiation:{...}, buildability:{...}, distribution:{...}, monetization:{...}, evidence:{...}}) — for EACH dimension: `evidence` = one concrete sentence grounding the score in the idea/competitors/research (not generic), `sensitivity` = one sentence stating what would raise it ~2 points and what would drop it ~2 points, brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea), nextStep",
   ]);
 
   let parsed: any = {};
@@ -91,16 +91,32 @@ export async function runImmuneEngine(
 
   const scoreOverrides = parsed.scores ?? {};
   const { evidenceStrength, hasEvidence } = assessEvidence(research);
+
+  // Cross-validate LLM evidence score against actual research
+  let calibratedEvidenceOverride: number | undefined;
+  if (typeof parsed.scores?.evidence === "number") {
+    const rawOverride = parsed.scores.evidence;
+    if (!hasEvidence) {
+      calibratedEvidenceOverride = Math.min(rawOverride, 2);
+    } else if (evidenceStrength === "weak") {
+      calibratedEvidenceOverride = Math.min(rawOverride, 5);
+    } else if (evidenceStrength === "medium") {
+      calibratedEvidenceOverride = Math.min(rawOverride, 7);
+    } else {
+      calibratedEvidenceOverride = rawOverride;
+    }
+  }
+
   const { scores } = calculateScores({
     hasEvidence,
     evidenceStrength,
     overrides: scoreOverrides,
-    llmEvidenceOverride: typeof parsed.scores?.evidence === "number" ? parsed.scores.evidence : undefined,
+    llmEvidenceOverride: calibratedEvidenceOverride,
   });
   const scoreRubric = sanitizeRubric(parsed.scoreRubric);
   const verdict = computeVerdict({
     scores,
-    evidenceScoreOverride: typeof parsed.scores?.evidence === "number" ? parsed.scores.evidence : undefined,
+    evidenceScoreOverride: calibratedEvidenceOverride,
     llmVerdictText: parsed.oneLineVerdict,
   });
 
@@ -118,6 +134,8 @@ export async function runImmuneEngine(
     nextStep: parsed.nextStep ?? "",
     competitorAnalysis: parsed.competitorAnalysis,
     nicheOpportunities: parsed.nicheOpportunities,
+    timingRisk: parsed.timingRisk,
+    defensibility: parsed.defensibility,
   };
 
   return {
@@ -156,8 +174,11 @@ function assessEvidence(research?: ResearchBrief): {
   const signal = results + competitors * 2 + pages * 2;
   if (signal === 0) return { hasEvidence: false, evidenceStrength: "weak" };
   if (signal >= 12) return { hasEvidence: true, evidenceStrength: "strong" };
-  if (signal >= 5) return { hasEvidence: true, evidenceStrength: "medium" };
-  return { hasEvidence: true, evidenceStrength: "weak" };
+  if (signal >= 7 && (competitors >= 1 || pages >= 1)) return { hasEvidence: true, evidenceStrength: "medium" };
+  // Require at least some substantive signal (not just noisy search results)
+  if (signal >= 4 && (competitors >= 1 || pages >= 1)) return { hasEvidence: true, evidenceStrength: "weak" };
+  // No substantive evidence found despite some search results
+  return { hasEvidence: false, evidenceStrength: "weak" };
 }
 
 const RUBRIC_DIMENSIONS: (keyof Scorecard)[] = [

@@ -88,16 +88,7 @@ const ALL_DIMENSIONS: (keyof Scorecard)[] = [
  * dimensions are excluded so fake constants can't drag the overall up or down.
  */
 export function overallScore(scores: Scorecard, unassessed?: (keyof Scorecard)[]): number {
-  const skip = new Set(unassessed ?? []);
-  const values = ALL_DIMENSIONS
-    .filter((d) => !skip.has(d))
-    .map((d) => scores[d])
-    .sort((a, b) => a - b);
-  if (values.length === 0) return 0;
-  const mid = Math.floor(values.length / 2);
-  return values.length % 2 === 0
-    ? Math.round((values[mid - 1] + values[mid]) / 2)
-    : values[mid];
+  return medianScore(scores, unassessed);
 }
 
 export function formatScores(scores: Scorecard): string {

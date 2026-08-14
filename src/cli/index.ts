@@ -43,7 +43,10 @@ const cli = cac("idea-gauntlet");
 cli.version(pkg.version);
 cli.help();
 
-// Global --quiet option
+// Global --quiet option: set before commands execute
+if (process.argv.includes("--quiet") || process.argv.includes("-q")) {
+  setQuiet(true);
+}
 cli.option("--quiet", "Suppress warning messages (errors still shown)");
 
 const providerOptions = (cmd: any) => cmd

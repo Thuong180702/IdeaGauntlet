@@ -137,7 +137,7 @@ export class StaticProvider implements LLMProvider {
     }
 
     // Quick mode
-    if (combined.includes("Quick Critique") || combined.includes("Quick")) {
+    if (combined.includes("Quick Critique") || combined.includes("Immune Engine") || combined.includes("oneLineVerdict")) {
       return JSON.stringify({
         oneLineVerdict: "Promising concept with critical untested assumptions around retention and willingness to pay.",
         topRisks: [
@@ -245,8 +245,62 @@ export class StaticProvider implements LLMProvider {
       });
     }
 
+    // Market sizing mode
+    if (combined.includes("Market Sizing") || combined.includes("Sizing Analyst")) {
+      return JSON.stringify({
+        tam: "$15B global market",
+        sam: "$2.5B remote worker segment",
+        som: "$25M early addressable beachhead",
+        cagr: "12.5%",
+        assumptions: ["10M remote knowledge workers", "$20/mo willingness to pay"],
+        methodology: "Top-down research brief calibration + bottom-up user arithmetic",
+        sourcesCited: ["Gartner remote work report 2024"],
+        confidence: "medium",
+      });
+    }
+
+    // Anti-pattern detector
+    if (combined.includes("Anti-Pattern") || combined.includes("Startup Failure Mode") || combined.includes("anti_patterns") || combined.includes("startup traps")) {
+      return JSON.stringify({
+        detectedPatterns: [
+          {
+            patternId: "feature_not_product",
+            name: "Feature Not a Product",
+            matched: true,
+            severity: "medium",
+            explanation: "Could be absorbed by Slack or Zoom",
+            preventionAdvice: "Build proprietary workflow integrations and deep analytics",
+          },
+          {
+            patternId: "vitamin_not_painkiller",
+            name: "Vitamin vs. Painkiller",
+            matched: false,
+            severity: "low",
+            explanation: "Addresses genuine procrastination distress",
+            preventionAdvice: "Keep proving measurable time saved",
+          },
+        ],
+        overallRiskLevel: "medium",
+        summary: "Primary trap to avoid is feature absorption by existing remote suite platforms.",
+      });
+    }
+
+    // Unit economics mode
+    if (combined.includes("Unit Economics Specialist") || (combined.includes("Unit Economics") && (combined.includes("cacEstimate") || combined.includes("LTV to CAC") || combined.includes("LTV")))) {
+      return JSON.stringify({
+        cacEstimate: "$150-$250 via SEO & ProductHunt",
+        ltvEstimate: "$900 ($30/mo * 30 months)",
+        ltvToCacRatio: "4.5x",
+        paybackPeriodMonths: "5 months",
+        grossMarginEstimate: "82%",
+        pricingStrategy: "Tiered subscription with team add-on",
+        sustainabilityVerdict: "healthy",
+        keyRisks: ["Ad cost inflation in productivity keywords"],
+      });
+    }
+
     // Compare mode
-    if (combined.includes("Comparison") || combined.includes("compare")) {
+    if (combined.includes("Comparison Matrix") || combined.includes("Comparison Analyst") || combined.includes("compareIdeas") || (combined.includes("criteria") && combined.includes("comparisonMatrix"))) {
       return JSON.stringify({
         comparisonMatrix: [
           {

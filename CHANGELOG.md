@@ -5,6 +5,25 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-14
+
+### Added
+- **Market Sizing Engine**: Quantitative TAM, SAM, and SOM estimation with CAGR and explicit methodology (`runMarketSizingEngine`).
+- **Unit Economics Engine**: Quantitative CAC, LTV, LTV:CAC ratio, payback period, and unit viability assessment (`runUnitEconomicsEngine`).
+- **Startup Anti-Pattern & Trap Auditor**: Evaluates ideas against 10 classic startup traps with actionable prevention advice (`runAntiPatternDetector`).
+- **Shared Concurrency Runner**: Standardized `withConcurrency` utility across court, batch, and search orchestrators.
+- **New MCP Tools**: Added `estimate_market_size`, `analyze_unit_economics`, and `detect_anti_patterns` to the MCP Server.
+- **Claude Provider Kind**: Explicit `"claude"` provider kind in `LLMProvider` union.
+
+### Fixed
+- **Stage Validation**: Enforced strict validation for `stage` via `IdeaStageSchema` (`"napkin" | "pre-mvp" | "mvp" | "growth"`).
+- **Evidence Signal Calibration**: Added missing `"medium"` evidence strength threshold and cross-validated LLM evidence scores against real-world research.
+- **Verdict Mapping Accuracy**: Replaced loose substring checks with word-boundary and prefix token matchers to eliminate false positives.
+- **Quiet Flag Timing**: Fixed `--quiet` flag activation timing to ensure early warning suppression.
+- **Scoring Logic**: Deduplicated `overallScore` by directly delegating to `medianScore`.
+- **Workflow Cache Invalidation**: Added `statSync().mtimeMs` checking and `clearWorkflowConfigCache()` so edits on `.ideagauntlet-workflow.json` apply instantly.
+- **Search Cache Hash Collision**: Upgraded research cache key hashing to SHA-256 slices.
+
 ## [0.3.0] - 2026-07-18
 
 ### Added

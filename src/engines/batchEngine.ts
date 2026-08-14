@@ -4,6 +4,7 @@ import { runImmuneEngine } from "./immuneEngine.js";
 import { runCourtEngine } from "./courtEngine.js";
 import { runUserLab } from "./syntheticUserLab.js";
 import { runMvpPlanner } from "./mvpPlanner.js";
+import { withConcurrency } from "../utils/concurrency.js";
 
 /**
  * Batch engine — processes multiple ideas concurrently.
@@ -40,12 +41,10 @@ export async function runBatchEngine(
   const total = ideas.length;
   let done = 0;
 
-  // Run each idea's engine and build its markdown report.
-  // BUG-02: Track original index for stable sort instead of findIndex.
-  const runOne = async (idea: IdeaInput, originalIndex: number): Promise<{ idea: string; report?: GauntletReport; error?: string; originalIndex: number }> => {
+  const runOne = async (idea: IdeaInput): Promise<{ idea: string; report?: GauntletReport; error?: string }> => {
     const ideaText = idea.idea?.trim();
     if (!ideaText) {
-      return { idea: idea.idea ?? "", error: "Empty idea — skipped", originalIndex };
+      return { idea: idea.idea ?? "", error: "Empty idea — skipped" };
     }
 
     try {
@@ -67,11 +66,10 @@ export async function runBatchEngine(
           report = await runImmuneEngine(idea, provider, { enableSearch });
           break;
       }
-      // Fix: build the markdown so callers always get a populated report.markdown.
       report.markdown = buildReport(report);
-      return { idea: idea.idea, report, originalIndex };
+      return { idea: idea.idea, report };
     } catch (err: any) {
-      return { idea: idea.idea, error: err.message, originalIndex };
+      return { idea: idea.idea, error: err.message };
     } finally {
       done++;
       if (options?.onProgress) {
@@ -80,27 +78,8 @@ export async function runBatchEngine(
     }
   };
 
-  // Concurrency limiter
-  const results: Array<{ idea: string; report?: GauntletReport; error?: string; originalIndex: number }> = [];
-  let index = 0;
-
-  async function runNext(): Promise<void> {
-    while (index < ideas.length) {
-      const currentIndex = index++;
-      const result = await runOne(ideas[currentIndex], currentIndex);
-      results.push(result);
-    }
-  }
-
-  // Launch concurrency workers
-  const workers = Array.from({ length: Math.min(concurrency, ideas.length) }, () => runNext());
-  await Promise.all(workers);
-
-  // Preserve original order using tracked index (stable, O(n log n) not O(n²))
-  results.sort((a, b) => a.originalIndex - b.originalIndex);
-
-  // Strip originalIndex from results
-  const finalResults = results.map(({ idea, report, error }) => ({ idea, report, error }));
+  const tasks = ideas.map((idea) => () => runOne(idea));
+  const finalResults = await withConcurrency(tasks, concurrency);
 
   return {
     results: finalResults,

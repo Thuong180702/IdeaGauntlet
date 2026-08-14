@@ -1,4 +1,5 @@
-import type { LLMProvider, IdeaInput, GauntletReport, GauntletMode } from "./types.js";
+import type { LLMProvider, IdeaInput, GauntletReport, GauntletMode, IdeaStage } from "./types.js";
+import { IdeaStageSchema } from "./types.js";
 import { runImmuneEngine } from "../engines/immuneEngine.js";
 import { runCourtEngine } from "../engines/courtEngine.js";
 import { runUserLab } from "../engines/syntheticUserLab.js";
@@ -27,11 +28,20 @@ export async function runGauntlet(params: {
     throw new Error("LLM provider is required. Pass an OpenAICompatibleProvider, OllamaProvider, or a custom LLMProvider.");
   }
 
+  let stage: IdeaStage | undefined;
+  if (params.stage) {
+    const stageResult = IdeaStageSchema.safeParse(params.stage);
+    if (!stageResult.success) {
+      throw new Error(`Invalid stage "${params.stage}". Expected one of: "napkin", "pre-mvp", "mvp", "growth".`);
+    }
+    stage = stageResult.data;
+  }
+
   const input: IdeaInput = {
     idea: params.idea,
     targetUsers: params.targetUsers,
     market: params.market,
-    stage: params.stage as any,
+    stage,
     constraints: params.constraints,
     mode: params.mode ?? "quick",
   };
