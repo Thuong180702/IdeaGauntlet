@@ -15,10 +15,14 @@ Built for founders, indie hackers, and product engineers who want sharper pre-va
 
 ---
 
-## Install
+## Install & Update
 
 ```bash
+# Install
 npm install -g idea-gauntlet
+
+# Update to latest release
+npm install -g idea-gauntlet@latest
 ```
 
 On global install, IdeaGauntlet performs best-effort integration setup for detected Claude Code, Codex, Cursor, and MCP-compatible clients. All writes are non-destructive (never overwriting your files) and fully reversible via `idea-gauntlet uninstall`. The install downloads no browser and runs no network install; if postinstall was skipped (e.g. `--ignore-scripts`), run `idea-gauntlet install` yourself.
@@ -79,6 +83,9 @@ A taste of the Quick verdict on that idea:
 |---|---:|---|---|
 | **Quick critique** | Fast adversarial review: top risks, assumptions, best/worst case, fastest test | You want a fast sanity check | Risks, assumptions, scores, validation test |
 | **Court mode** | Structured multi-role debate with 7 specialist roles and judge verdict | The idea needs deeper critique | Role arguments, evidence audit, kill tests, scores, verdict |
+| **Market sizing** | Quantitative TAM, SAM, and SOM estimation with CAGR and economic assumptions | You want to size the market opportunity | TAM, SAM, SOM, CAGR, confidence, methodology |
+| **Unit economics** | Financial viability assessment: CAC, LTV, LTV:CAC ratio, payback period, margins | You need to test unit economic feasibility | CAC/LTV estimates, ratios, payback, sustainability verdict |
+| **Anti-pattern audit** | Stress-test against 10 classic startup traps (feature vs product, vitamin vs painkiller, etc.) | You want to spot structural failure traps early | Matched traps, risk severity, prevention advice |
 | **Synthetic users** | Fictional personas with objections, switching costs, and interview questions | You want to prepare for real user research | Persona cards, objections, interview questions |
 | **MVP planning** | Ruthlessly minimal validation plan with kill criteria and pivot options | You want to test, not debate | 14-day plan, experiments, kill criteria, pivot options |
 | **Idea comparison** | Side-by-side scoring across 10 dimensions with per-idea kill tests | You need to choose what to validate | Comparison matrix, tradeoffs, recommendation |
@@ -243,18 +250,31 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 ## TypeScript API
 
 ```ts
-import { runGauntlet, OpenAICompatibleProvider } from "idea-gauntlet";
+import {
+  runGauntlet,
+  runMarketSizingEngine,
+  runUnitEconomicsEngine,
+  runAntiPatternDetector,
+  ClaudeProvider,
+  OpenAICompatibleProvider,
+} from "idea-gauntlet";
 
-const provider = new OpenAICompatibleProvider({
-  apiKey: process.env.IDEAGAUNTLET_API_KEY!,
-  model: "gpt-4o-mini",
+const provider = new ClaudeProvider({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: "claude-sonnet-5",
 });
 
+// Run standard gauntlet critique
 const report = await runGauntlet({
   idea: "A focus-room app for remote workers",
   mode: "quick",
   provider,
 });
+
+// Run financial and risk engines
+const marketSize = await runMarketSizingEngine({ idea: "A focus-room app" }, provider);
+const unitEcon = await runUnitEconomicsEngine({ idea: "A focus-room app" }, provider);
+const traps = await runAntiPatternDetector({ idea: "A focus-room app" }, provider);
 
 console.log(report.markdown);
 ```
