@@ -224,8 +224,19 @@ providerOptions(
   );
 });
 
+import { checkForUpdate, formatCliUpdateBanner } from "../utils/updateChecker.js";
+
 // Set quiet mode before parsing commands
 const parsed = cli.parse();
 if (parsed.options?.quiet) {
   setQuiet(true);
+}
+
+// Background update check — shows update banner if newer version is published
+if (!process.argv.includes("--quiet") && !process.argv.includes("-q") && !process.argv.includes("serve")) {
+  checkForUpdate().then((update) => {
+    if (update.hasUpdate) {
+      console.error(formatCliUpdateBanner(update));
+    }
+  }).catch(() => {});
 }

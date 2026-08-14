@@ -17,6 +17,8 @@ import { warnIfError } from "../utils/warn.js";
 
 import { loadReport, listReports } from "../history/historyStore.js";
 
+import { withUpdateNotice } from "../utils/updateChecker.js";
+
 const reports = new Map<string, GauntletReport>();
 
 let provider: LLMProvider | null = null;
@@ -60,7 +62,8 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
-      return { type: "text", text: report.markdown };
+      const text = await withUpdateNotice(report.markdown, args.idea);
+      return { type: "text", text };
     }
 
     case "run_court": {
@@ -69,7 +72,8 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
-      return { type: "text", text: report.markdown };
+      const text = await withUpdateNotice(report.markdown, args.idea);
+      return { type: "text", text };
     }
 
     case "generate_users": {
@@ -82,7 +86,8 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
-      return { type: "text", text: report.markdown };
+      const text = await withUpdateNotice(report.markdown, args.idea);
+      return { type: "text", text };
     }
 
     case "plan_mvp": {
@@ -91,7 +96,8 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
-      return { type: "text", text: report.markdown };
+      const text = await withUpdateNotice(report.markdown, args.idea);
+      return { type: "text", text };
     }
 
     case "compare_ideas": {
@@ -102,25 +108,32 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
-      return { type: "text", text: report.markdown };
+      const text = await withUpdateNotice(report.markdown, args.ideas.join(" "));
+      return { type: "text", text };
     }
 
     case "estimate_market_size": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runMarketSizingEngine({ idea: args.idea, market: args.market }, requireProvider());
-      return { type: "text", text: JSON.stringify(result, null, 2) };
+      const rawText = JSON.stringify(result, null, 2);
+      const text = await withUpdateNotice(rawText, args.idea);
+      return { type: "text", text };
     }
 
     case "analyze_unit_economics": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runUnitEconomicsEngine({ idea: args.idea, market: args.market }, requireProvider());
-      return { type: "text", text: JSON.stringify(result, null, 2) };
+      const rawText = JSON.stringify(result, null, 2);
+      const text = await withUpdateNotice(rawText, args.idea);
+      return { type: "text", text };
     }
 
     case "detect_anti_patterns": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runAntiPatternDetector({ idea: args.idea, market: args.market }, requireProvider());
-      return { type: "text", text: JSON.stringify(result, null, 2) };
+      const rawText = JSON.stringify(result, null, 2);
+      const text = await withUpdateNotice(rawText, args.idea);
+      return { type: "text", text };
     }
 
     case "save_report": {
