@@ -83,6 +83,16 @@ A taste of the Quick verdict on that idea:
 |---|---:|---|---|
 | **Quick critique** | Fast adversarial review: top risks, assumptions, best/worst case, fastest test | You want a fast sanity check | Risks, assumptions, scores, validation test |
 | **Court mode** | Structured multi-role debate with 7 specialist roles and judge verdict | The idea needs deeper critique | Role arguments, evidence audit, kill tests, scores, verdict |
+| **GTM Strategy** | Distribution channel priority matrix, 100-customer playbook, launch milestones | You need an actionable distribution plan | Channel CAC/timeline, milestones, budget allocation |
+| **Competitive Intelligence** | Competitor SWOT, 2D positioning map (X/Y), strategic windows & attack vectors | You want deep competitor mapping | Competitor profiles, positioning map, attack vectors |
+| **Revenue Model Explorer** | Evaluates 12 revenue models with Y1/Y3 projections & tiered pricing | You want to find the optimal monetization model | Ranked models, fit scores, projections, pricing tiers |
+| **Founder-Market Fit** | Evaluates domain expertise, network advantage & execution risk | You want an objective founder capability audit | Fit scorecard, unfair advantages, skill gaps, co-founder needs |
+| **Simulated User Interview** | In-character customer discovery interview with realistic persona | You want to test real objections & willingness to pay | Two-way dialogue, latent needs, objection analysis, WTP |
+| **Pitch Deck Generator** | 10-12 slide investor deck outline (YC, Sequoia, a16z frameworks) | You are preparing to pitch angels/VCs | Slide headlines, proof points, visual concepts, speaker notes |
+| **Idea Evolution Coach** | Diagnoses core bottleneck & creates 3 structural pivot variants with score deltas | You want to improve or pivot a struggling idea | Pivot angles, projected score deltas, 48h smoke tests |
+| **Compliance Scanner** | Audits legal, privacy & regulatory risks (GDPR, CCPA, HIPAA, AI Act) | You operate in regulated or data-sensitive markets | Risk severity, framework audit, pre-launch privacy checklist |
+| **Multi-Model Ensemble** | Run idea through multiple LLM providers in parallel to expose bias | You want consensus scores without single-model bias | Aggregate scores, disagreement matrix, consensus verdict |
+| **Trend Monitoring** | Re-research saved ideas to detect new competitors & niche shifts | You want to track market movements over time | Competitor delta, saturation shifts, emerging niches |
 | **Market sizing** | Quantitative TAM, SAM, and SOM estimation with CAGR and economic assumptions | You want to size the market opportunity | TAM, SAM, SOM, CAGR, confidence, methodology |
 | **Unit economics** | Financial viability assessment: CAC, LTV, LTV:CAC ratio, payback period, margins | You need to test unit economic feasibility | CAC/LTV estimates, ratios, payback, sustainability verdict |
 | **Anti-pattern audit** | Stress-test against 10 classic startup traps (feature vs product, vitamin vs painkiller, etc.) | You want to spot structural failure traps early | Matched traps, risk severity, prevention advice |
@@ -102,35 +112,53 @@ Synthetic users are fictional — not research evidence. Scores are diagnostic s
 ## Quick start examples
 
 ```bash
-# Quick critique
+# 1. Quick critique
 idea-gauntlet quick "A focus-room app for remote workers"
 
-# Court mode (save to file)
+# 2. Go-to-Market strategy
+idea-gauntlet gtm "A focus-room app" --budget "$5000" --timeline "90 days"
+
+# 3. Deep competitive intelligence
+idea-gauntlet compete "A focus-room app" --depth deep
+
+# 4. Revenue model exploration & pricing tiers
+idea-gauntlet revenue "A focus-room app"
+
+# 5. Founder-market fit evaluation
+idea-gauntlet founder "A focus-room app" --background "8 years distributed engineer, worked remotely for 3 years"
+
+# 6. AI-simulated customer discovery interview
+idea-gauntlet interview "A focus-room app" --persona "Senior Remote Engineer"
+
+# 7. Investor pitch deck draft (YC, Sequoia, a16z)
+idea-gauntlet pitch "A focus-room app" --template yc --company "FocusGauntlet"
+
+# 8. Idea evolution & pivot coaching
+idea-gauntlet evolve "A focus-room app" --focus monetization
+
+# 9. Regulatory & compliance scanner
+idea-gauntlet compliance "A focus-room app" --regions us,eu
+
+# 10. Multi-model ensemble consensus
+idea-gauntlet ensemble "A focus-room app" --models "gpt-4o,claude-sonnet-5"
+
+# 11. Trend monitoring (re-research saved ideas)
+idea-gauntlet trend <saved-idea-id>
+
+# 12. Court mode (save to file)
 idea-gauntlet court "Your idea" --output report.md
 
-# Synthetic users
-idea-gauntlet users "Your idea" --personas 8
-
-# MVP plan
-idea-gauntlet mvp "Your idea"
-
-# Compare ideas
+# 13. Compare multiple ideas
 idea-gauntlet compare "Idea A" "Idea B"
 
-# Export HTML report
+# 14. Export HTML report
 idea-gauntlet quick "Your idea" --format html --output report.html
 
-# Batch mode (one idea per line in file)
+# 15. Batch mode (one idea per line in file)
 idea-gauntlet batch ideas.txt --mode quick --output reports/
 
-# Interactive REPL
+# 16. Interactive REPL
 idea-gauntlet interactive "Your idea"
-
-# History — view saved reports
-idea-gauntlet history
-
-# History — compare score delta
-idea-gauntlet history <id> --evolve <old-id>
 ```
 
 ---
@@ -215,6 +243,16 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 |---|---|
 | `idea-gauntlet quick "idea"` | Fast adversarial critique |
 | `idea-gauntlet court "idea"` | Structured multi-role debate |
+| `idea-gauntlet gtm "idea"` | Go-to-Market strategy & channel priority |
+| `idea-gauntlet compete "idea"` | Deep competitive intelligence & SWOT mapping |
+| `idea-gauntlet revenue "idea"` | Revenue model evaluation & tiered pricing |
+| `idea-gauntlet founder "idea"` | Founder-market fit & capability audit |
+| `idea-gauntlet interview "idea"` | AI-simulated customer discovery interview |
+| `idea-gauntlet pitch "idea"` | Investor pitch deck outline (YC, Sequoia, a16z) |
+| `idea-gauntlet evolve "idea"` | Idea evolution & 3 structural pivot variants |
+| `idea-gauntlet compliance "idea"` | Legal, privacy & regulatory risk scan |
+| `idea-gauntlet ensemble "idea"` | Multi-model consensus & disagreement analysis |
+| `idea-gauntlet trend <id>` | Trend monitoring on previously saved research |
 | `idea-gauntlet users "idea"` | Synthetic user personas |
 | `idea-gauntlet mvp "idea"` | Validation / MVP plan |
 | `idea-gauntlet compare "A" "B"` | Compare multiple ideas |
@@ -230,20 +268,26 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 
 | Option | Applies to | Purpose |
 |---|---|---|
-| `--json` | quick, court, users, mvp | Output JSON |
+| `--json` | Most commands | Output JSON |
 | `--format html` | quick, court, users, mvp, compare | Output styled HTML report |
 | `--format card` | quick, court | Output a shareable 1200×630 verdict card (screenshot & post) |
 | `--output <file>` | Most commands | Save to file |
 | `--ollama` | Generation commands | Use local Ollama |
 | `--model <name>` | Generation commands | Override LLM model |
-| `--stage <stage>` | quick, court, users, mvp | Idea maturity |
-| `--target-users <list>` | quick, users | Comma-separated target users |
-| `--personas <num>` | users | Number of personas |
-| `--market <market>` | quick | Market description |
+| `--stage <stage>` | Most generation commands | Idea maturity (`napkin`, `pre-mvp`, `mvp`, `growth`) |
+| `--target-users <list>` | Most generation commands | Comma-separated target users |
+| `--market <market>` | Most generation commands | Market description |
+| `--budget <amount>` | gtm | Launch budget (e.g. `"$5000"`) |
+| `--timeline <period>` | gtm | Launch timeline (e.g. `"90 days"`) |
+| `--depth <level>` | compete | Analysis depth (`quick` or `deep`) |
+| `--background <text>` | founder | Founder experience, skills, and network |
+| `--persona <name>` | interview | Specific user persona archetype to interview |
+| `--template <name>` | pitch | Pitch deck framework (`yc`, `sequoia`, `a16z`) |
+| `--focus <dim>` | evolve | Focus dimension (`monetization`, `distribution`, `pain`, etc.) |
+| `--regions <list>` | compliance | Target regions (e.g. `"us,eu"`) |
+| `--models <list>` | ensemble | Comma-separated model list for ensemble |
 | `--save` | quick, court | Save report to history store |
 | `--no-search` | All generation commands | Disable web search before analysis |
-| `--roles <file>` | court | Load custom court roles from JSON |
-| `--evolve <id>` | history | Compare scores against a saved report |
 
 ---
 
@@ -252,6 +296,14 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 ```ts
 import {
   runGauntlet,
+  runGTMEngine,
+  runCompetitiveIntelligenceEngine,
+  runRevenueModelEngine,
+  runFounderMarketFitEngine,
+  runUserInterviewEngine,
+  runPitchGenerator,
+  runEvolutionCoach,
+  runComplianceScanner,
   runMarketSizingEngine,
   runUnitEconomicsEngine,
   runAntiPatternDetector,
@@ -271,10 +323,17 @@ const report = await runGauntlet({
   provider,
 });
 
-// Run financial and risk engines
-const marketSize = await runMarketSizingEngine({ idea: "A focus-room app" }, provider);
-const unitEcon = await runUnitEconomicsEngine({ idea: "A focus-room app" }, provider);
-const traps = await runAntiPatternDetector({ idea: "A focus-room app" }, provider);
+// Run GTM and Strategy engines
+const gtm = await runGTMEngine({ idea: "A focus-room app" }, provider);
+const compIntel = await runCompetitiveIntelligenceEngine({ idea: "A focus-room app" }, provider);
+const revenue = await runRevenueModelEngine({ idea: "A focus-room app" }, provider);
+const founderFit = await runFounderMarketFitEngine({ idea: "A focus-room app" }, provider, "8 yrs full-stack engineer");
+
+// Run Discovery & Venture engines
+const interview = await runUserInterviewEngine({ idea: "A focus-room app" }, provider);
+const pitch = await runPitchGenerator({ idea: "A focus-room app" }, provider, { template: "yc" });
+const evolution = await runEvolutionCoach({ idea: "A focus-room app" }, provider);
+const compliance = await runComplianceScanner({ idea: "A focus-room app" }, provider);
 
 console.log(report.markdown);
 ```
