@@ -224,6 +224,133 @@ providerOptions(
   );
 });
 
+// Phase 2: GTM Strategy command
+providerOptions(
+  cli.command("gtm <idea>", "Generate actionable Go-To-Market strategy, channel priority & launch playbook")
+    .option("--budget <budget>", "Available launch budget (e.g. '$5000')")
+    .option("--timeline <timeline>", "Target launch timeline (e.g. '90 days')")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/gtm.js").then(({ gtmCommand }) =>
+    gtmCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 2: Competitive Intelligence Deep Dive command
+providerOptions(
+  cli.command("compete <idea>", "Deep competitive intelligence: SWOT profiles, positioning map & attack vectors")
+    .option("--depth <depth>", "Analysis depth: 'quick' or 'deep' (default: quick)")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/compete.js").then(({ competeCommand }) =>
+    competeCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 2: Revenue Model Explorer command
+providerOptions(
+  cli.command("revenue <idea>", "Evaluate 12 revenue models, rank by fit & generate pricing tiers")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/revenue.js").then(({ revenueCommand }) =>
+    revenueCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 2: Founder-Market Fit Analysis command
+providerOptions(
+  cli.command("founder <idea>", "Assess founder-market fit, unfair advantages, skill gaps & co-founder needs")
+    .option("--background <background>", "Founder background, skills, domain knowledge, and network (required)")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/founder.js").then(({ founderCommand }) =>
+    founderCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 3: AI-Simulated User Interview command
+providerOptions(
+  cli.command("interview <idea>", "Simulate customer discovery interview with a target user persona")
+    .option("--persona <archetype>", "Target user persona archetype to interview")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/interview.js").then(({ interviewCommand }) =>
+    interviewCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 3: Pitch Deck Generator command
+providerOptions(
+  cli.command("pitch <idea>", "Generate investor-ready pitch deck draft (YC, Sequoia, a16z frameworks)")
+    .option("--template <template>", "Pitch deck template: 'yc', 'sequoia', 'a16z' (default: yc)")
+    .option("--company <name>", "Company name override")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/pitch.js").then(({ pitchCommand }) =>
+    pitchCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 3: Idea Evolution Coach command
+providerOptions(
+  cli.command("evolve <idea>", "Diagnose idea bottlenecks & generate 3 structural pivot variants with score deltas")
+    .option("--focus <dimension>", "Focus dimension: distribution, monetization, pain, differentiation, retention")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/evolve.js").then(({ evolveCommand }) =>
+    evolveCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
+// Phase 3: Regulatory & Compliance Scanner command
+providerOptions(
+  cli.command("compliance <idea>", "Scan idea for regulatory, privacy & compliance risks (GDPR, HIPAA, AI Act)")
+    .option("--regions <regions>", "Comma-separated operating regions (e.g. 'us,eu')")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/compliance.js").then(({ complianceCommand }) =>
+    complianceCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
 import { checkForUpdate, formatCliUpdateBanner } from "../utils/updateChecker.js";
 
 // Set quiet mode before parsing commands

@@ -391,6 +391,195 @@ export interface GauntletReport {
   partial?: boolean;
   /** P0-3: Human-readable warnings (e.g. "web research failed", "LLM returned malformed JSON"). */
   warnings?: string[];
+  /** Phase 2: GTM Strategy */
+  gtmStrategy?: GTMStrategy;
+  /** Phase 2: Competitive Intelligence Deep Dive */
+  competitiveIntelligence?: CompetitiveIntelligence;
+  /** Phase 2: Revenue Model Explorer */
+  revenueModel?: RevenueModel;
+  /** Phase 2: Founder-Market Fit */
+  founderMarketFit?: FounderMarketFit;
+  /** Phase 3: AI-Simulated User Interview */
+  userInterviewSession?: UserInterviewSession;
+  /** Phase 3: Pitch Deck Generator */
+  pitchDeck?: PitchDeck;
+  /** Phase 3: Idea Evolution Coach */
+  ideaEvolution?: IdeaEvolution;
+  /** Phase 3: Regulatory & Compliance Scanner */
+  complianceReport?: ComplianceReport;
+}
+
+// ─── Phase 2 Types ────────────────────────────────────────────────────────────
+
+export interface GTMChannel {
+  name: string;
+  type: "organic" | "paid" | "partnership" | "community" | "product_led";
+  priority: "primary" | "secondary" | "experimental";
+  estimatedCAC: string;
+  timeToFirstCustomer: string;
+  rationale: string;
+  risks: string[];
+}
+
+export interface GTMLaunchMilestone {
+  week: string;
+  action: string;
+  goal: string;
+  successSignal: string;
+}
+
+export interface GTMStrategy {
+  targetSegment: string;
+  positioningStatement: string;
+  channels: GTMChannel[];
+  first100CustomersStrategy: string;
+  launchPlaybook: GTMLaunchMilestone[];
+  budgetAllocation: { channel: string; percentage: number; note: string }[];
+  keyMetrics: string[];
+  biggestGTMRisk: string;
+  confidence: Confidence;
+}
+
+export interface CompetitorProfile {
+  name: string;
+  url?: string;
+  type: "direct" | "indirect" | "substitut";
+  estimatedARR?: string;
+  fundingStatus?: string;
+  strengths: string[];
+  weaknesses: string[];
+  positioning: string;
+  pricing?: string;
+  targetSegment?: string;
+}
+
+export interface CompetitiveIntelligence {
+  competitors: CompetitorProfile[];
+  positioningMap: {
+    xAxis: string;
+    yAxis: string;
+    positions: Array<{ name: string; x: number; y: number }>;
+  };
+  strategicWindows: string[];
+  attackVectors: string[];
+  defensiveStrategies: string[];
+  marketTiming: string;
+  summary: string;
+}
+
+export interface RevenueModelOption {
+  model: string;
+  fitScore: number; // 1-10
+  rationale: string;
+  pros: string[];
+  cons: string[];
+  pricingRecommendation: string;
+  revenueProjectionY1: string;
+  revenueProjectionY3: string;
+  whenToStartCharging: string;
+  comparablePricing: string[];
+}
+
+export interface RevenueModel {
+  recommendedModel: string;
+  options: RevenueModelOption[];
+  monetizationTimeline: string;
+  pricingTiers: Array<{ name: string; price: string; targetSegment: string; features: string[] }>;
+  keyRevenueRisks: string[];
+  confidence: Confidence;
+}
+
+export interface FounderMarketFit {
+  backgroundSummary: string;
+  domainExpertiseScore: number; // 1-10
+  networkAdvantageScore: number; // 1-10
+  executionRiskScore: number; // 1-10 (higher = riskier)
+  expertiseGaps: string[];
+  unfairAdvantages: string[];
+  recommendedCoFounderProfile: string;
+  firstHireRecommendations: string[];
+  fitVerdict: "strong_fit" | "moderate_fit" | "weak_fit" | "needs_cofounder";
+  fitSummary: string;
+}
+
+// ─── Phase 3 Types ────────────────────────────────────────────────────────────
+
+export interface InterviewTurn {
+  speaker: "founder" | "persona";
+  message: string;
+}
+
+export interface UserInterviewSession {
+  persona: {
+    name: string;
+    role: string;
+    companyOrContext: string;
+    archetype: string;
+    currentWorkaround: string;
+    painLevel: number; // 1-10
+  };
+  dialogue: InterviewTurn[];
+  keyInsights: string[];
+  uncoveredNeeds: string[];
+  objectionAnalysis: string;
+  wouldBuyVerdict: "definitely" | "maybe" | "unlikely" | "no";
+  maxWillingnessToPay: string;
+  goldenQuote: string;
+}
+
+export interface PitchDeckSlide {
+  slideNumber: number;
+  title: string;
+  headline: string;
+  bulletPoints: string[];
+  visualConcept: string;
+  speakerNotes: string;
+}
+
+export interface PitchDeck {
+  template: "yc" | "sequoia" | "a16z";
+  companyName: string;
+  oneLinePitch: string;
+  slides: PitchDeckSlide[];
+  elevatorPitch: string;
+  whyNowNarrative: string;
+}
+
+export interface IdeaVariant {
+  variantName: string;
+  angle: string;
+  oneSentencePitch: string;
+  coreChange: string;
+  whyThisWorksBetter: string;
+  estimatedScoreDeltas: Partial<Record<keyof Scorecard, number>>;
+  newTargetCustomer: string;
+  risks: string[];
+}
+
+export interface IdeaEvolution {
+  originalIdea: string;
+  primaryBottleneck: string;
+  oneBigChangeRecommendation: string;
+  variants: IdeaVariant[];
+  suggestedExperiment: string;
+}
+
+export interface ComplianceRequirement {
+  regulation: string;
+  applicable: boolean;
+  severity: Severity;
+  requirements: string[];
+  penaltiesForNonCompliance: string;
+  recommendedAction: string;
+}
+
+export interface ComplianceReport {
+  overallRiskLevel: Severity;
+  applicableFrameworks: string[];
+  requirements: ComplianceRequirement[];
+  dataPrivacyChecklist: string[];
+  estimatedComplianceTimeline: string;
+  summary: string;
 }
 
 // ─── Provider types ────────────────────────────────────────────

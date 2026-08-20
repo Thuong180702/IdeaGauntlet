@@ -334,6 +334,308 @@ export class StaticProvider implements LLMProvider {
       });
     }
 
+    // GTM mode
+    if (combined.includes("Go-To-Market (GTM) Strategy Director") || combined.includes("GTM Strategy")) {
+      return JSON.stringify({
+        targetSegment: "Remote-first tech workers and freelance software engineers",
+        positioningStatement: "For remote workers struggling with focus, IdeaGauntlet is the virtual co-working space that provides AI accountability, unlike passive study timers.",
+        channels: [
+          {
+            name: "ProductHunt & Indie Hackers launch",
+            type: "community",
+            priority: "primary",
+            estimatedCAC: "$20-$50",
+            timeToFirstCustomer: "1-2 weeks",
+            rationale: "Highly receptive early adopter audience for productivity tools",
+            risks: ["Spike-and-decay traffic pattern"],
+          },
+          {
+            name: "SEO Content (deep work techniques)",
+            type: "organic",
+            priority: "secondary",
+            estimatedCAC: "$0-$30",
+            timeToFirstCustomer: "2-3 months",
+            rationale: "High intent search traffic for focus and productivity",
+            risks: ["Slow ramp up"],
+          },
+        ],
+        first100CustomersStrategy: "Engage directly with productivity communities on Reddit and Discord with free beta invites.",
+        launchPlaybook: [
+          { week: "Week 1", action: "Landing page live with waitlist", goal: "Collect 200 emails", successSignal: "15% conversion on page" },
+          { week: "Week 2-4", action: "Private beta with 50 users", goal: "Measure weekly retention", successSignal: ">40% 7-day retention" },
+        ],
+        budgetAllocation: [
+          { channel: "Community & Content", percentage: 60, note: "Founder time and seed content" },
+          { channel: "Paid Ads", percentage: 40, note: "Targeted search ads for validation" },
+        ],
+        keyMetrics: ["DAU/MAU ratio", "Weekly focus sessions completed", "Paid conversion rate"],
+        biggestGTMRisk: "High early churn due to novelty wearing off",
+        confidence: "high",
+      });
+    }
+
+    // Competitive intelligence mode
+    if (combined.includes("Competitive Intelligence Director") || combined.includes("Competitive Intelligence")) {
+      return JSON.stringify({
+        competitors: [
+          {
+            name: "Focusmate",
+            url: "https://focusmate.com",
+            type: "direct",
+            estimatedARR: "$3M",
+            fundingStatus: "Bootstrapped",
+            strengths: ["Strong community", "Established brand", "Simple UX"],
+            weaknesses: ["Requires video on (awkward for some)", "No AI matching"],
+            positioning: "Virtual coworking with human accountability partners",
+            pricing: "$5-$10/month",
+            targetSegment: "Freelancers and students",
+          },
+          {
+            name: "Centred",
+            url: "https://centred.app",
+            type: "indirect",
+            estimatedARR: "$1M",
+            fundingStatus: "Seed $1.5M",
+            strengths: ["Task management integration", "Audio coaching"],
+            weaknesses: ["Complex desktop app", "Higher battery drain"],
+            positioning: "Flow state operating system for individuals",
+            pricing: "$12/month",
+            targetSegment: "Knowledge workers",
+          },
+        ],
+        positioningMap: {
+          xAxis: "Price: Low → High",
+          yAxis: "Automation: Manual → AI-Powered",
+          positions: [
+            { name: "Focusmate", x: 3, y: 2 },
+            { name: "Centred", x: 7, y: 6 },
+            { name: "Our Product", x: 4, y: 8 },
+          ],
+        },
+        strategicWindows: ["Surge in remote work burnout creates appetite for automated accountability tools"],
+        attackVectors: ["Offer audio-only and AI-simulated options to capture users uncomfortable with video"],
+        defensiveStrategies: ["Build proprietary focus session interaction datasets to train custom pacing models"],
+        marketTiming: "Optimal — post-remote adoption with persistent focus fatigue.",
+        summary: "Market is ripe for AI-assisted focus rooms that eliminate human partner scheduling friction.",
+      });
+    }
+
+    // Revenue model mode
+    if (combined.includes("Revenue Model Strategist") || combined.includes("Revenue Model")) {
+      return JSON.stringify({
+        recommendedModel: "subscription_saas",
+        options: [
+          {
+            model: "subscription_saas",
+            fitScore: 9,
+            rationale: "High recurring daily usage makes monthly/annual subscription the natural monetization fit.",
+            pros: ["Predictable recurring revenue", "High LTV potential with daily habits"],
+            cons: ["Need high retention to combat churn"],
+            pricingRecommendation: "$10/mo or $80/yr",
+            revenueProjectionY1: "$120K ARR (1,000 subscribers)",
+            revenueProjectionY3: "$1.5M ARR (12,500 subscribers)",
+            whenToStartCharging: "After 3 free completed sessions",
+            comparablePricing: ["Focusmate ($9.99/mo)", "Brain.fm ($6.99/mo)"],
+          },
+          {
+            model: "freemium",
+            fitScore: 8,
+            rationale: "Free tier with 3 sessions/week drives viral word of mouth.",
+            pros: ["Low top-of-funnel friction", "Organic referral loop"],
+            cons: ["Server costs for free tier users"],
+            pricingRecommendation: "Free (3 sessions/wk) → $12/mo unlimited",
+            revenueProjectionY1: "$90K ARR",
+            revenueProjectionY3: "$1.2M ARR",
+            whenToStartCharging: "Immediate freemium gating",
+            comparablePricing: ["Forest App (free with in-app purchase)"],
+          },
+        ],
+        monetizationTimeline: "Launch with 14-day free trial, transition to 3 free sessions/week freemium tier at scale.",
+        pricingTiers: [
+          { name: "Free", price: "$0/mo", targetSegment: "Casual focusers", features: ["3 sessions/week", "Standard audio", "Basic stats"] },
+          { name: "Pro", price: "$10/mo", targetSegment: "Daily remote workers", features: ["Unlimited sessions", "AI accountability bot", "Advanced analytics", "Integrations"] },
+          { name: "Teams", price: "$25/seat/mo", targetSegment: "Distributed companies", features: ["Private company rooms", "Manager dashboards", "SSO"] },
+        ],
+        keyRevenueRisks: ["Willingness to pay may drop if free substitutes improve", "App store fee margins on mobile"],
+        confidence: "high",
+      });
+    }
+
+    // Founder-market fit mode
+    if (combined.includes("Founder-Market Fit Analyst") || combined.includes("FOUNDER BACKGROUND")) {
+      return JSON.stringify({
+        backgroundSummary: "Technical founder with 8 years in distributed systems and 3 years working remotely as an engineering lead.",
+        domainExpertiseScore: 8,
+        networkAdvantageScore: 6,
+        executionRiskScore: 3,
+        expertiseGaps: ["Growth marketing and B2C user acquisition experience", "Paid advertising optimization"],
+        unfairAdvantages: ["Deep understanding of remote worker daily pain points", "Can build the core real-time WebRTC infrastructure solo"],
+        recommendedCoFounderProfile: "Growth/marketing co-founder with experience scaling consumer subscription apps or B2B developer tools.",
+        firstHireRecommendations: [
+          "Community & Content Lead to build early user loops",
+          "UI/UX Designer to optimize onboarding friction",
+          "Full-stack Engineer once MVP scales",
+        ],
+        fitVerdict: "strong_fit",
+        fitSummary: "Strong technical fit to build the product rapidly. Primary risk is marketing and distribution, which can be mitigated with a growth advisor or co-founder.",
+      });
+    }
+
+    // User interview mode
+    if (combined.includes("Customer Discovery & User Research Lead") || combined.includes("customer discovery interview")) {
+      return JSON.stringify({
+        persona: {
+          name: "Jordan Lee",
+          role: "Senior Backend Engineer",
+          companyOrContext: "Fully remote Series B SaaS (80 employees)",
+          archetype: "Distracted Remote Engineer",
+          currentWorkaround: "Noise-cancelling headphones and Pomodoro timer app",
+          painLevel: 8,
+        },
+        dialogue: [
+          { speaker: "founder", message: "What is the hardest part about staying focused while working from home?" },
+          { speaker: "persona", message: "It's the context switching between Slack, PR reviews, and actual coding. I lose momentum and end up browsing Twitter." },
+          { speaker: "founder", message: "Have you tried body-doubling tools like Focusmate?" },
+          { speaker: "persona", message: "I tried it once, but having video on with a stranger felt awkward and high pressure." },
+          { speaker: "founder", message: "What if it was audio-only or with an intelligent bot accountability partner?" },
+          { speaker: "persona", message: "That would be 10x better. Lower social anxiety, but still has that subtle presence that stops me from tabbing out." },
+        ],
+        keyInsights: [
+          "Video anxiety is a major barrier to existing co-working tools",
+          "Engineers need deep work protection without social friction",
+          "Would readily expense a focus tool on their team learning & wellness budget",
+        ],
+        uncoveredNeeds: [
+          "Slack status auto-sync during focus blocks",
+          "GitHub PR commit integration to show tangible progress",
+        ],
+        objectionAnalysis: "Reluctance to install heavy desktop agents or turn on webcam.",
+        wouldBuyVerdict: "definitely",
+        maxWillingnessToPay: "$15/month personal, or $30/month company expensed",
+        goldenQuote: "If you remove the awkward camera pressure and let me just get into flow, I'd use this every single morning.",
+      });
+    }
+
+    // Pitch generator mode
+    if (combined.includes("World-Class Pitch Coach and Venture Partner") || combined.includes("pitch deck")) {
+      return JSON.stringify({
+        template: "yc",
+        companyName: "FocusGauntlet",
+        oneLinePitch: "Virtual AI focus rooms for the 100M remote knowledge workers struggling with daily distraction.",
+        elevatorPitch: "FocusGauntlet provides instant, zero-friction virtual coworking rooms with AI accountability partners. We help remote engineers and knowledge workers double their deep work hours without the awkwardness of video calls.",
+        whyNowNarrative: "Remote work is permanent, but distributed teams suffer from rampant asynchronous interruptions. Generative AI agents now make high-quality simulated accountability possible at zero marginal cost.",
+        slides: [
+          {
+            slideNumber: 1,
+            title: "The Problem",
+            headline: "Remote workers lose 3.5 hours every day to context-switching and lack of structure.",
+            bulletPoints: ["100M+ remote and hybrid knowledge workers globally", "Passive tools (timers, blockers) fail after 3 days", "Human body-doubling creates scheduling & webcam friction"],
+            visualConcept: "Graph showing productivity collapse during fragmented remote workdays",
+            speakerNotes: "The promise of remote work was autonomy, but the reality is continuous distraction. Current tools fail because they lack social presence.",
+          },
+          {
+            slideNumber: 2,
+            title: "The Solution",
+            headline: "Instant virtual focus rooms with AI-assisted pacing and accountability.",
+            bulletPoints: ["Join silent focus sprints in 1 click", "AI pacing agent checks in at start and finish", "Integrates seamlessly with Slack and GitHub"],
+            visualConcept: "Clean mock-up of 50-minute sprint room UI",
+            speakerNotes: "FocusGauntlet provides the psychological benefits of working in a quiet library with peers, on demand.",
+          },
+          {
+            slideNumber: 3,
+            title: "Market Size & Traction",
+            headline: "$12B TAM across distributed tech, freelance, and creative teams.",
+            bulletPoints: ["$1.8B initial SAM in tech and startup knowledge workers", "42% week-4 user retention in private beta", "$10/mo SaaS pricing validated by 500 waitlist signups"],
+            visualConcept: "TAM/SAM/SOM concentric circles + cohort retention curve",
+            speakerNotes: "We are capturing the tech sector wedge first, expanding to all knowledge workers.",
+          },
+        ],
+      });
+    }
+
+    // Evolution coach mode
+    if (combined.includes("Startup Pivot & Idea Evolution Strategist") || combined.includes("Idea Evolution")) {
+      return JSON.stringify({
+        originalIdea: "A focus room app for remote workers",
+        primaryBottleneck: "Consumer focus apps have high early churn and low standalone willingness to pay.",
+        oneBigChangeRecommendation: "Pivot from individual B2C subscriptions to an engineering team 'Deep Work Shield' sold to tech leads.",
+        variants: [
+          {
+            variantName: "The B2B Deep Work Shield",
+            angle: "B2B Team SaaS",
+            oneSentencePitch: "Calendar-integrated deep work protection platform that synchronizes engineering focus sprints across distributed squads.",
+            coreChange: "Sold as a team utility with Slack auto-mute and Jira task integration rather than a solo timer.",
+            whyThisWorksBetter: "Unlocks B2B budgets ($25/dev/month), team network effects reduce churn, clear ROI on engineering output.",
+            estimatedScoreDeltas: { monetization: 4, distribution: 2, pain: 2 },
+            newTargetCustomer: "Engineering managers and CTOs at 20-200 person tech companies",
+            risks: ["Requires OAuth calendar permissions", "Longer B2B sales cycle"],
+          },
+          {
+            variantName: "The Open-Source Local-First Protocol",
+            angle: "Developer Community Wedge",
+            oneSentencePitch: "Local-first, privacy-respecting focus room CLI and desktop client with self-hosted team relay servers.",
+            coreChange: "Developer-first distribution via CLI/Homebrew with cloud sync upsell.",
+            whyThisWorksBetter: "Zero CAC organic developer word-of-mouth on HackerNews and GitHub.",
+            estimatedScoreDeltas: { distribution: 3, buildability: 1, monetization: -1 },
+            newTargetCustomer: "Software developers, privacy advocates, open-source contributors",
+            risks: ["Monetization delay", "Community management overhead"],
+          },
+          {
+            variantName: "The ADHD & Neurodivergent Flow Companion",
+            angle: "High-Urgency Vertical Niche",
+            oneSentencePitch: "Specialized body-doubling and task scaffolding workspace designed with neurodiversity coaches.",
+            coreChange: "Laser-focused on users with acute executive dysfunction who have 5x higher willingness to pay.",
+            whyThisWorksBetter: "Extreme urgency, passionate word-of-mouth community, insurance/HSA reimbursement potential.",
+            estimatedScoreDeltas: { pain: 3, retention: 3, differentiation: 2 },
+            newTargetCustomer: "Adults with ADHD and executive function challenges",
+            risks: ["Higher customer support touch", "Clinical framing expectations"],
+          },
+        ],
+        suggestedExperiment: "Run 2 contrasting landing pages: 'Team Focus Shield' ($25/seat) vs 'ADHD Flow Companion' ($19/mo) with a 50-person email capture goal.",
+      });
+    }
+
+    // Compliance scanner mode
+    if (combined.includes("Chief Regulatory & Compliance Officer") || combined.includes("compliance obligations")) {
+      return JSON.stringify({
+        overallRiskLevel: "medium",
+        applicableFrameworks: ["GDPR (EU)", "CCPA/CPRA (California)", "EU AI Act (Transparency Obligations)"],
+        requirements: [
+          {
+            regulation: "GDPR / CCPA",
+            applicable: true,
+            severity: "medium",
+            requirements: [
+              "Maintain explicit consent records for audio/session recording",
+              "Implement self-serve data export and deletion (Right to be Forgotten)",
+              "Publish transparent Privacy Policy detailing subprocessors",
+            ],
+            penaltiesForNonCompliance: "Fines up to €20M or 4% of annual global turnover",
+            recommendedAction: "Use standard data processing agreements (DPAs) with cloud and AI providers.",
+          },
+          {
+            regulation: "EU AI Act (Minimal/Transparency Risk)",
+            applicable: true,
+            severity: "low",
+            requirements: [
+              "Disclose to users that they are interacting with an AI agent",
+              "Ensure AI persona does not make deceptive claims about human identity",
+            ],
+            penaltiesForNonCompliance: "Administrative fines for non-disclosure under Article 50",
+            recommendedAction: "Display clear 'AI Accountability Partner' badge in all session rooms.",
+          },
+        ],
+        dataPrivacyChecklist: [
+          "End-to-end encryption for WebRTC audio/video streams",
+          "Automated ephemeral data purge for room chat logs after 24 hours",
+          "GDPR-compliant cookie banner and consent tracking",
+          "Zero training data retention agreements with LLM providers",
+        ],
+        estimatedComplianceTimeline: "2-3 weeks for baseline privacy architecture and policy drafting",
+        summary: "Product has low-to-medium compliance exposure. Key requirement is clear AI disclosure and standard GDPR user data deletion controls.",
+      });
+    }
+
     // Default fallback for other calls
     return "Generic analysis response for testing.";
   }

@@ -5,6 +5,25 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-08-20
+
+### Added
+- **Go-To-Market (GTM) Strategy Engine (`runGTMEngine`)**: Channel priority matrix (organic, paid, community, product-led) with estimated CAC and time-to-first-customer, first-100-customers strategy, launch playbook milestones, and budget allocation.
+- **Competitive Intelligence Deep Dive Engine (`runCompetitiveIntelligenceEngine`)**: LLM-powered SWOT competitor profiles, 2D positioning map with X/Y coordinates, strategic windows, attack vectors, and defensive strategies.
+- **Revenue Model Explorer Engine (`runRevenueModelEngine`)**: Evaluates and ranks 12 major startup revenue models by fit score with Y1/Y3 projections, tiered pricing structure, and monetization timeline.
+- **Founder-Market Fit Analysis Engine (`runFounderMarketFitEngine`)**: Assesses founder domain expertise, network advantage, and execution risk; highlights unfair advantages, skill gaps, co-founder recommendations, and first 3 priority hires.
+- **AI-Simulated User Interview Engine (`runUserInterviewEngine`)**: Simulates live in-character customer discovery interviews, extracts latent user needs, evaluates willingness to pay, and analyzes adoption friction.
+- **Pitch Deck Draft Generator (`runPitchGenerator`)**: Generates structured 10-12 slide pitch deck outlines based on YC, Sequoia, and a16z venture capital frameworks with headlines, proof points, visual concepts, and speaker notes.
+- **Idea Evolution Coach & Pivot Engine (`runEvolutionCoach`)**: Diagnoses core bottlenecks across distribution, monetization, or urgency, and generates 3 structural pivot variants with projected score improvements and 48-hour validation smoke tests.
+- **Regulatory & Compliance Risk Scanner (`runComplianceScanner`)**: Scans product ideas for regulatory, privacy, and compliance landmines (GDPR, CCPA, HIPAA, EU AI Act, COPPA, FinTech/SEC), risk severity matrix, and pre-launch engineering privacy checklists.
+- **Exposed Ensemble Engine & Trend Monitor**: Exported `runEnsemble`, `formatEnsembleResult`, `analyzeTrend`, and `formatTrendResult` from the core library.
+- **8 New CLI Commands**: `gtm`, `compete`, `revenue`, `founder`, `interview`, `pitch`, `evolve`, and `compliance`.
+- **10 New MCP Tools**: Added `run_ensemble`, `analyze_trend`, `run_gtm_strategy`, `run_competitive_intelligence`, `run_revenue_model_explorer`, `run_founder_fit`, `interview_synthetic_user`, `generate_pitch_deck`, `evolve_idea`, and `scan_compliance` to the MCP Server (totaling 19 tools).
+
+### Fixed
+- **Error Fallback Transparency**: Added explicit `isErrorFallback: true` flags in `marketSizingEngine` and `unitEconomicsEngine` fallbacks to avoid mistaking placeholder data for verified analysis.
+- **Test Coverage Expansion**: Added 11 new comprehensive test suites (+71 tests), expanding coverage across all engines, niche detection, trend analysis, and MCP servers (totaling 60 test suites and 456 tests with 100% pass rate).
+
 ## [0.5.1] - 2026-08-14
 
 ### Added

@@ -92,6 +92,8 @@ Return ONLY valid JSON — no markdown code fences, no extra text.`;
       pricingStrategy: "Tiered subscription with monthly/annual billing",
       sustainabilityVerdict: "unclear",
       keyRisks: ["CAC escalation risk in competitive search/social channels"],
-    };
+      // NOTE: this is a fallback — research or LLM call failed. Do not rely on these numbers.
+      isErrorFallback: true,
+    } as any;
   }
 }

@@ -85,6 +85,8 @@ Return ONLY valid JSON — no markdown code fences, no extra text.`;
       methodology: "Heuristic estimation fallback",
       sourcesCited: [],
       confidence: "low",
-    };
+      // NOTE: this is a fallback — research or LLM call failed. Do not rely on these numbers.
+      isErrorFallback: true,
+    } as any;
   }
 }
