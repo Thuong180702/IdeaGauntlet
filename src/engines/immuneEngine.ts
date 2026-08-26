@@ -4,6 +4,7 @@ import { calculateScores } from "../core/scoring.js";
 import { quickWorkflow } from "../workflows/definitions/quick.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 import { extractJSON } from "../utils/jsonRepair.js";
+import { verifyScoreProvenance } from "../core/provenance.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
@@ -43,7 +44,7 @@ export async function runImmuneEngine(
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
-    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, timingRisk ({window, urgency, whatChangesIfDelayed}) — does this idea depend on a time window? defensibility ({moatType, strength, timeline}) — what prevents copycats in 6-12 months?, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), scoreRubric ({clarity:{evidence, sensitivity}, pain:{...}, differentiation:{...}, buildability:{...}, distribution:{...}, monetization:{...}, evidence:{...}}) — for EACH dimension: `evidence` = one concrete sentence grounding the score in the idea/competitors/research (not generic), `sensitivity` = one sentence stating what would raise it ~2 points and what would drop it ~2 points, brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea), nextStep",
+    "Return JSON with keys: oneLineVerdict, topRisks (array of {title, severity, explanation, mitigation}), topAssumptions (array of {title, whyItMatters, howToTest, confidence}), bestCase, worstCase, distributionRisk, monetizationRisk, buildabilityRisk, fastestValidationTest ({description, method, timeline, successSignal}), competitorAnalysis ({competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}) — use data from research brief, name real competitors, nicheOpportunities (array of {type, description, evidence, wedgeIdea, whyNow}) — at least 3 if market is saturated, timingRisk ({window, urgency, whatChangesIfDelayed}) — does this idea depend on a time window? defensibility ({moatType, strength, timeline}) — what prevents copycats in 6-12 months?, scores ({clarity, pain, differentiation, buildability, distribution, monetization, evidence}), scoreRubric ({clarity:{evidence, sensitivity}, pain:{...}, differentiation:{...}, buildability:{...}, distribution:{...}, monetization:{...}, evidence:{...}}) — for EACH dimension: `evidence` = one concrete sentence grounding the score in the idea/competitors/research (not generic), `sensitivity` = one sentence stating what would raise it ~2 points and what would drop it ~2 points, `basis` = 'sourced' ONLY if this score rests on a specific item in the research brief above, otherwise 'judgment', `citations` = array of the exact URLs or source titles from the research brief that support it (empty array when basis is 'judgment'; NEVER invent a citation — a claimed source that is not in the brief is detected and discarded), brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea), nextStep",
   ]);
 
   let parsed: any = {};
@@ -113,7 +114,12 @@ export async function runImmuneEngine(
     overrides: scoreOverrides,
     llmEvidenceOverride: calibratedEvidenceOverride,
   });
-  const scoreRubric = sanitizeRubric(parsed.scoreRubric);
+  // The model's provenance claims are checked against the retrieved brief, not
+  // trusted: an invented citation must not be able to promote a guess to evidence.
+  const { rubric: scoreRubric, calibration } = verifyScoreProvenance(
+    sanitizeRubric(parsed.scoreRubric),
+    research,
+  );
   const verdict = computeVerdict({
     scores,
     evidenceScoreOverride: calibratedEvidenceOverride,
@@ -143,6 +149,7 @@ export async function runImmuneEngine(
     verdict,
     scores,
     scoreRubric,
+    calibration,
     brutalTakeaway: typeof parsed.brutalTakeaway === "string" ? parsed.brutalTakeaway : undefined,
     coreInsight: parsed.oneLineVerdict ?? "Analysis complete.",
     strongestCase: parsed.bestCase ?? "",
@@ -196,6 +203,9 @@ function sanitizeRubric(raw: any): Partial<Record<keyof Scorecard, ScoreRubricEn
       out[dim] = {
         evidence: typeof e.evidence === "string" ? e.evidence : "",
         sensitivity: typeof e.sensitivity === "string" ? e.sensitivity : "",
+        // `basis` is deliberately NOT copied from the model here — it is set by
+        // verifyScoreProvenance after the citations have been checked.
+        ...(Array.isArray(e.citations) ? { citations: e.citations.filter((c: unknown) => typeof c === "string") } : {}),
       };
     }
   }

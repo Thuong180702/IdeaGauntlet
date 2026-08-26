@@ -19,6 +19,7 @@ import { runUserInterviewEngine, formatUserInterviewReport } from "../engines/us
 import { runPitchGenerator, formatPitchDeckReport } from "../engines/pitchGenerator.js";
 import { runEvolutionCoach, formatIdeaEvolutionReport } from "../engines/evolutionCoach.js";
 import { runComplianceScanner, formatComplianceReport } from "../engines/complianceScanner.js";
+import { runAssumptionLedger, formatAssumptionLedger } from "../engines/assumptionLedger.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import { resolveProvider } from "../providers/providerUtils.js";
 import { OpenAICompatibleProvider } from "../providers/openaiCompatibleProvider.js";
@@ -336,6 +337,23 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       return { type: "text", text };
     }
 
+    case "build_assumption_ledger": {
+      if (!args.idea) throw new Error(t("mcp.idea_required"));
+      const maxRaw = args.maxAssumptions;
+      const maxAssumptions = typeof maxRaw === "number" ? maxRaw : undefined;
+      const result = await runAssumptionLedger(
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        requireProvider(),
+        {
+          maxAssumptions,
+          enableSearch: args.enableSearch !== false,
+        }
+      );
+      const rawText = formatAssumptionLedger(result);
+      const text = await withUpdateNotice(rawText, args.idea);
+      return { type: "text", text };
+    }
+
     default:
       throw new Error(`${t("mcp.unknown_tool")}: ${name}`);
   }
@@ -565,6 +583,19 @@ export const toolDefinitions = [
       properties: {
         idea: { type: "string", description: "The product idea" },
         regions: { type: "string", description: "Comma-separated target operating regions (e.g. 'us,eu')" },
+        enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
+      },
+      required: ["idea"],
+    },
+  },
+  {
+    name: "build_assumption_ledger",
+    description: "List the falsifiable assumptions a product idea depends on. Each carries a criticality (fatal/major/minor), the cheapest test that could disprove it, a timebox and cost, and a kill threshold naming a concrete number. Returns them ordered cheapest-idea-killing-test-first. Use this when the user asks what to validate, what to test first, what would make the idea fail, or how to de-risk before building.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        idea: { type: "string", description: "The product idea" },
+        maxAssumptions: { type: "number", description: "How many assumptions to surface (3-10, default 6)" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
       },
       required: ["idea"],

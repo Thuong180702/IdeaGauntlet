@@ -1,7 +1,8 @@
-import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, MarketSizing, UnitEconomics, AntiPatternReport } from "./types.js";
+import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, MarketSizing, UnitEconomics, AntiPatternReport, CalibrationSummary, AssumptionLedger, LedgerAssumption, AssumptionCriticality } from "./types.js";
 import type { EnhancedCourtDebate, EnhancedQuickReport, EnhancedPersona, UserSynthesis, EnhancedMVPPlan, EnhancedComparisonResult } from "./types.js";
 import type { CompetitorLandscape, NicheOpportunity } from "../search/types.js";
 import { overallScore } from "./scoring.js";
+import { formatBasisBadge } from "./provenance.js";
 
 export function buildReport(report: GauntletReport): string {
   const lines: string[] = [];
@@ -21,6 +22,8 @@ export function buildReport(report: GauntletReport): string {
   if (report.strongestCase) { lines.push(`## Strongest Case\n\n${report.strongestCase}\n`); }
   if (report.weakestAssumption) { lines.push(`## Weakest Assumption\n\n${report.weakestAssumption}\n`); }
   if (report.scores) { lines.push(`## Scorecard\n\n${buildScorecardTable(report.scores, report.scoreRubric, report.unassessedDimensions)}\n`); }
+  if (report.calibration) { lines.push(`### Calibration\n\n${buildCalibrationBlock(report.calibration)}\n`); }
+  if (report.assumptionLedger) { lines.push(`## Assumption Ledger\n\n${buildAssumptionLedgerBlock(report.assumptionLedger)}\n`); }
   if (report.risks && report.risks.length > 0) { lines.push(`## Top Failure Modes\n\n${buildRiskList(report.risks)}\n`); }
   if (report.assumptions && report.assumptions.length > 0) { lines.push(`## Dangerous Assumptions\n\n${buildAssumptionList(report.assumptions)}\n`); }
   if (report.killTests && report.killTests.length > 0) { lines.push(`## Kill Tests\n\n${buildKillTestList(report.killTests)}\n`); }
@@ -91,23 +94,36 @@ function buildScorecardTable(
   const skip = new Set(unassessed ?? []);
   const cell = (s?: string) => (s ?? "").replace(/\|/g, "\\|").replace(/\n+/g, " ");
   const hasRubric = rubric && Object.keys(rubric).length > 0;
+  // The Basis column only appears once provenance has actually been verified —
+  // an empty column would imply a guarantee the run cannot make.
+  const hasBasis = hasRubric && Object.values(rubric).some((e) => e?.basis);
   const rows = hasRubric
-    ? ["| Dimension | Score | Evidence | What would move it |", "|---|---|---|---|"]
+    ? hasBasis
+      ? ["| Dimension | Score | Basis | Evidence | What would move it |", "|---|---|---|---|---|"]
+      : ["| Dimension | Score | Evidence | What would move it |", "|---|---|---|---|"]
     : ["| Dimension | Score |", "|-----------|-------|"];
+  const pad = (cells: string[]) => `| ${cells.join(" | ")} |`;
   for (const [key, label] of Object.entries(labels)) {
     const dim = key as keyof Scorecard;
     if (skip.has(dim)) {
       rows.push(hasRubric
-        ? `| ${label} | — | _not assessed in this mode_ | |`
-        : `| ${label} | — |`);
+        ? hasBasis
+          ? pad([label, "—", "—", "_not assessed in this mode_", ""])
+          : pad([label, "—", "_not assessed in this mode_", ""])
+        : pad([label, "—"]));
       continue;
     }
     const val = `${scores[dim]}/10`;
     if (hasRubric) {
       const entry = rubric[dim];
-      rows.push(`| ${label} | ${val} | ${cell(entry?.evidence)} | ${cell(entry?.sensitivity)} |`);
+      const evidenceCell = entry?.unverifiedCitations?.length
+        ? `${cell(entry.evidence)} _(unverified citation: ${cell(entry.unverifiedCitations.join("; "))})_`
+        : cell(entry?.evidence);
+      rows.push(hasBasis
+        ? pad([label, val, formatBasisBadge(entry), evidenceCell, cell(entry?.sensitivity)])
+        : pad([label, val, evidenceCell, cell(entry?.sensitivity)]));
     } else {
-      rows.push(`| ${label} | ${val} |`);
+      rows.push(pad([label, val]));
     }
   }
   const overall = overallScore(scores, unassessed);
@@ -115,13 +131,94 @@ function buildScorecardTable(
   const confLow = Math.max(1, overall - 2);
   const confHigh = Math.min(10, overall + 2);
   const overallStr = hasRubric
-    ? `| **Overall** | **${overall}/10** | Median of assessed dimensions | |`
-    : `| **Overall** | **${overall}/10** |`;
+    ? hasBasis
+      ? pad(["**Overall**", `**${overall}/10**`, "", "Median of assessed dimensions", ""])
+      : pad(["**Overall**", `**${overall}/10**`, "Median of assessed dimensions", ""])
+    : pad(["**Overall**", `**${overall}/10**`]);
   rows.push(hasRubric
-    ? `| **Confidence** | **${confLow}–${confHigh}/10** | ±2 reflects LLM scoring uncertainty | |`
-    : `| **Confidence** | **${confLow}–${confHigh}/10** |`);
+    ? hasBasis
+      ? pad(["**Confidence**", `**${confLow}–${confHigh}/10**`, "", "±2 reflects LLM scoring uncertainty", ""])
+      : pad(["**Confidence**", `**${confLow}–${confHigh}/10**`, "±2 reflects LLM scoring uncertainty", ""])
+    : pad(["**Confidence**", `**${confLow}–${confHigh}/10**`]));
   rows.push(overallStr);
   return rows.join("\n");
+}
+
+/**
+ * Renders how much of the scorecard is actually evidence-backed. Deliberately
+ * placed directly under the table so a reader cannot take the numbers at face
+ * value without also seeing what they rest on.
+ */
+function buildCalibrationBlock(c: CalibrationSummary): string {
+  if (c.assessedCount === 0) return c.note;
+
+  const sourcedRatio = `${c.sourcedCount}/${c.assessedCount}`;
+  const bar = "\u25cf".repeat(c.sourcedCount) + "\u25cb".repeat(Math.max(0, c.judgmentCount));
+
+  const lines = [
+    `**Evidence-backed:** ${sourcedRatio} scored dimensions  \`${bar}\``,
+    "",
+    c.note,
+  ];
+  if (c.droppedCitationCount > 0) {
+    lines.push("");
+    lines.push(
+      "> Citations the model claimed but that were not present in the retrieved " +
+      "research are marked _unverified_ in the table above and are not counted as evidence.",
+    );
+  }
+  return lines.join("\n");
+}
+
+const CRITICALITY_LABEL: Record<AssumptionCriticality, string> = {
+  fatal: "FATAL",
+  major: "MAJOR",
+  minor: "MINOR",
+};
+
+/**
+ * Renders assumptions as a falsification plan: what must be true, the number
+ * that declares it dead, and what it costs to find out — ordered so the
+ * cheapest idea-killing test comes first.
+ */
+function buildAssumptionLedgerBlock(ledger: AssumptionLedger): string {
+  const lines: string[] = [];
+
+  lines.push(`**Riskiest assumption:** ${ledger.riskiestAssumption}\n`);
+  lines.push(ledger.summary);
+  lines.push("");
+
+  const byId = new Map(ledger.assumptions.map((a) => [a.id, a]));
+  const ordered = ledger.testOrder
+    .map((id) => byId.get(id))
+    .filter((a): a is LedgerAssumption => Boolean(a));
+  // Any assumption missing from testOrder still has to appear.
+  for (const a of ledger.assumptions) {
+    if (!ledger.testOrder.includes(a.id)) ordered.push(a);
+  }
+
+  lines.push("| # | Assumption | If false | Confidence | Test | Timebox | Cost | Kill threshold |");
+  lines.push("|---|---|---|---|---|---|---|---|");
+  const cell = (s?: string) => (s ?? "").replace(/\|/g, "\\|").replace(/\n+/g, " ");
+  ordered.forEach((a, i) => {
+    lines.push(
+      `| ${i + 1} | ${cell(a.statement)} | ${CRITICALITY_LABEL[a.criticality]} | ${a.confidence} | ` +
+      `${cell(a.test.method)} | ${a.test.timeboxDays}d | ${a.test.costUsd === 0 ? "$0" : `$${a.test.costUsd}`} | ` +
+      `${cell(a.killThreshold)} |`,
+    );
+  });
+  lines.push("");
+
+  lines.push(
+    `**Resolving every fatal assumption:** ${ledger.fatalTimeboxDays} days, ` +
+    `${ledger.fatalCostUsd === 0 ? "$0" : `$${ledger.fatalCostUsd}`}. ` +
+    `**Full ledger:** ${ledger.totalTimeboxDays} days, ` +
+    `${ledger.totalCostUsd === 0 ? "$0" : `$${ledger.totalCostUsd}`}.`,
+  );
+  lines.push("");
+  lines.push("Run them in the order above — it puts the cheapest idea-killing test first.");
+
+  return lines.join("\n");
 }
 
 function buildRiskList(risks: Risk[]): string {

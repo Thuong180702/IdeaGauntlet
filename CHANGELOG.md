@@ -5,6 +5,22 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-08-26
+
+Two capabilities aimed at the same thing: making the tool honest about what it
+actually knows, and useful on the Monday after you read the report.
+
+### Added
+- **Score calibration / evidence provenance.** Every scored dimension is now labelled `sourced` or `judgment` and rendered in a new **Basis** column, with a Calibration block under the scorecard stating the ratio in plain language. The model is asked to cite the sources behind each score, and those citations are verified against the research brief that was actually retrieved (`verifyScoreProvenance`). A citation that cannot be found is stripped, surfaced as `unverifiedCitations`, and the dimension drops to `judgment`. **Verification can only downgrade a basis, never promote it** — a model cannot certify its own guess as evidence. When no research was retrieved, every dimension is `judgment` and the report says so.
+- **Assumption Ledger (`assumptions` command, `build_assumption_ledger` MCP tool).** Turns an idea into a falsification plan: each assumption carries a criticality (`fatal`/`major`/`minor`), the cheapest test that could disprove it, a timebox and cost, and a kill threshold that must name a concrete number. Reports the days and dollars needed to resolve every fatal assumption. Test order is computed in code as `criticality × uncertainty × cheapness` rather than asked of the model, which tends to echo its own first bullet. An unparseable response **fails loudly instead of emitting invented thresholds**.
+- New exports: `verifyScoreProvenance`, `buildSourceIndex`, `isCitationSupported`, `formatBasisBadge`, `runAssumptionLedger`, `formatAssumptionLedger`, `finalizeLedger`, `computeAssumptionPriority`.
+- 38 new tests covering citation verification (hallucinated URLs and publication names, shortened titles, path-prefix matching, no-research fallback, input immutability) and ledger ordering (multiplicative priority, tie-breaks, computed riskiest assumption, malformed-number coercion). Suite is now 64 files / 536 tests.
+
+### Changed
+- `GauntletReport` gained optional `calibration` and `assumptionLedger` fields; `ScoreRubricEntry` gained optional `basis`, `citations`, and `unverifiedCitations`. All additive — existing consumers are unaffected.
+- MCP server now exposes 20 tools (was 19).
+- README documents both invariants; `CLAUDE.md` records them as constraints so they are not relaxed later.
+
 ## [0.6.1] - 2026-08-26
 
 Maintenance release from a full-project audit. No breaking changes.

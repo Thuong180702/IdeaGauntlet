@@ -351,6 +351,22 @@ providerOptions(
   );
 });
 
+// Assumption Ledger — falsifiable assumptions with kill thresholds and a test order
+providerOptions(
+  cli.command("assumptions <idea>", "List falsifiable assumptions with kill thresholds & cheapest-test-first order")
+    .option("--max <count>", "How many assumptions to surface (3-10, default 6)")
+    .option("--stage <stage>", "Idea stage")
+    .option("--market <market>", "Target market description")
+    .option("--target-users <users>", "Comma-separated target users")
+    .option("--json", "Output JSON")
+    .option("--output <file>", "Write to file")
+    .option("--no-search", "Disable web search before analysis")
+).action((idea: string, options: Record<string, unknown>) => {
+  import("./commands/assumptions.js").then(({ assumptionsCommand }) =>
+    assumptionsCommand(idea, { ...fileConfig, ...options })
+  );
+});
+
 import { checkForUpdate, formatCliUpdateBanner } from "../utils/updateChecker.js";
 
 // Set quiet mode before parsing commands

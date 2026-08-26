@@ -47,6 +47,16 @@ IdeaGauntlet should not be:
 
 Synthetic users are fictional archetypes. Always label them as such. Never imply they are equivalent to real customer evidence.
 
+Two invariants follow from this and must not be relaxed:
+
+- **A model may never self-certify a score as evidence-backed.** `verifyScoreProvenance`
+  checks claimed citations against the research brief that was actually retrieved.
+  Verification may only downgrade `sourced` to `judgment`, never the reverse. Citations
+  that cannot be found are surfaced as `unverifiedCitations`, not dropped silently.
+- **An assumption without a numeric kill threshold is not falsifiable.** The assumption
+  ledger fails loudly rather than emitting invented thresholds, and computes its test
+  order in code rather than asking the model to rank.
+
 ## Production constraints
 
 - Do not add demo-only or mock providers to `src/`.
@@ -80,6 +90,7 @@ idea-gauntlet interview idea.md
 idea-gauntlet pitch idea.md
 idea-gauntlet evolve idea.md
 idea-gauntlet compliance idea.md
+idea-gauntlet assumptions idea.md --max 6
 ```
 
 Workspace, history, and integration:
@@ -111,8 +122,8 @@ Use the current single-package structure:
 src/
   analysis/     synthetic score-benchmark reference set (labelled non-real, used by `interactive` /benchmark)
   cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall, status, templates, ensemble, gtm, compete, revenue, founder, interview, pitch, evolve, compliance)
-  core/         shared types, report builder, scoring, dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
-  engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases, marketSizingEngine, unitEconomicsEngine, antiPatternDetector, gtmEngine, competitiveIntelligenceEngine, revenueModelEngine, founderMarketFitEngine, userInterviewEngine, pitchGenerator, evolutionCoach, complianceScanner)
+  core/         shared types, report builder, scoring, provenance (score-basis verification), dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
+  engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases, marketSizingEngine, unitEconomicsEngine, antiPatternDetector, gtmEngine, competitiveIntelligenceEngine, revenueModelEngine, founderMarketFitEngine, userInterviewEngine, pitchGenerator, evolutionCoach, complianceScanner, assumptionLedger)
   integrations/ Claude/Cursor/Codex/GitHub generators
   history/      report history store + score delta tracking
   mcp/          MCP server, tools, resources

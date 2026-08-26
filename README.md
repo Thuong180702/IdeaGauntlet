@@ -101,6 +101,8 @@ A taste of the Quick verdict on that idea:
 
 | Workflow | What it does | Use it when | Output |
 |---|---:|---|---|
+| **Assumption ledger** | Falsifiable assumptions, each with a kill threshold and the cheapest test that could disprove it | You want to know what to test first, before building | Ordered test plan, kill thresholds, days/cost to de-risk |
+| **Score calibration** | Marks every score `sourced` or `judgment`, and discards citations not found in the retrieved research | You want to know which numbers are evidence and which are guesses | Basis per dimension, evidence ratio, flagged unverified citations |
 | **Quick critique** | Fast adversarial review: top risks, assumptions, best/worst case, fastest test | You want a fast sanity check | Risks, assumptions, scores, validation test |
 | **Court mode** | Structured multi-role debate with 7 specialist roles and judge verdict | The idea needs deeper critique | Role arguments, evidence audit, kill tests, scores, verdict |
 | **GTM Strategy** | Distribution channel priority matrix, 100-customer playbook, launch milestones | You need an actionable distribution plan | Channel CAC/timeline, milestones, budget allocation |
@@ -126,6 +128,69 @@ A taste of the Quick verdict on that idea:
 | **Score benchmarking** | Compare scores against a synthetic reference set of 50 idea archetypes | You want rough distributional context for your scores | Percentile ranking, similar archetypes |
 
 Synthetic users are fictional — not research evidence. Scores are diagnostic signals, not predictions.
+
+---
+
+## Two things IdeaGauntlet refuses to fake
+
+### 1. It tells you which scores are evidence, and which are guesses
+
+Most AI analysis tools present a retrieved fact and a confident guess in the same
+font. IdeaGauntlet separates them. Every scored dimension is labelled:
+
+| Dimension | Score | Basis | Evidence |
+|---|---|---|---|
+| Differentiation | 2/10 | `sourced` | Focusmate has run paired 50-min sessions since 2016 |
+| Distribution | 3/10 | `judgment` | Two-sided cold start — no source retrieved |
+
+A model cannot mark its own work as `sourced`. It is asked to cite the sources it
+used, and those citations are then **checked against the research that was actually
+retrieved**. A citation that isn't there is stripped, flagged as *unverified* in the
+report, and the dimension drops to `judgment`. Verification can only ever downgrade
+a score's basis, never promote it.
+
+Each report then states the ratio plainly:
+
+> **Evidence-backed:** 1/3 scored dimensions  `●○○`
+>
+> 1 of 3 scored dimensions cite a source found in the research brief; 2 rest on
+> model judgment alone. 1 claimed citation was not found in the brief and was not
+> counted as evidence.
+
+When no research is available at all, every dimension is `judgment` — the report
+says so instead of implying grounding it doesn't have.
+
+### 2. It tells you what would prove the idea wrong, and what that costs
+
+A verdict you can't act on is entertainment. `assumptions` turns the idea into a
+falsification plan — what must be true, the number that declares it dead, and the
+cheapest way to find out:
+
+```bash
+idea-gauntlet assumptions "A focus-room app for remote workers"
+```
+
+| # | Assumption | If false | Test | Timebox | Cost | Kill threshold |
+|---|---|---|---|---|---|---|
+| 1 | Remote workers will pay $10/mo rather than use a free timer | FATAL | Fake-door landing page + Stripe link | 3d | $50 | Fewer than 8 of 40 visitors leave an email |
+| 2 | A new room is never empty at peak hours | FATAL | Manually match 20 volunteers for a week | 7d | $0 | Under 60% of requested slots get matched |
+| 3 | IT teams will not block the video room | MINOR | 5 IT admin interviews | 10d | $0 | 3 of 5 admins say they would block it |
+
+> **Resolving every fatal assumption:** 10 days, $50.
+
+Two design decisions make this useful rather than decorative:
+
+- **Kill thresholds must name a number.** "Low signup rate" is not a threshold;
+  "fewer than 8 of 40 visitors leave an email" is. Deciding what counts as failure
+  *before* running the test is the whole point — it is how you avoid talking
+  yourself past a bad result.
+- **The test order is computed, not asked for.** Ordering is `criticality ×
+  uncertainty × cheapness`, calculated in code. Models are agreeable about
+  ranking and tend to echo whatever they listed first; arithmetic at least stays
+  consistent.
+
+If the model returns something unusable, the command **fails instead of inventing
+thresholds** — a ledger of made-up numbers is worse than no ledger.
 
 ---
 

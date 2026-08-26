@@ -22,6 +22,8 @@ export { runComplianceScanner, formatComplianceReport } from "./engines/complian
 export { runGauntlet } from "./core/runGauntlet.js";
 export { buildReport } from "./core/report.js";
 export { calculateScores, medianScore, overallScore, formatScores } from "./core/scoring.js";
+export { verifyScoreProvenance, buildSourceIndex, isCitationSupported, formatBasisBadge } from "./core/provenance.js";
+export { runAssumptionLedger, formatAssumptionLedger, finalizeLedger, computeAssumptionPriority } from "./engines/assumptionLedger.js";
 export { computeVerdict, mapVerdictFromText } from "./core/verdictMapping.js";
 export { OpenAICompatibleProvider } from "./providers/openaiCompatibleProvider.js";
 export { OllamaProvider } from "./providers/ollamaProvider.js";

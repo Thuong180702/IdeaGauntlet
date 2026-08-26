@@ -79,6 +79,18 @@ export interface Scorecard {
 }
 
 /**
+ * Where a score's grounding actually came from.
+ *
+ * - `sourced`   — backed by at least one citation that was matched against the
+ *                 retrieved research brief.
+ * - `judgment`  — the model's prior. Not worthless, but not evidence.
+ *
+ * A model may not self-certify as `sourced`: the claim is verified against the
+ * brief, and downgraded when the citation cannot be found. See `verifyScoreProvenance`.
+ */
+export type ScoreBasis = "sourced" | "judgment";
+
+/**
  * Grounded justification for a single score dimension.
  * `evidence` cites what supports the number; `sensitivity` says what would move it.
  */
@@ -87,6 +99,34 @@ export interface ScoreRubricEntry {
   evidence: string;
   /** One sentence: what would push this score up ~2 and what would push it down ~2. */
   sensitivity: string;
+  /** Set by `verifyScoreProvenance` — never trusted straight from the model. */
+  basis?: ScoreBasis;
+  /** Claimed citations that were matched against the research brief. */
+  citations?: string[];
+  /** Claimed citations that could NOT be found in the brief. Surfaced, not hidden. */
+  unverifiedCitations?: string[];
+}
+
+/**
+ * How much of a scorecard is actually evidence-backed.
+ *
+ * This exists so a report can never imply more grounding than it has: a reader
+ * sees at a glance how many dimensions rest on retrieved sources versus the
+ * model's prior, and how many claimed citations did not survive verification.
+ */
+export interface CalibrationSummary {
+  /** Dimensions assessed in this mode. */
+  assessedCount: number;
+  /** Dimensions with at least one verified citation. */
+  sourcedCount: number;
+  /** Dimensions resting on model judgment alone. */
+  judgmentCount: number;
+  /** Claimed citations that were not found in the research brief. */
+  droppedCitationCount: number;
+  /** True when the run had no research brief at all. */
+  researchUnavailable: boolean;
+  /** One-line, plain-language reading of the numbers above. */
+  note: string;
 }
 
 export interface Risk {
@@ -369,6 +409,60 @@ export interface AntiPatternReport {
 }
 
 // Enhanced fields added via declaration merging — keeps original interface unchanged
+// ─── Assumption ledger (falsifiability) ───────────────────────────
+
+/** What happens to the idea if this assumption turns out false. */
+export type AssumptionCriticality = "fatal" | "major" | "minor";
+
+/** The cheapest experiment that could disprove one assumption. */
+export interface AssumptionTest {
+  /** Concrete method — "fake-door landing page", "20 cold DMs", not "do research". */
+  method: string;
+  /** Calendar days to run it. */
+  timeboxDays: number;
+  /** Rough out-of-pocket cost in USD. 0 is legitimate. */
+  costUsd: number;
+  /** How much data makes the result readable, e.g. "40 visitors" or "12 interviews". */
+  sampleSize?: string;
+}
+
+export interface LedgerAssumption {
+  /** Stable slug, used by `testOrder`. */
+  id: string;
+  /** The belief stated so it can be false — not a topic. */
+  statement: string;
+  criticality: AssumptionCriticality;
+  /** How sure the founder can currently be, before running the test. */
+  confidence: Confidence;
+  /** What breaks downstream if this is false. */
+  whyItMatters: string;
+  test: AssumptionTest;
+  /** The threshold that declares the assumption dead. Must name a number. */
+  killThreshold: string;
+  /** What a passing result looks like. */
+  surviveSignal: string;
+  /**
+   * Computed in code, never taken from the model: criticality x uncertainty x
+   * cheapness. Higher means test it sooner.
+   */
+  priority: number;
+}
+
+export interface AssumptionLedger {
+  assumptions: LedgerAssumption[];
+  /** Statement of the assumption that is both most fatal and least certain. */
+  riskiestAssumption: string;
+  /** Assumption ids, cheapest-decisive-test first. */
+  testOrder: string[];
+  /** Sum of timeboxes across the ledger. */
+  totalTimeboxDays: number;
+  totalCostUsd: number;
+  /** Days and dollars to resolve every `fatal` assumption. */
+  fatalTimeboxDays: number;
+  fatalCostUsd: number;
+  summary: string;
+}
+
 export interface GauntletReport {
   courtDebate?: EnhancedCourtDebate;
   quickReport?: EnhancedQuickReport;
@@ -381,6 +475,10 @@ export interface GauntletReport {
   antiPatterns?: AntiPatternReport;
   /** Grounded rubric (evidence + sensitivity) per scored dimension. */
   scoreRubric?: Partial<Record<keyof Scorecard, ScoreRubricEntry>>;
+  /** How much of the scorecard is evidence-backed vs model judgment. */
+  calibration?: CalibrationSummary;
+  /** Falsifiable assumptions with kill thresholds and a test order. */
+  assumptionLedger?: AssumptionLedger;
   /** Dimensions this mode does not evaluate — shown as "not assessed", never faked. */
   unassessedDimensions?: (keyof Scorecard)[];
   /** One punchy, quotable sentence — the sharpest takeaway (drives the share card). */

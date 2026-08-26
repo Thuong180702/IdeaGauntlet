@@ -25,7 +25,8 @@ describe("MCP server", () => {
     expect(names).toContain("generate_pitch_deck");
     expect(names).toContain("evolve_idea");
     expect(names).toContain("scan_compliance");
-    expect(toolDefinitions.length).toBe(19);
+    expect(names).toContain("build_assumption_ledger");
+    expect(toolDefinitions.length).toBe(20);
   });
 
   it("court tool description mentions roles", () => {
