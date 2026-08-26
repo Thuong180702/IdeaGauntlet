@@ -250,6 +250,11 @@ export interface EnhancedCourtDebate {
     reason: string;
     /** What would move this score up/down ~2 points. */
     sensitivity?: string;
+    /**
+     * Sources the judge claims back this score. Verified against the research
+     * brief by `verifyScoreProvenance` — never trusted as given.
+     */
+    citations?: string[];
   }>;
   nextActions: string[];
   competitorLandscape?: CompetitorLandscape;

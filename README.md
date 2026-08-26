@@ -160,6 +160,11 @@ Each report then states the ratio plainly:
 When no research is available at all, every dimension is `judgment` — the report
 says so instead of implying grounding it doesn't have.
 
+This applies to **both `quick` and `court`**. Court reaches its scores through a
+seven-role debate rather than a single rubric call, but the judge's citations go
+through exactly the same verification before any dimension is allowed to read as
+evidence-backed.
+
 ### 2. It tells you what would prove the idea wrong, and what that costs
 
 A verdict you can't act on is entertainment. `assumptions` turns the idea into a

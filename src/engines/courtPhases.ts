@@ -244,7 +244,7 @@ export function buildVerdictPrompt(
     `crossExamination (string — summary of key conflicts; attribute each to the roles involved by name)`,
     `evidenceAudit (string — what's backed by evidence vs assumption)`,
     `killTests (array: { title, method, timeframe, successSignal, killSignal })`,
-    `scoresDetailed (array: { dimension, score 0-10, reason — grounded evidence for the score, sensitivity — one sentence: what would raise it ~2 and what would drop it ~2 })`,
+    `scoresDetailed (array: { dimension, score 0-10, reason — grounded evidence for the score, sensitivity — one sentence: what would raise it ~2 and what would drop it ~2, citations — array of the exact URLs or source titles from the research brief that back this score; use an empty array when the score rests on debate reasoning rather than a retrieved source. NEVER invent a citation: claimed sources are checked against the research brief and discarded if absent })`,
     `verdictDetail (string — start with verdict prefix: 'strong', 'promising but risky', 'unclear', 'weak', 'needs real evidence', or 'pivot recommended'. Attribute the decisive points to the roles that made them, e.g. "The Market Skeptic argued X; the Business Defender countered Y" — no floating conclusions)`,
     `brutalTakeaway (string — ONE punchy, quotable, brutally honest sentence a founder would screenshot; the single sharpest thing about this idea)`,
     `nextActions (array of string)`,

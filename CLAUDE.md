@@ -53,6 +53,8 @@ Two invariants follow from this and must not be relaxed:
   checks claimed citations against the research brief that was actually retrieved.
   Verification may only downgrade `sourced` to `judgment`, never the reverse. Citations
   that cannot be found are surfaced as `unverifiedCitations`, not dropped silently.
+  This runs in both `quick` (immuneEngine) and `court` (courtEngine); any new scoring
+  mode must route its rubric through it too.
 - **An assumption without a numeric kill threshold is not falsifiable.** The assumption
   ledger fails loudly rather than emitting invented thresholds, and computes its test
   order in code rather than asking the model to rank.

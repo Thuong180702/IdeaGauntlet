@@ -7,9 +7,11 @@ import type {
   Verdict,
   EnhancedCourtDebate,
   Scorecard,
+  ScoreRubricEntry,
 } from "../core/types.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
+import { verifyScoreProvenance } from "../core/provenance.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
 import { withProgress } from "../utils/progress.js";
@@ -260,6 +262,15 @@ export async function runCourtEngine(
   // W-04: Build Scorecard from scoresDetailed for quantitative comparison.
   const courtScores = buildCourtScorecard(courtDebate.scoresDetailed);
 
+  // Court reaches its scores through debate rather than a single rubric call,
+  // but the honesty requirement is the same: the judge's citations are checked
+  // against the brief that was actually retrieved before any dimension is
+  // allowed to read as evidence-backed.
+  const { rubric: courtRubric, calibration } = verifyScoreProvenance(
+    buildCourtRubric(courtDebate.scoresDetailed),
+    research,
+  );
+
   const report: GauntletReport = {
     id,
     createdAt: now,
@@ -267,6 +278,8 @@ export async function runCourtEngine(
     input: idea,
     verdict: reportVerdict,
     scores: courtScores,
+    scoreRubric: courtRubric,
+    calibration: courtScores ? calibration : undefined,
     court: {
       transcript,
       verdict: verdictText,
@@ -324,6 +337,42 @@ function mergeRoles(
   return [...kept, ...custom];
 }
 
+/** Judge dimension names -> Scorecard keys, shared by both court score builders. */
+const COURT_DIMENSION_MAP: Record<string, keyof Scorecard> = {
+  clarity: "clarity", pain: "pain", differentiation: "differentiation",
+  buildability: "buildability", distribution: "distribution",
+  monetization: "monetization", evidence: "evidence",
+};
+
+/**
+ * Convert the judge's per-dimension detail into the keyed rubric shape the
+ * report renders and `verifyScoreProvenance` consumes.
+ *
+ * Court emits an array keyed by free-text dimension names; quick mode emits an
+ * object. Normalising here means both modes render an identical Basis column.
+ */
+function buildCourtRubric(
+  scoresDetailed: EnhancedCourtDebate["scoresDetailed"],
+): Partial<Record<keyof Scorecard, ScoreRubricEntry>> | undefined {
+  if (!scoresDetailed || scoresDetailed.length === 0) return undefined;
+
+  const out: Partial<Record<keyof Scorecard, ScoreRubricEntry>> = {};
+  for (const s of scoresDetailed) {
+    const key = COURT_DIMENSION_MAP[s.dimension?.toLowerCase?.()?.trim() ?? ""];
+    if (!key) continue;
+    const citations = Array.isArray(s.citations)
+      ? s.citations.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+      : [];
+    out[key] = {
+      evidence: typeof s.reason === "string" ? s.reason : "",
+      sensitivity: typeof s.sensitivity === "string" ? s.sensitivity : "",
+      // `basis` is intentionally absent — verifyScoreProvenance assigns it.
+      ...(citations.length > 0 ? { citations } : {}),
+    };
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /**
  * W-04: Build a Scorecard from courtDebate.scoresDetailed.
  * Maps LLM-provided dimension names to Scorecard keys, clamps to 1-10.
@@ -335,11 +384,7 @@ function buildCourtScorecard(
   if (!scoresDetailed || scoresDetailed.length === 0) return undefined;
 
   const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
-  const map: Record<string, keyof Scorecard> = {
-    clarity: "clarity", pain: "pain", differentiation: "differentiation",
-    buildability: "buildability", distribution: "distribution",
-    monetization: "monetization", evidence: "evidence",
-  };
+  const map = COURT_DIMENSION_MAP;
 
   const scorecard: Scorecard = {
     clarity: 5, pain: 5, differentiation: 5,
