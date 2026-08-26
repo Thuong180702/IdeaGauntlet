@@ -18,7 +18,7 @@
 
 import type { PageContent } from "./types.js";
 import { isSafeUrlAsync } from "./ssrfGuard.js";
-import { warnIfError, warn } from "../utils/warn.js";
+import { warnIfError } from "../utils/warn.js";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const HYDRATION_WAIT_MS = 2_000;

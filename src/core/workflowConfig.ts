@@ -74,7 +74,7 @@ export function loadWorkflowConfig(workspaceDir?: string): CustomWorkflowConfig 
  * Apply score weight overrides to a scorecard.
  * Weight multiplies the score, clamped to 1-10.
  *
- * ponytail: The `/2` normalizes the weight baseline.
+ * The `/2` normalizes the weight baseline.
  * Default weight = 2 → score * 2 / 2 = score (no change, 1x).
  * weight = 3 → score * 3 / 2 = 1.5x boost.
  * weight = 1 → score * 1 / 2 = 0.5x (halves, penalizes).

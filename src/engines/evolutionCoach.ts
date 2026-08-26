@@ -1,4 +1,4 @@
-import type { LLMProvider, IdeaInput, IdeaEvolution, IdeaVariant, Scorecard } from "../core/types.js";
+import type { LLMProvider, IdeaInput, IdeaEvolution, IdeaVariant } from "../core/types.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";

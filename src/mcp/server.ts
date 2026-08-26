@@ -1,7 +1,7 @@
 import { handleToolCall, toolDefinitions, getReportIds } from "./tools.js";
 import { listResources, readMcpResource } from "./resources.js";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve, dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { warnIfError } from "../utils/warn.js";
 

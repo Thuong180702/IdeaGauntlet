@@ -1,13 +1,7 @@
 import type { IntegrationFile } from "../types.js";
 import { AGENT_NATIVE_PREAMBLE } from "../../workflows/formatters/formatForAgentInstructions.js";
-import { getWorkflow } from "../../workflows/definitions.js";
-import { formatForAgentInstructions } from "../../workflows/formatters/formatForAgentInstructions.js";
 
 export function generateClaudeMd(): IntegrationFile[] {
-  const court = getWorkflow("court");
-  const quick = getWorkflow("quick");
-  const instructions = formatForAgentInstructions(court, "court");
-
   return [{
     path: "CLAUDE.md.idea-gauntlet",
     description: "Claude Code project instructions for IdeaGauntlet",

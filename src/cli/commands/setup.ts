@@ -1,4 +1,3 @@
-import { globalSetup } from "../../setup/globalSetup.js";
 import { projectSetup } from "../../setup/projectSetup.js";
 import { installCommand } from "./install.js";
 import { uninstallCommand } from "./uninstall.js";

@@ -12,7 +12,7 @@ export interface ScoreReasons {
 
 /**
  * P1-5: Calculate scores with optional LLM evidence override.
- * pon ytail: If the LLM provides its own evidence score (1-10), trust it over
+ * If the LLM provides its own evidence score (1-10), trust it over
  * the heuristic — the model has context the heuristic can't see.
  */
 export function calculateScores(params: {
@@ -43,7 +43,7 @@ export function calculateScores(params: {
 }
 
 /**
- * ponytail: Heuristic evidence score — fallback when LLM doesn't provide one.
+ * Heuristic evidence score — fallback when the LLM doesn't provide one.
  * Thresholds calibrated against typical research brief depth:
  * - no evidence → 1 (idea is ungrounded)
  * - weak → 3 (few results, some signal)
@@ -78,11 +78,6 @@ export function medianScore(scores: Scorecard, unassessed?: (keyof Scorecard)[])
     : values[mid];
 }
 
-const ALL_DIMENSIONS: (keyof Scorecard)[] = [
-  "clarity", "pain", "differentiation", "buildability",
-  "distribution", "monetization", "evidence",
-];
-
 /**
  * Overall = median over dimensions the mode actually assessed. Unassessed
  * dimensions are excluded so fake constants can't drag the overall up or down.
@@ -91,17 +86,31 @@ export function overallScore(scores: Scorecard, unassessed?: (keyof Scorecard)[]
   return medianScore(scores, unassessed);
 }
 
-export function formatScores(scores: Scorecard): string {
+/**
+ * Render a scorecard as plain text.
+ *
+ * `unassessed` must be passed the same list the report carries, otherwise the
+ * Overall printed here disagrees with the report's own overall — dimensions the
+ * mode never assessed would silently drag the median.
+ */
+export function formatScores(
+  scores: Scorecard,
+  unassessed?: (keyof Scorecard)[],
+): string {
+  const skip = new Set(unassessed ?? []);
+  const label = (dim: keyof Scorecard, text: string) =>
+    skip.has(dim) ? `${text}n/a (not assessed)` : `${text}${scores[dim]}/10`;
+
   const rows = [
-    `Clarity:        ${scores.clarity}/10`,
-    `Pain:           ${scores.pain}/10`,
-    `Differentiation: ${scores.differentiation}/10`,
-    `Buildability:   ${scores.buildability}/10`,
-    `Distribution:   ${scores.distribution}/10`,
-    `Monetization:   ${scores.monetization}/10`,
-    `Evidence:       ${scores.evidence}/10`,
+    label("clarity", "Clarity:         "),
+    label("pain", "Pain:            "),
+    label("differentiation", "Differentiation: "),
+    label("buildability", "Buildability:    "),
+    label("distribution", "Distribution:    "),
+    label("monetization", "Monetization:    "),
+    label("evidence", "Evidence:        "),
     "",
-    `Overall:        ${medianScore(scores)}/10 — Median score`,
+    `Overall:         ${overallScore(scores, unassessed)}/10 — Median score`,
   ];
   return rows.join("\n");
 }

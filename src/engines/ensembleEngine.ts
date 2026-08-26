@@ -23,7 +23,7 @@ export async function runEnsemble(params: {
   stage?: string;
   enableSearch?: boolean;
 }): Promise<EnsembleResult> {
-  const { idea, mode, providers } = params;
+  const { mode, providers } = params;
   if (providers.length < 2) {
     throw new Error("Ensemble requires at least 2 providers");
   }

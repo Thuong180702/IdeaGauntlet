@@ -11,7 +11,7 @@ import { SerperProvider } from "./serperProvider.js";
 import { ProductHuntProvider } from "./productHuntProvider.js";
 import { GitHubProvider } from "./gitHubProvider.js";
 import { HackerNewsProvider } from "./hackerNewsProvider.js";
-import { fetchPageContent, fetchPageContents } from "./pageFetcher.js";
+import { fetchPageContents } from "./pageFetcher.js";
 import { fetchPagesPlaywright } from "./playwrightFetcher.js";
 import { checkLivenessBatch } from "./playwrightFetcher.js";
 import { analyzeCompetitors } from "./competitorAnalyzer.js";
@@ -76,7 +76,9 @@ function getSupplementaryProviders(): WebSearchProvider[] {
  */
 export function sanitizeQuery(query: string): string {
   return query
-    // Remove control characters (incl. \n, \r, \t, null bytes)
+    // Remove control characters (incl. \n, \r, \t, null bytes). Matching
+    // control characters is the entire point here, so the rule is disabled.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1f\x7f]/g, " ")
     // Remove shell metacharacters that could be dangerous in spawn contexts
     .replace(/[`$\\]/g, "")

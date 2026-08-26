@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateScores, medianScore, formatScores } from "../../src/core/scoring.js";
+import { calculateScores, medianScore, overallScore, formatScores } from "../../src/core/scoring.js";
 
 describe("calculateScores", () => {
   it("returns low evidence score when no evidence provided", () => {
@@ -90,5 +90,34 @@ describe("formatScores", () => {
     expect(text).toContain("Monetization:");
     expect(text).toContain("Evidence:");
     expect(text).toContain("Overall:");
+  });
+
+  it("marks unassessed dimensions as n/a instead of printing a fake score", () => {
+    const text = formatScores(
+      {
+        clarity: 8, pain: 7, differentiation: 6,
+        buildability: 7, distribution: 3, monetization: 3, evidence: 4,
+      },
+      ["distribution", "monetization"],
+    );
+    expect(text).toContain("Distribution:    n/a (not assessed)");
+    expect(text).toContain("Monetization:    n/a (not assessed)");
+    expect(text).toContain("Clarity:         8/10");
+  });
+
+  // Regression: formatScores used to ignore `unassessed`, so the Overall it
+  // printed disagreed with the overall the report itself computed.
+  it("computes Overall over assessed dimensions only, matching overallScore", () => {
+    const scores = {
+      clarity: 8, pain: 7, differentiation: 6,
+      buildability: 7, distribution: 3, monetization: 3, evidence: 4,
+    };
+    const unassessed = ["distribution", "monetization"] as const;
+
+    const text = formatScores(scores, [...unassessed]);
+    const expected = overallScore(scores, [...unassessed]);
+
+    expect(text).toContain(`Overall:         ${expected}/10`);
+    expect(expected).not.toBe(medianScore(scores));
   });
 });

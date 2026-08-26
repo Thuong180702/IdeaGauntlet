@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { homedir, tmpdir } from "node:os";
 import { getLocale, type Locale } from "./locale.js";
 
@@ -49,20 +50,41 @@ export function isNewerVersion(current: string, latest: string): boolean {
 }
 
 /**
- * Read current package version from local package.json.
+ * Sentinel returned when the running version cannot be determined.
+ * Callers must treat this as "unknown" and skip the update check rather
+ * than comparing it — comparing would nag on every run.
+ */
+export const UNKNOWN_VERSION = "unknown";
+
+/**
+ * Read the running package version by walking up from this module until a
+ * package.json belonging to idea-gauntlet is found.
+ *
+ * A fixed relative path cannot work here: from source the module sits at
+ * `src/utils/`, but tsup flattens the bundle into `dist/`, so the number of
+ * levels up to the package root differs between dev and published builds.
+ * Walking up and matching on `name` is correct for both, and for the
+ * `node_modules/idea-gauntlet/` install layout.
  */
 export function getCurrentVersion(): string {
   try {
-    // Attempt reading from nearest package.json
-    const pkgPath = resolve(new URL(".", import.meta.url).pathname.replace(/^\/([A-Z]:)/i, "$1"), "../../package.json");
-    if (existsSync(pkgPath)) {
-      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-      if (pkg.version) return pkg.version;
+    let dir = dirname(fileURLToPath(import.meta.url));
+    for (let i = 0; i < 6; i++) {
+      const pkgPath = join(dir, "package.json");
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+        if (pkg?.name === "idea-gauntlet" && typeof pkg.version === "string") {
+          return pkg.version;
+        }
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
     }
   } catch {
-    // Fallback if bundled
+    // Unreadable or malformed package.json — fall through to unknown.
   }
-  return "0.5.0";
+  return UNKNOWN_VERSION;
 }
 
 /**
@@ -122,6 +144,11 @@ export async function fetchLatestVersion(timeoutMs = DEFAULT_TIMEOUT_MS): Promis
  */
 export async function checkForUpdate(currentVer?: string): Promise<UpdateCheckResult> {
   const current = currentVer ?? getCurrentVersion();
+  // Never nag when the running version is unknown — a bad guess here would
+  // show a false "update available" banner on every single command.
+  if (current === UNKNOWN_VERSION) {
+    return { hasUpdate: false, current, latest: current };
+  }
   const latest = await fetchLatestVersion();
   if (!latest) {
     return { hasUpdate: false, current, latest: current };

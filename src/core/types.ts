@@ -386,7 +386,7 @@ export interface GauntletReport {
   /** One punchy, quotable sentence — the sharpest takeaway (drives the share card). */
   brutalTakeaway?: string;
   /** Web research brief gathered before LLM analysis. */
-  webResearch?: import("../search/types.js").ResearchBrief;
+  webResearch?: ResearchBrief;
   /** P0-3: True when LLM parse failed or research failed — report may be incomplete. */
   partial?: boolean;
   /** P0-3: Human-readable warnings (e.g. "web research failed", "LLM returned malformed JSON"). */

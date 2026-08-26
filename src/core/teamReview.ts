@@ -1,7 +1,8 @@
 /**
  * F-13: Team collaboration — multiple users submit, vote, and comment on ideas.
  * Stored in .idea-gauntlet/team.json.
- * ponytail: No server needed for basic flow. Add WebSocket sync when team grows.
+ * No server is needed for the basic flow. Add WebSocket sync when teams grow
+ * large enough to hit concurrent-edit conflicts.
  * → skipped: real-time sync, add when multi-user concurrent editing needed.
  */
 
@@ -57,7 +58,7 @@ function saveStore(store: TeamStore): void {
   writeFileSync(getStorePath(), JSON.stringify(store, null, 2), "utf-8");
 }
 
-export function submitIdea(ideaText: string, userId: string): TeamReview {
+export function submitIdea(ideaText: string, _userId: string): TeamReview {
   const store = loadStore();
   const hash = simpleHash(ideaText);
   if (!store.reviews[hash]) {

@@ -10,7 +10,7 @@ import type { IdeaInput } from "../../core/types.js";
 
 export async function trendCommand(
   ideaId: string | undefined,
-  options: Record<string, unknown>,
+  _options: Record<string, unknown>,
 ): Promise<void> {
   if (!ideaId || ideaId === "list") {
     // List trendable ideas

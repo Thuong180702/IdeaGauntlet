@@ -48,15 +48,39 @@ runs:
         # The CLI reads the key from IDEAGAUNTLET_API_KEY; it is never logged.
         IDEAGAUNTLET_API_KEY: ${{ inputs.api-key }}
         IDEAGAUNTLET_MODEL: ${{ inputs.model }}
+        # SEC: every caller-controlled input is passed through the environment
+        # and referenced as a quoted shell variable. Interpolating `${{ }}`
+        # directly into `run:` would splice the value into the script *before*
+        # the shell parses it, so an input carrying shell metacharacters (a PR
+        # title, a branch name) would execute as code on the runner.
+        IG_IDEA_FILE: ${{ inputs.idea-file }}
+        IG_MODE: ${{ inputs.mode }}
+        IG_VERSION: ${{ inputs.version }}
+        IG_OUTPUT_FILE: ${{ inputs.output-file }}
       run: |
         set -euo pipefail
-        if [ ! -f "${{ inputs.idea-file }}" ]; then
-          echo "IdeaGauntlet: idea file '${{ inputs.idea-file }}' not found — skipping."
+
+        case "$IG_MODE" in
+          court|quick) ;;
+          *) echo "IdeaGauntlet: invalid mode '$IG_MODE' (expected 'court' or 'quick')." >&2; exit 1 ;;
+        esac
+
+        # Restrict the npm spec to a version or dist-tag so it cannot be turned
+        # into an arbitrary install source (git URL, tarball, local path).
+        if ! printf '%s' "$IG_VERSION" | grep -Eq '^[A-Za-z0-9._-]+$'; then
+          echo "IdeaGauntlet: invalid version '$IG_VERSION'." >&2
+          exit 1
+        fi
+
+        if [ ! -f "$IG_IDEA_FILE" ]; then
+          echo "IdeaGauntlet: idea file '$IG_IDEA_FILE' not found — skipping."
           echo "skipped=true" >> "$GITHUB_OUTPUT"
           echo "report-file=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        npx --yes "idea-gauntlet@${{ inputs.version }}" "${{ inputs.mode }}" "${{ inputs.idea-file }}" \
-          --output "${{ inputs.output-file }}"
+
+        npx --yes "idea-gauntlet@$IG_VERSION" "$IG_MODE" "$IG_IDEA_FILE" \
+          --output "$IG_OUTPUT_FILE"
+
         echo "skipped=false" >> "$GITHUB_OUTPUT"
-        echo "report-file=${{ inputs.output-file }}" >> "$GITHUB_OUTPUT"
+        echo "report-file=$IG_OUTPUT_FILE" >> "$GITHUB_OUTPUT"

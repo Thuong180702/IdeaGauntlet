@@ -2,7 +2,7 @@ import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import type { GauntletReport, GauntletMode } from "../core/types.js";
 import { runGauntlet } from "../core/runGauntlet.js";
-import { resolveProvider, formatNoProviderError } from "../providers/providerUtils.js";
+import { resolveProvider } from "../providers/providerUtils.js";
 import { buildReport } from "../core/report.js";
 import { saveReport } from "../history/historyStore.js";
 import { generateHtmlReport } from "../visualization/htmlReport.js";
@@ -420,7 +420,7 @@ function printHelp(): void {
   console.log("  /quit             - Exit interactive mode\n");
 }
 
-// ponytail: simplified masking — relies on Node suppressing echo when
+// Simplified masking — relies on Node suppressing echo when
 // stdout is a TTY. For full masking use readline with terminal:false.
 // Upgrade path: use node:readline with { terminal: false } for raw mode.
 async function maskedQuestion(rl: import("node:readline/promises").Interface, prompt: string): Promise<string> {

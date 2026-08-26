@@ -14,7 +14,8 @@
  *   GET  /health        — health check
  */
 
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { resolveProvider } from "../../providers/providerUtils.js";
 import { runGauntlet } from "../../core/runGauntlet.js";
 import { listReports, loadReport, saveReport } from "../../history/historyStore.js";
@@ -55,7 +56,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     const isPublicEndpoint = req.url === "/health" || req.url === "/api/templates";
     if (requireAuth && !isPublicEndpoint) {
       const auth = req.headers["authorization"] ?? "";
-      if (auth !== `Bearer ${options.apiToken}`) {
+      if (!safeTokenMatch(String(auth), `Bearer ${options.apiToken}`)) {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Unauthorized — provide Authorization: Bearer <token>" }));
         return;
@@ -162,24 +163,61 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
   });
 }
 
+/**
+ * SEC-1: Constant-time bearer-token comparison.
+ * A plain `!==` returns on the first differing byte, which leaks the token
+ * prefix to an attacker who can time many requests.
+ */
+function safeTokenMatch(received: string, expected: string): boolean {
+  const a = Buffer.from(received);
+  const b = Buffer.from(expected);
+  // timingSafeEqual throws on length mismatch, so length is checked first.
+  // Length is not the secret here (the header shape is public), and the
+  // decoy comparison keeps the reject path from returning noticeably early.
+  if (a.length !== b.length) {
+    timingSafeEqual(b, b);
+    return false;
+  }
+  return timingSafeEqual(a, b);
+}
+
+const MAX_BODY_BYTES = 10_000_000;
+
 function readBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => {
-      data += chunk;
-      // F-09: Prevent body too large (10MB).
-      if (data.length > 10_000_000) {
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+    let settled = false;
+
+    req.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      // F-09: cap on *bytes*, not UTF-16 code units — a multi-byte body could
+      // otherwise buffer well past the intended 10MB ceiling.
+      totalBytes += chunk.byteLength;
+      if (totalBytes > MAX_BODY_BYTES) {
+        settled = true;
         reject(new Error("Request body too large (max 10MB)"));
         req.destroy();
+        return;
       }
+      chunks.push(chunk);
     });
+
     req.on("end", () => {
+      if (settled) return;
+      settled = true;
+      const data = Buffer.concat(chunks).toString("utf-8");
       try {
         resolve(data ? JSON.parse(data) : {});
       } catch {
         reject(new Error("Invalid JSON body"));
       }
     });
-    req.on("error", reject);
+
+    req.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
   });
 }

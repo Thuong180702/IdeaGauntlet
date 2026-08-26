@@ -1,14 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { loadConfig, mergeConfig } from "../../src/utils/config.js";
 
-const TMP_DIR = join(process.cwd(), ".test-config-tmp");
+// Use the OS temp dir, not the repo root — the previous location left a stray
+// .test-config-tmp/ behind in the working tree after every test run.
+const TMP_DIR = mkdtempSync(join(tmpdir(), "ig-config-"));
 
 describe("configIntegration", () => {
   beforeEach(() => {
+    rmSync(join(TMP_DIR, ".ideagauntlet.json"), { force: true });
+  });
+
+  afterAll(() => {
     rmSync(TMP_DIR, { recursive: true, force: true });
-    mkdirSync(TMP_DIR, { recursive: true });
   });
 
   it("loadConfig reads .ideagauntlet.json from cwd", () => {

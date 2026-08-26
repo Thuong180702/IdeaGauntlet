@@ -27,7 +27,7 @@ export interface VerdictParams {
  * 1. If llmVerdictText contains a recognized verdict prefix → use it.
  * 2. Otherwise, score-based mapping with consistent thresholds.
  *
- * Thresholds (ponytail: calibrated against the 1-10 score scale):
+ * Thresholds (calibrated against the 1-10 score scale):
  * - median >= 8 AND evidence >= 5 → strong
  * - median >= 6 → promising_but_risky
  * - median >= 4 → unclear

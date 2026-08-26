@@ -28,7 +28,7 @@ function renderResearchPhases(phases: DebatePhase[]): string[] {
   return lines;
 }
 
-export function formatForAgentInstructions(def: WorkflowDefinition, mode: WorkflowMode): string {
+export function formatForAgentInstructions(def: WorkflowDefinition, _mode: WorkflowMode): string {
   const lines: string[] = [];
 
   lines.push(AGENT_NATIVE_PREAMBLE);

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Verdict, Severity, Confidence, Scorecard, ScoreRubricEntry, EnhancedQuickReport } from "../core/types.js";
-import { calculateScores, medianScore } from "../core/scoring.js";
+import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Severity, Confidence, Scorecard, ScoreRubricEntry, EnhancedQuickReport } from "../core/types.js";
+import { calculateScores } from "../core/scoring.js";
 import { quickWorkflow } from "../workflows/definitions/quick.js";
 import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
-import { extractJSON, safeParseJSON } from "../utils/jsonRepair.js";
+import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";

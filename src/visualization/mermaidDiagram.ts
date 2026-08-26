@@ -23,7 +23,7 @@ export function generateMvpFlowchart(report: GauntletReport): string {
   lines.push('  Start["Start Validation"]');
 
   steps.forEach((step, i) => {
-    const cleanStep = step.replace(/["\[\]]/g, "").slice(0, 60);
+    const cleanStep = step.replace(/["[\]]/g, "").slice(0, 60);
     lines.push("  Step" + (i + 1) + '["' + cleanStep + '"]');
     if (i === 0) lines.push("  Start --> Step1");
     else lines.push("  Step" + i + " --> Step" + (i + 1));
@@ -41,7 +41,7 @@ export function generateMvpFlowchart(report: GauntletReport): string {
     lines.push("  Kill --> Pivot");
     lines.push('  Pivot{"Pivot?"}');
     plan.pivotOptions.forEach((opt, i) => {
-      const cleanOpt = opt.replace(/["\[\]]/g, "").slice(0, 60);
+      const cleanOpt = opt.replace(/["[\]]/g, "").slice(0, 60);
       lines.push("  PivotOpt" + (i + 1) + '["' + cleanOpt + '"]');
       lines.push("  Pivot --> PivotOpt" + (i + 1));
     });
@@ -67,7 +67,7 @@ export function generateMvpTimeline(report: GauntletReport): string {
 
   let currentDay = 0;
   steps.forEach((step, i) => {
-    const cleanStep = step.replace(/["\[\]]/g, "").slice(0, 40);
+    const cleanStep = step.replace(/["[\]]/g, "").slice(0, 40);
     const dayMatch = step.match(/Day\s*(\d+)\s*[-\u2013]\s*(\d+)|Day\s*(\d+)/i);
     let duration = 1;
     let startDay = currentDay;
@@ -99,16 +99,16 @@ export function generateCourtMindmap(report: GauntletReport): string {
     return "```mermaid\nmindmap\n  root((No debate data))\n```";
   }
 
-  const ideaText = (report.input?.idea?.slice(0, 30) ?? "Idea").replace(/["\[\]]/g, "");
+  const ideaText = (report.input?.idea?.slice(0, 30) ?? "Idea").replace(/["[\]]/g, "");
   const lines: string[] = ["```mermaid", "mindmap"];
   lines.push("  root((" + ideaText + "))");
 
   debate.roleArguments.forEach((role) => {
-    const cleanName = role.roleName.replace(/["\[\]]/g, "");
+    const cleanName = role.roleName.replace(/["[\]]/g, "");
     lines.push("    " + cleanName);
     const sentences = role.argument.split(".");
     const keyPoints = sentences.slice(0, 2).map((s) =>
-      s.trim().replace(/["\[\]]/g, "").slice(0, 50),
+      s.trim().replace(/["[\]]/g, "").slice(0, 50),
     );
     keyPoints.forEach((point) => {
       if (point.length > 5) lines.push("      " + point);
@@ -134,7 +134,7 @@ export function generateCompetitorGraph(report: GauntletReport): string {
   const lines: string[] = ["```mermaid", "graph TD"];
 
   // Idea node in center
-  const ideaText = (report.input?.idea?.slice(0, 25) ?? "Idea").replace(/["\[\]]/g, "");
+  const ideaText = (report.input?.idea?.slice(0, 25) ?? "Idea").replace(/["[\]]/g, "");
   lines.push('  Idea["' + ideaText + '"]');
 
   // Saturation indicator
@@ -147,7 +147,7 @@ export function generateCompetitorGraph(report: GauntletReport): string {
 
   // Competitor nodes
   landscape.competitors.forEach((c, i) => {
-    const cleanName = c.name.replace(/["\[\]]/g, "").slice(0, 30);
+    const cleanName = c.name.replace(/["[\]]/g, "").slice(0, 30);
     const nodeId = "Comp" + (i + 1);
     const styleClass = c.type === "direct" ? "directComp" : "indirectComp";
     lines.push('  ' + nodeId + '["' + cleanName + '"]:::' + styleClass);
@@ -180,17 +180,17 @@ export function generateNicheMindmap(report: GauntletReport): string {
     return "```mermaid\nmindmap\n  root((No niche opportunities detected))\n```";
   }
 
-  const ideaText = (report.input?.idea?.slice(0, 25) ?? "Idea").replace(/["\[\]]/g, "");
+  const ideaText = (report.input?.idea?.slice(0, 25) ?? "Idea").replace(/["[\]]/g, "");
   const lines: string[] = ["```mermaid", "mindmap"];
   lines.push("  root((" + ideaText + " Niches))");
 
   niches.forEach((n) => {
     const cleanType = n.type.replace(/_/g, " ");
     lines.push("    " + cleanType);
-    const desc = n.description.replace(/["\[\]]/g, "").slice(0, 60);
+    const desc = n.description.replace(/["[\]]/g, "").slice(0, 60);
     lines.push("      " + desc);
     if (n.wedgeIdea) {
-      const wedge = n.wedgeIdea.replace(/["\[\]]/g, "").slice(0, 50);
+      const wedge = n.wedgeIdea.replace(/["[\]]/g, "").slice(0, 50);
       lines.push("      Wedge: " + wedge);
     }
   });

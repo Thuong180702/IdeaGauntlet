@@ -6,7 +6,6 @@
 
 import { loadReport, listReports } from "../history/historyStore.js";
 import type { ResearchBrief, SearchResult } from "../search/types.js";
-import type { IdeaInput } from "../core/types.js";
 
 export interface TrendResult {
   ideaId: string;

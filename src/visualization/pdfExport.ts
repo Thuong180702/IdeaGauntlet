@@ -1,7 +1,8 @@
 /**
  * F-08: PDF export — generates print-optimized HTML with @media print CSS.
  * User opens in browser → Ctrl+P → "Save as PDF".
- * ponytail: No Puppeteer dep (heavy). If needed later, add playwright-based PDF render.
+ * Deliberately no Puppeteer dependency (heavy). If automated rendering is
+ * needed later, add a playwright-based PDF render behind a flag.
  * → skipped: automated PDF generation, add when users need batch PDF.
  */
 

@@ -5,6 +5,32 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-08-26
+
+Maintenance release from a full-project audit. No breaking changes.
+
+### Fixed
+- **False "update available" banner on every command** — `getCurrentVersion()` resolved `package.json` with a fixed relative path that is only correct when running from `src/`. Because the build flattens modules into `dist/`, published installs resolved a path outside the package, silently fell back to a hardcoded `"0.5.0"`, and told every user on every version to upgrade. The version is now found by walking up to the `idea-gauntlet` `package.json`, which is correct in dev, in `dist/`, and in `node_modules/`. When the version genuinely cannot be determined the update check is skipped instead of guessing. This also removes the bogus upgrade notice that was being appended to every MCP response.
+- **`status` reported a missing install as an error** — a missing manifest is the normal not-installed state, but it surfaced a raw `ENOENT` warning. Only genuine read/parse failures warn now.
+- **`formatScores()` ignored unassessed dimensions** — the exported helper computed Overall across all seven dimensions, so library consumers saw an Overall that disagreed with the report's own value. It now accepts `unassessed`, marks those dimensions `n/a`, and matches `overallScore()`.
+
+### Security
+- **GitHub Action script injection (`action.yml`)** — caller-controlled inputs were interpolated straight into the composite action's `run:` block, where GitHub substitutes them before the shell parses the script. An input carrying shell metacharacters (a PR title, a branch name) could execute arbitrary commands on the runner. All inputs are now passed through `env:` and referenced as quoted shell variables, with `mode` and `version` validated against allowlists.
+- **Timing-safe API token comparison (`serve`)** — bearer tokens were compared with `!==`, which returns on the first differing byte. Now uses `crypto.timingSafeEqual`.
+- **Byte-accurate request body limit (`serve`)** — the 10MB cap counted UTF-16 code units, so a multi-byte body could buffer well past the intended ceiling. It now counts bytes.
+- **Prompt-injection detection is now wired up** — `detectInjectionAttempts()` existed but was never called. `runGauntlet` now reports instruction-like patterns found in idea text to stderr. Idea text was already, and remains, passed to models as delimited data.
+
+### Added
+- Security regression tests for `safeWrite` (path traversal, absolute-path escape, prefix-collision directories, overwrite refusal) and `promptGuard` (fence breakout, injection patterns) — both modules were security boundaries with zero direct test coverage. Test suite is now 62 files / 499 tests.
+- CI now runs `lint` with `--max-warnings 0`, smoke-tests the built CLI, asserts the built CLI's reported version matches `package.json` (the check that would have caught the version bug), and runs `npm pack --dry-run`.
+
+### Changed
+- Lint is clean: 17 errors and 33 warnings resolved — dead imports and unused locals removed, unnecessary regex escapes fixed, the intentional control-character regex documented, and `while (true)` stream loops no longer flagged.
+- Removed internal codename markers that had leaked into published source comments.
+- README leads with the demo GIF (previously present in the repo but committed nowhere and referenced nowhere) and surfaces the shareable report card in the intro instead of 300 lines down.
+- `CLAUDE.md` command list and architecture map brought back in sync with the actual 28 commands and `src/analysis/`.
+- Tests no longer leave a stray `.test-config-tmp/` directory in the working tree.
+
 ## [0.6.0] - 2026-08-20
 
 ### Added

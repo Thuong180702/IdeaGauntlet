@@ -13,6 +13,15 @@ Built for founders, indie hackers, and product engineers who want sharper pre-va
 [![license](https://img.shields.io/npm/l/idea-gauntlet)](LICENSE)
 [![node](https://img.shields.io/node/v/idea-gauntlet)](https://nodejs.org)
 
+![IdeaGauntlet running a quick critique: verdict, scorecard, top risks, and the fastest test to run this week](https://raw.githubusercontent.com/Thuong180702/IdeaGauntlet/main/assets/demo.gif)
+
+One command gives you a verdict, an evidence-backed scorecard, the risks that actually
+kill the idea, and the cheapest test that could disprove it this week.
+
+```bash
+npx idea-gauntlet quick "an AI agent that attends your meetings for you"
+```
+
 ---
 
 ## Install & Update
@@ -54,8 +63,19 @@ ANTHROPIC_API_KEY=sk-ant-... npx idea-gauntlet quick "A focus-room app for remot
 ```
 
 Groq (`GROQ_API_KEY=gsk_...`), any OpenAI-compatible endpoint, or local Ollama (`--ollama`)
-work too — see [Provider setup](#provider-setup). Want a shareable image instead of text?
-Add `--format card` (see [Shareable Report Card](#shareable-report-card)).
+work too — see [Provider setup](#provider-setup).
+
+### Get a card you can actually post
+
+Add `--format card` to any command to render the verdict as a self-contained
+**1200×630 image** (OG / Twitter preview size) — verdict badge, overall score, score
+radar, top risks, and the one-line brutal takeaway. Built to screenshot and share:
+
+```bash
+idea-gauntlet quick "Your idea" --format card -o idea.html   # writes idea.card.html
+```
+
+Full details in [Shareable Report Card](#shareable-report-card).
 
 ### See a real report
 

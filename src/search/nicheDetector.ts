@@ -1,4 +1,4 @@
-import type { SearchResult, PageContent, CompetitorLandscape, NicheOpportunity, NicheType } from "./types.js";
+import type { SearchResult, PageContent, CompetitorLandscape, NicheOpportunity } from "./types.js";
 
 /**
  * Niche opportunity detector — finds gaps in competitor coverage

@@ -1,4 +1,4 @@
-import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, ComparedIdea, MarketSizing, UnitEconomics, AntiPatternReport } from "./types.js";
+import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, MarketSizing, UnitEconomics, AntiPatternReport } from "./types.js";
 import type { EnhancedCourtDebate, EnhancedQuickReport, EnhancedPersona, UserSynthesis, EnhancedMVPPlan, EnhancedComparisonResult } from "./types.js";
 import type { CompetitorLandscape, NicheOpportunity } from "../search/types.js";
 import { overallScore } from "./scoring.js";

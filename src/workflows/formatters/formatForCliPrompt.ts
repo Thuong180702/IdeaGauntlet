@@ -1,6 +1,6 @@
 import type { WorkflowDefinition, WorkflowMode } from "../types.js";
 
-export function formatForCliPrompt(def: WorkflowDefinition, mode: WorkflowMode, ideaText?: string): string {
+export function formatForCliPrompt(def: WorkflowDefinition, mode: WorkflowMode, _ideaText?: string): string {
   const lines: string[] = [];
 
   lines.push(`You are the ${def.name} analyst in IdeaGauntlet.`);

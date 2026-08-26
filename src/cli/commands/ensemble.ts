@@ -1,11 +1,10 @@
 /**
  * F-05/P3-12: Ensemble CLI command — run same idea through 2+ providers.
  */
-import { resolveProvider } from "../../providers/providerUtils.js";
 import { OpenAICompatibleProvider } from "../../providers/openaiCompatibleProvider.js";
 import { runEnsemble, formatEnsembleResult } from "../../engines/ensembleEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
-import { getApiKey, getBaseUrl } from "../../utils/env.js";
+import { getApiKey } from "../../utils/env.js";
 
 export async function ensembleCommand(idea: string, options: Record<string, unknown>): Promise<void> {
   if (!idea?.trim()) {
@@ -19,7 +18,6 @@ export async function ensembleCommand(idea: string, options: Record<string, unkn
     process.exit(1);
   }
   const baseUrl = options.baseUrl as string | undefined;
-  const model = options.model as string | undefined;
 
   // Build providers from comma-separated --models list.
   // Format: "model1,model2" or "provider1:model1,provider2:model2"

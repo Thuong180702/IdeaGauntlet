@@ -5,8 +5,6 @@ import { getWorkflow } from "../../workflows/definitions.js";
 export function generateClaudeAgents(): IntegrationFile[] {
   const court = getWorkflow("court");
   const quick = getWorkflow("quick");
-  const users = getWorkflow("users");
-  const mvp = getWorkflow("mvp");
 
   const agents: IntegrationFile[] = [];
 

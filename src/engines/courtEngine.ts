@@ -8,14 +8,12 @@ import type {
   EnhancedCourtDebate,
   Scorecard,
 } from "../core/types.js";
-import { courtWorkflow } from "../workflows/definitions/court.js";
-import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
 import { withProgress } from "../utils/progress.js";
-import { computeVerdict, mapVerdictFromText } from "../core/verdictMapping.js";
+import { mapVerdictFromText } from "../core/verdictMapping.js";
 import {
   COURT_ROLES,
   buildOpeningPrompt,

@@ -6,6 +6,8 @@ import { runUserLab } from "../engines/syntheticUserLab.js";
 import { runMvpPlanner } from "../engines/mvpPlanner.js";
 import { runCompareEngine } from "../engines/compareEngine.js";
 import { buildReport } from "./report.js";
+import { detectInjectionAttempts } from "../utils/promptGuard.js";
+import { warn } from "../utils/warn.js";
 
 export async function runGauntlet(params: {
   idea: string;
@@ -35,6 +37,17 @@ export async function runGauntlet(params: {
       throw new Error(`Invalid stage "${params.stage}". Expected one of: "napkin", "pre-mvp", "mvp", "growth".`);
     }
     stage = stageResult.data;
+  }
+
+  // SEC-02: the idea is always wrapped as data before it reaches a model, so a
+  // match is not blocked — it is surfaced, because a user pasting an idea that
+  // contains directive language deserves to know the model was told to ignore it.
+  const injectionHits = detectInjectionAttempts(params.idea);
+  if (injectionHits.length > 0) {
+    warn(
+      `promptGuard: idea text contains ${injectionHits.length} instruction-like pattern(s); ` +
+        "they are passed as data and will be ignored by the analysis.",
+    );
   }
 
   const input: IdeaInput = {

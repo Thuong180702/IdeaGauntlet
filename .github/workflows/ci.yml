@@ -7,6 +7,19 @@ on:
     branches: [main, master]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Warnings are failures here: every warning this repo has had was dead
+      # code, and letting them accumulate is how the last 33 went unnoticed.
+      - run: npm run lint -- --max-warnings 0
+
   typecheck:
     runs-on: ubuntu-latest
     strategy:
@@ -37,7 +50,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: [typecheck, test]
+    needs: [lint, typecheck, test]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,3 +59,25 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run build
+
+      # Smoke-test the built CLI the way a user gets it. These caught a real
+      # bug: the bundle resolves paths from dist/, not src/, so a path that
+      # works in dev can silently fall back in the published package.
+      - name: CLI smoke test
+        run: |
+          node dist/cli/index.js --help
+          node dist/cli/index.js setup --dry-run --all
+          node dist/cli/index.js doctor --verbose
+
+      - name: Report the running version
+        run: |
+          set -euo pipefail
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          CLI_VERSION="$(node dist/cli/index.js --version | tr -d '[:space:]')"
+          echo "package.json=$PKG_VERSION  cli=$CLI_VERSION"
+          case "$CLI_VERSION" in
+            *"$PKG_VERSION"*) ;;
+            *) echo "CLI version '$CLI_VERSION' does not match package.json '$PKG_VERSION'" >&2; exit 1 ;;
+          esac
+
+      - run: npm pack --dry-run

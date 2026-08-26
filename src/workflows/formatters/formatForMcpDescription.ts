@@ -3,7 +3,6 @@ import { getWorkflow } from "../definitions.js";
 
 export function formatForMcpDescription(def: WorkflowDefinition): string {
   const roleCount = def.roles.length;
-  const sectionCount = def.sections.length;
   const scoreCount = def.scoringDimensions.length;
 
   let purpose = def.purpose;

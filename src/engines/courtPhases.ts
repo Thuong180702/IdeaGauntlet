@@ -1,4 +1,4 @@
-import type { IdeaInput, GauntletMode } from "../core/types.js";
+import type { IdeaInput } from "../core/types.js";
 import type { ResearchBrief } from "../search/types.js";
 import { IDEA_INJECTION_SYSTEM, wrapIdea } from "../utils/promptGuard.js";
 

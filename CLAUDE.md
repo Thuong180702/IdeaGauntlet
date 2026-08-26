@@ -57,17 +57,51 @@ Synthetic users are fictional archetypes. Always label them as such. Never imply
 
 ## Supported commands
 
+Core analysis:
+
 ```bash
 idea-gauntlet quick "your idea"
 idea-gauntlet court idea.md
 idea-gauntlet users idea.md --personas 8
 idea-gauntlet mvp idea.md
 idea-gauntlet compare idea-a.md idea-b.md
+idea-gauntlet batch ideas.txt
+idea-gauntlet ensemble idea.md
+```
+
+Deep-dive analysis:
+
+```bash
+idea-gauntlet gtm idea.md
+idea-gauntlet compete idea.md
+idea-gauntlet revenue idea.md
+idea-gauntlet founder idea.md
+idea-gauntlet interview idea.md
+idea-gauntlet pitch idea.md
+idea-gauntlet evolve idea.md
+idea-gauntlet compliance idea.md
+```
+
+Workspace, history, and integration:
+
+```bash
 idea-gauntlet init
 idea-gauntlet setup --dry-run --all
+idea-gauntlet install
+idea-gauntlet uninstall
+idea-gauntlet status
 idea-gauntlet doctor --verbose
 idea-gauntlet mcp
+idea-gauntlet serve --api-token <token>
+idea-gauntlet history [id]
+idea-gauntlet trend [id]
+idea-gauntlet team <action> [idea]
+idea-gauntlet templates
+idea-gauntlet interactive [idea]
 ```
+
+`cli.command(...)` in `src/cli/index.ts` is the source of truth — keep this list in
+sync when adding a command.
 
 ## Architecture
 
@@ -75,9 +109,10 @@ Use the current single-package structure:
 
 ```txt
 src/
-  cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall)
+  analysis/     synthetic score-benchmark reference set (labelled non-real, used by `interactive` /benchmark)
+  cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall, status, templates, ensemble, gtm, compete, revenue, founder, interview, pitch, evolve, compliance)
   core/         shared types, report builder, scoring, dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
-  engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases)
+  engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases, marketSizingEngine, unitEconomicsEngine, antiPatternDetector, gtmEngine, competitiveIntelligenceEngine, revenueModelEngine, founderMarketFitEngine, userInterviewEngine, pitchGenerator, evolutionCoach, complianceScanner)
   integrations/ Claude/Cursor/Codex/GitHub generators
   history/      report history store + score delta tracking
   mcp/          MCP server, tools, resources
@@ -141,6 +176,7 @@ Avoid:
 Run:
 
 ```bash
+npm run lint
 npm run typecheck
 npm run test
 npm run build

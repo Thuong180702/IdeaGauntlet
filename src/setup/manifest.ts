@@ -31,7 +31,11 @@ export function readManifest(manifestPath: string): InstallManifest | null {
     }
     return null;
   } catch (err: any) {
-    warnIfError(`manifest: readManifest failed for ${manifestPath}`, err);
+    // A missing manifest is the normal "not installed globally" state, not an
+    // error — warning about it made `status` look broken on a clean machine.
+    if (err?.code !== "ENOENT") {
+      warnIfError(`manifest: readManifest failed for ${manifestPath}`, err);
+    }
     return null;
   }
 }
