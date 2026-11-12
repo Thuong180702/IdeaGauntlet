@@ -1,4 +1,5 @@
 import type { WorkflowDefinition } from "../types.js";
+import { FOUNDER_INPUT_GUIDANCE, FOUNDER_OUTPUT_RULE } from "../../core/founderContext.js";
 
 export const usersWorkflow: WorkflowDefinition = {
   id: "users",
@@ -9,6 +10,7 @@ export const usersWorkflow: WorkflowDefinition = {
     "A clear description of the product idea",
     "Target user segments (optional)",
     "Number of personas to generate (default: 6)",
+    FOUNDER_INPUT_GUIDANCE,
   ],
   roles: [
     {
@@ -68,6 +70,7 @@ export const usersWorkflow: WorkflowDefinition = {
     "Each persona MUST reference real competitor alternatives they currently use",
     "Segments must be informed by competitor coverage gaps where possible",
     "If competitors exist, personas should react to them — not pretend they don't",
+    FOUNDER_OUTPUT_RULE,
   ],
   requiredHeadings: [
     "Synthetic Personas",

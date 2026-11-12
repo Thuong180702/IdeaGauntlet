@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, RevenueModel, RevenueModelOption, Confidence } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
@@ -88,7 +89,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
@@ -102,8 +103,7 @@ Return ONLY valid JSON.`;
       temperature: 0.3,
       maxTokens: 4000,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse revenue model response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Revenue model analysis", ["recommendedModel", "options"]);
 
     const options: RevenueModelOption[] = (parsed.options ?? []).map((o: any) => ({
       model: o.model ?? "subscription_saas",
@@ -126,33 +126,9 @@ Return ONLY valid JSON.`;
       keyRevenueRisks: Array.isArray(parsed.keyRevenueRisks) ? parsed.keyRevenueRisks : [],
       confidence: (parsed.confidence ?? "medium") as Confidence,
     };
-  } catch (err: any) {
-    warnIfError("revenueModelEngine: analysis failed", err);
-    return {
-      recommendedModel: "subscription_saas",
-      options: [
-        {
-          model: "subscription_saas",
-          fitScore: 6,
-          rationale: "Default fallback — subscription SaaS is the most common model for software products",
-          pros: ["Recurring revenue", "Predictable growth"],
-          cons: ["High churn risk", "Needs fast time-to-value"],
-          pricingRecommendation: "$29-$99/mo (standard SaaS range)",
-          revenueProjectionY1: "Estimate unavailable — analysis failed",
-          revenueProjectionY3: "Estimate unavailable — analysis failed",
-          whenToStartCharging: "After 10 active users show retention >30% at 30 days",
-          comparablePricing: [],
-        },
-      ],
-      monetizationTimeline: "Revenue model analysis failed — fallback to standard SaaS model",
-      pricingTiers: [
-        { name: "Free", price: "$0/mo", targetSegment: "Individuals / trial", features: ["Core feature", "Up to 3 projects", "Community support"] },
-        { name: "Pro", price: "$49/mo", targetSegment: "Power users / small teams", features: ["All Free features", "Unlimited projects", "Priority support", "API access"] },
-        { name: "Team", price: "$149/mo", targetSegment: "Small teams", features: ["All Pro features", "Up to 10 seats", "Team dashboard", "SSO"] },
-      ],
-      keyRevenueRisks: ["Willingness to pay not validated", "Competitor pricing pressure", "High churn in early months"],
-      confidence: "low",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Revenue model analysis", err);
   }
 }
 

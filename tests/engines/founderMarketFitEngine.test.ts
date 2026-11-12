@@ -1,3 +1,4 @@
+import { AnalysisFailedError } from "../../src/core/analysisError.js";
 import { describe, it, expect } from "vitest";
 import { runFounderMarketFitEngine, formatFounderMarketFitReport } from "../../src/engines/founderMarketFitEngine.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
@@ -48,16 +49,14 @@ describe("founderMarketFitEngine", () => {
     expect(formatted).toContain("Recommended Co-Founder Profile");
   });
 
-  it("handles provider failure gracefully with fallback", async () => {
+  it("fails loudly on provider failure instead of returning placeholder analysis", async () => {
     class FailingProvider implements import("../../src/core/types.js").LLMProvider {
       kind = "custom" as const;
       async complete(): Promise<string> { throw new Error("Simulated LLM failure"); }
     }
 
-    const result = await runFounderMarketFitEngine(IDEA, new FailingProvider(), BACKGROUND);
-
-    expect(result).toBeDefined();
-    expect(result.domainExpertiseScore).toBe(5);
-    expect(result.fitVerdict).toBe("moderate_fit");
+    // A placeholder result would read as a real finding — the engine must refuse instead.
+    await expect(runFounderMarketFitEngine(IDEA, new FailingProvider(), BACKGROUND)).rejects.toThrow(AnalysisFailedError);
+    await expect(runFounderMarketFitEngine(IDEA, new FailingProvider(), BACKGROUND)).rejects.toThrow(/Simulated LLM failure[\s\S]*Nothing was generated/);
   });
 });

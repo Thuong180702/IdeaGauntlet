@@ -1,5 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { resolveCliProvider } from "../context.js";
 import { runCompareEngine } from "../../engines/compareEngine.js";
 import { buildReport } from "../../core/report.js";
@@ -10,7 +11,7 @@ export async function compareCommand(ideas: string[], rawOptions: Record<string,
   const options = normalizeOptions(rawOptions);
   const provider = await resolveCliProvider(options);
 
-  const parsed = ideas.map((i) => parseIdeaInput({ idea: loadIdeaInput(i), mode: "compare" }));
+  const parsed = ideas.map((i) => parseIdeaInput({ idea: loadIdeaInput(i), mode: "compare", founder: founderFromOptions(options) }));
   const enableSearch = !options.noSearch;
   const report = await runCompareEngine(parsed, provider, { enableSearch });
   report.markdown = buildReport(report);

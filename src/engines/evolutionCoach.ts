@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, IdeaEvolution, IdeaVariant } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
@@ -82,7 +83,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
@@ -96,8 +97,7 @@ Return ONLY valid JSON.`;
       temperature: 0.5,
       maxTokens: 3500,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse idea evolution response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Idea evolution analysis", ["variants"]);
 
     const variants: IdeaVariant[] = (parsed.variants ?? []).map((v: any) => ({
       variantName: v.variantName ?? "Evolved Variant",
@@ -117,36 +117,9 @@ Return ONLY valid JSON.`;
       variants,
       suggestedExperiment: parsed.suggestedExperiment ?? "Create 2 contrasting landing pages with pricing and run $50 in targeted ads to measure email waitlist conversion.",
     };
-  } catch (err: any) {
-    warnIfError("evolutionCoach: analysis failed", err);
-    return {
-      originalIdea: idea.idea,
-      primaryBottleneck: "Broad target audience leading to high acquisition cost and unclear monetization.",
-      oneBigChangeRecommendation: "Target a specific professional vertical with quantifiable ROI instead of general users.",
-      variants: [
-        {
-          variantName: "The B2B Team Productivity Suite",
-          angle: "B2B SaaS Wedge",
-          oneSentencePitch: "Automated focus rooms for distributed engineering teams to protect deep work hours.",
-          coreChange: "Sold to engineering leaders with per-seat billing rather than individual consumer subscriptions.",
-          whyThisWorksBetter: "Higher willingness to pay ($25/seat/mo), lower churn, company expensed.",
-          estimatedScoreDeltas: { monetization: 3, pain: 2, distribution: 1 },
-          newTargetCustomer: "VPs of Engineering and Engineering Managers at Series A-C tech startups",
-          risks: ["Longer sales cycles", "Requires team calendar integrations"],
-        },
-        {
-          variantName: "The Open-Source Focus Protocol",
-          angle: "Developer Community Wedge",
-          oneSentencePitch: "Open-source local-first focus room protocol with self-hosted options and premium cloud sync.",
-          coreChange: "Product-led community distribution through GitHub, developer forums, and open-source tooling.",
-          whyThisWorksBetter: "Zero CAC top of funnel, developer advocacy drives bottom-up adoption.",
-          estimatedScoreDeltas: { distribution: 3, buildability: 1, monetization: -1 },
-          newTargetCustomer: "Software developers, open source contributors, technical writers",
-          risks: ["Harder to monetize free tier users", "Support overhead"],
-        },
-      ],
-      suggestedExperiment: "Put up a single-page comparison between B2B and consumer versions to test inbound lead quality.",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Idea evolution analysis", err);
   }
 }
 

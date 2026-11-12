@@ -69,6 +69,15 @@ describe("CLI usability", () => {
     expect(r.stderr).toContain('Unsupported language "xx"');
   }, 40_000);
 
+  it("accepts founder-resource flags on analysis commands", () => {
+    for (const cmd of ["quick", "court", "mvp", "assumptions", "gtm"]) {
+      const r = run([cmd, "an idea", "--budget", "$3000", "--time", "10h/week", "--background", "dev", "--assets", "pilot cafe", "--team", "solo", "--deadline", "4 months"]);
+      expect(r.stderr).not.toContain("Unknown option");
+      expect(r.stderr).toContain("No provider configured");
+      expect(r.code).toBe(2);
+    }
+  }, 120_000);
+
   it("reads the idea from stdin with '-' and fails clearly when stdin is empty", () => {
     const r = run(["gtm", "-"], { env: { IDEAGAUNTLET_API_KEY: "test-key" } });
     expect(r.code).toBe(1);

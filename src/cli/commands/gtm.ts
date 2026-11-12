@@ -6,6 +6,7 @@ import { resolveCliProvider } from "../context.js";
 import { runGTMEngine, formatGTMReport } from "../../engines/gtmEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 
 export async function gtmCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
@@ -18,6 +19,7 @@ export async function gtmCommand(ideaArg: string, rawOptions: Record<string, unk
   const ideaText = loadIdeaInput(ideaArg);
   const idea = parseIdeaInput({
     idea: ideaText,
+    founder: founderFromOptions(options),
     mode: "quick",
     stage: options.stage as string | undefined,
     market: options.market as string | undefined,

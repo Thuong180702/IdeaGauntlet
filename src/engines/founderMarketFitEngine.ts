@@ -1,6 +1,6 @@
 import type { LLMProvider, IdeaInput, FounderMarketFit } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
-import { warnIfError } from "../utils/warn.js";
 import { buildSafeUserMessage, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
 
 /**
@@ -53,7 +53,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
@@ -69,8 +69,7 @@ Return ONLY valid JSON.`;
       temperature: 0.4,
       maxTokens: 2500,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse founder-market fit response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Founder-market fit assessment", ["fitVerdict", "fitSummary"]);
 
     return {
       backgroundSummary: parsed.backgroundSummary ?? "Background summary unavailable",
@@ -84,20 +83,9 @@ Return ONLY valid JSON.`;
       fitVerdict: (parsed.fitVerdict ?? "moderate_fit") as FounderMarketFit["fitVerdict"],
       fitSummary: parsed.fitSummary ?? "Founder-market fit analysis completed.",
     };
-  } catch (err: any) {
-    warnIfError("founderMarketFitEngine: analysis failed", err);
-    return {
-      backgroundSummary: "Analysis failed — could not assess founder background",
-      domainExpertiseScore: 5,
-      networkAdvantageScore: 5,
-      executionRiskScore: 5,
-      expertiseGaps: ["Unable to assess — analysis failed"],
-      unfairAdvantages: ["Unable to assess — analysis failed"],
-      recommendedCoFounderProfile: "Co-founder assessment failed — try again with a detailed background description",
-      firstHireRecommendations: [],
-      fitVerdict: "moderate_fit",
-      fitSummary: "Founder-market fit analysis failed. Please provide a detailed background description and retry.",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Founder-market fit assessment", err);
   }
 }
 

@@ -1,3 +1,4 @@
+import { AnalysisFailedError } from "../../src/core/analysisError.js";
 import { describe, it, expect } from "vitest";
 import { runGTMEngine, formatGTMReport } from "../../src/engines/gtmEngine.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
@@ -40,16 +41,14 @@ describe("gtmEngine", () => {
     expect(formatted).toContain("Biggest GTM Risk");
   });
 
-  it("handles provider failure gracefully with fallback", async () => {
+  it("fails loudly on provider failure instead of returning placeholder analysis", async () => {
     class FailingProvider implements import("../../src/core/types.js").LLMProvider {
       kind = "custom" as const;
       async complete(): Promise<string> { throw new Error("Simulated LLM failure"); }
     }
 
-    const result = await runGTMEngine(IDEA, new FailingProvider(), { enableSearch: false });
-
-    expect(result).toBeDefined();
-    expect(result.channels.length).toBeGreaterThan(0);
-    expect(result.confidence).toBe("low");
+    // A placeholder result would read as a real finding — the engine must refuse instead.
+    await expect(runGTMEngine(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(AnalysisFailedError);
+    await expect(runGTMEngine(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(/Simulated LLM failure[\s\S]*Nothing was generated/);
   });
 });

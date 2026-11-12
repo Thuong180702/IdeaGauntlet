@@ -3,7 +3,7 @@
  * aggregate scores, show disagreement. Reduces single-model bias.
  */
 
-import type { LLMProvider, GauntletReport, Scorecard, GauntletMode } from "../core/types.js";
+import type { LLMProvider, GauntletReport, Scorecard, GauntletMode, FounderContext } from "../core/types.js";
 import { runGauntlet } from "../core/runGauntlet.js";
 import { warn } from "../utils/warn.js";
 
@@ -21,6 +21,7 @@ export async function runEnsemble(params: {
   targetUsers?: string[];
   market?: string;
   stage?: string;
+  founder?: FounderContext;
   enableSearch?: boolean;
 }): Promise<EnsembleResult> {
   const { mode, providers } = params;
@@ -36,6 +37,7 @@ export async function runEnsemble(params: {
         targetUsers: params.targetUsers,
         market: params.market,
         stage: params.stage,
+        founder: params.founder,
         mode,
         provider,
         enableSearch: params.enableSearch,

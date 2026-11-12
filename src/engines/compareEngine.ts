@@ -6,7 +6,7 @@ import { formatForCliPrompt } from "../workflows/formatters/formatForCliPrompt.j
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
 import { warnIfError } from "../utils/warn.js";
-import { wrapIdea, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
+import { wrapIdeaWithContext, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
 import { computeVerdict } from "../core/verdictMapping.js";
 
 export async function runCompareEngine(
@@ -80,7 +80,7 @@ export async function runCompareEngine(
   const structuredSystem = `You are the Comparison Analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\n${IDEA_INJECTION_SYSTEM}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
   const ideasText = ideas.map((idea, i) =>
-    `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\n${wrapIdea(idea.idea)}`
+    `Idea ${i + 1}: ${idea.title ?? idea.idea.slice(0, 60)}\n${wrapIdeaWithContext(idea)}`
   ).join("\n\n");
 
   const userMessage = `${ideasText}\n\nCompare these ideas. Return JSON with: comparisonMatrix (array of {ideaTitle, criteria: {clarity, pain, urgency, marketAccessibility, distribution, monetization, differentiation, buildComplexity, timeToValidate, evidence, competitiveAdvantage, nichePotential}}), perIdeaStrengths (array of {ideaTitle, strengths}), perIdeaRisks (array of {ideaTitle, risks}), bestForFastValidation ({ideaTitle, reasoning}), bestForLongTermUpside ({ideaTitle, reasoning}), killTestsPerIdea (array of {ideaTitle, killTests}), competitorLandscapePerIdea (array of {ideaTitle, landscape: {competitors: [{name, url, type, pricing, features, weaknesses}], saturationLevel, analysisNote}}) — name real competitors for each idea, nicheOpportunitiesPerIdea (array of {ideaTitle, niches: [{type, description, evidence, wedgeIdea, whyNow}]}) — 3-5 niches per idea if market saturated, recommendation ({pick, caveats, reasoning})`;

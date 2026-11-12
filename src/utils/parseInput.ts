@@ -1,4 +1,4 @@
-import type { IdeaInput, GauntletMode } from "../core/types.js";
+import type { IdeaInput, GauntletMode, FounderContext } from "../core/types.js";
 
 export function parseIdeaInput(params: {
   idea: string;
@@ -6,6 +6,7 @@ export function parseIdeaInput(params: {
   stage?: string;
   market?: string;
   targetUsers?: string;
+  founder?: FounderContext;
 }): IdeaInput {
   return {
     idea: params.idea,
@@ -13,6 +14,7 @@ export function parseIdeaInput(params: {
     stage: (params.stage as any) ?? undefined,
     market: params.market,
     targetUsers: params.targetUsers?.split(",").map((s) => s.trim()).filter(Boolean),
+    founder: params.founder,
   };
 }
 

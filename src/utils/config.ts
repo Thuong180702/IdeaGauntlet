@@ -13,6 +13,8 @@ export interface IdeaGauntletConfig {
   baseUrl?: string;
   apiKey?: string;
   ollama?: boolean;
+  /** Your resources, stated once: { background, team, budget, time, deadline, assets, notes }. */
+  founder?: Record<string, string>;
   /** Default report language (same values as --lang). */
   lang?: string;
   defaultMode?: string;

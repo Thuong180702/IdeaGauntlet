@@ -1,6 +1,6 @@
 import type { IdeaInput } from "../core/types.js";
 import type { ResearchBrief } from "../search/types.js";
-import { IDEA_INJECTION_SYSTEM, wrapIdea } from "../utils/promptGuard.js";
+import { IDEA_INJECTION_SYSTEM, wrapIdeaWithContext } from "../utils/promptGuard.js";
 
 /**
  * Court 2.0 — Multi-turn debate prompt builders.
@@ -136,7 +136,7 @@ export function buildOpeningPrompt(
   ].join("\n");
 
   const user = [
-    wrapIdea(idea.idea),
+    wrapIdeaWithContext(idea),
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
@@ -174,7 +174,7 @@ export function buildCrossExaminationPrompt(
     .join("\n\n");
 
   const user = [
-    wrapIdea(idea.idea),
+    wrapIdeaWithContext(idea),
     ``,
     `=== OPENING STATEMENTS ===`,
     openingsText,
@@ -270,7 +270,7 @@ export function buildVerdictPrompt(
     .join("\n");
 
   const user = [
-    wrapIdea(idea.idea),
+    wrapIdeaWithContext(idea),
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",

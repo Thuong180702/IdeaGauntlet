@@ -1,3 +1,4 @@
+import { AnalysisFailedError } from "../../src/core/analysisError.js";
 import { describe, it, expect } from "vitest";
 import { runRevenueModelEngine, formatRevenueModelReport } from "../../src/engines/revenueModelEngine.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
@@ -36,17 +37,14 @@ describe("revenueModelEngine", () => {
     expect(formatted).toContain("Key Revenue Risks");
   });
 
-  it("handles provider failure gracefully with fallback", async () => {
+  it("fails loudly on provider failure instead of returning placeholder analysis", async () => {
     class FailingProvider implements import("../../src/core/types.js").LLMProvider {
       kind = "custom" as const;
       async complete(): Promise<string> { throw new Error("Simulated LLM failure"); }
     }
 
-    const result = await runRevenueModelEngine(IDEA, new FailingProvider(), { enableSearch: false });
-
-    expect(result).toBeDefined();
-    expect(result.recommendedModel).toBe("subscription_saas");
-    expect(result.pricingTiers.length).toBeGreaterThan(0);
-    expect(result.confidence).toBe("low");
+    // A placeholder result would read as a real finding — the engine must refuse instead.
+    await expect(runRevenueModelEngine(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(AnalysisFailedError);
+    await expect(runRevenueModelEngine(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(/Simulated LLM failure[\s\S]*Nothing was generated/);
   });
 });

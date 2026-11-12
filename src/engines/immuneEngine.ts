@@ -1,3 +1,4 @@
+import { isEmptyAnalysis } from "../core/analysisError.js";
 import { randomUUID } from "node:crypto";
 import type { LLMProvider, IdeaInput, GauntletReport, Risk, Assumption, KillTest, Severity, Confidence, Scorecard, ScoreRubricEntry, EnhancedQuickReport } from "../core/types.js";
 import { calculateScores } from "../core/scoring.js";
@@ -40,7 +41,7 @@ export async function runImmuneEngine(
   const researchContext = research?.summary ?? "";
   const structuredSystem = `You are the Quick Critique analyst in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\n${IDEA_INJECTION_SYSTEM}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
@@ -57,7 +58,7 @@ export async function runImmuneEngine(
     }));
     const extracted = extractJSON(response);
     parsed = extracted ?? {};
-    if (!extracted) {
+    if (isEmptyAnalysis(extracted)) {
       warnings.push("LLM returned malformed JSON — falling back to default scores.");
     }
   } catch (err: any) {

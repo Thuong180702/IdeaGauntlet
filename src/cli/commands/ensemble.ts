@@ -9,6 +9,7 @@ import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { normalizeOptions } from "../../utils/parseInput.js";
 import { withResponseLanguage } from "../../providers/languageProvider.js";
 import { resolveLang } from "../context.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 
 export async function ensembleCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
   const options = normalizeOptions(rawOptions);
@@ -56,6 +57,7 @@ export async function ensembleCommand(ideaArg: string, rawOptions: Record<string
     targetUsers: options.targetUsers ? (options.targetUsers as string).split(",") : undefined,
     market: options.market as string | undefined,
     stage: options.stage as string | undefined,
+    founder: founderFromOptions(options),
     enableSearch: options.noSearch ? false : true,
   });
 

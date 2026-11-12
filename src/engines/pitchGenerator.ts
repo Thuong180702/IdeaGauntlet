@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, PitchDeck, PitchDeckSlide } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
@@ -73,7 +74,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     `Company Name: ${companyName}`,
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
@@ -88,8 +89,7 @@ Return ONLY valid JSON.`;
       temperature: 0.4,
       maxTokens: 4000,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse pitch deck response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Pitch deck draft", ["slides"]);
 
     const slides: PitchDeckSlide[] = (parsed.slides ?? []).map((s: any, idx: number) => ({
       slideNumber: Number(s.slideNumber ?? idx + 1),
@@ -108,41 +108,9 @@ Return ONLY valid JSON.`;
       elevatorPitch: parsed.elevatorPitch ?? "We solve a critical problem for our target market with a 10x better approach.",
       whyNowNarrative: parsed.whyNowNarrative ?? "Market shifts make this the exact right moment to build.",
     };
-  } catch (err: any) {
-    warnIfError("pitchGenerator: deck generation failed", err);
-    return {
-      template,
-      companyName,
-      oneLinePitch: "Next-generation software for modern teams",
-      slides: [
-        {
-          slideNumber: 1,
-          title: "Title & Vision",
-          headline: `${companyName} — Solving the core productivity bottleneck for remote teams.`,
-          bulletPoints: ["Targeting a fast-growing market segment", "Founder-led early traction", "Clear wedge to scale"],
-          visualConcept: "Hero product screenshot with bold value proposition tagline",
-          speakerNotes: `Hi, I'm the founder of ${companyName}, and today we're sharing how we solve the single biggest friction in modern work.`,
-        },
-        {
-          slideNumber: 2,
-          title: "The Problem",
-          headline: "Current solutions are fragmented, manual, and cost teams hours every week.",
-          bulletPoints: ["80% of knowledge workers struggle with daily distractions", "Existing workarounds are passive and ineffective", "High switching friction keeps users stuck"],
-          visualConcept: "Side-by-side pain point workflow diagram",
-          speakerNotes: "Every day, millions of workers try to solve this with timers and browser blockers, but nothing creates real accountability.",
-        },
-        {
-          slideNumber: 3,
-          title: "The Solution",
-          headline: "An automated, AI-assisted platform that makes deep work effortless.",
-          bulletPoints: ["10x faster setup than human pairing", "Built-in accountability mechanics", "Seamless integration with existing tools"],
-          visualConcept: "Interactive 3-step product flow visualization",
-          speakerNotes: "We created a virtual co-working space that matches users instantly into high-focus sessions with zero scheduling friction.",
-        },
-      ],
-      elevatorPitch: `${companyName} helps remote teams and freelancers achieve flow state through AI-assisted focus rooms, eliminating distraction and boosting output by 40%.`,
-      whyNowNarrative: "The permanent shift to remote and hybrid work combined with modern AI agents creates an unprecedented opening for automated accountability.",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Pitch deck draft", err);
   }
 }
 

@@ -59,6 +59,15 @@ Two invariants follow from this and must not be relaxed:
   ledger fails loudly rather than emitting invented thresholds, and computes its test
   order in code rather than asking the model to rank.
 
+- **No placeholder analysis.** When a model call fails or returns nothing usable, an
+  engine must throw `AnalysisFailedError` (deep dives) or mark the report `partial`
+  (quick/court/users/mvp) — never return a hard-coded result that reads like a finding.
+  Use `requireAnalysis` for the fields a result cannot exist without.
+- **Founder context is feasibility, not evidence.** Every engine receives the founder's
+  stated resources by passing the whole `IdeaInput` to `buildSafeUserMessage` /
+  `wrapIdeaWithContext` (never `idea.idea` alone). It is fenced as data, shapes what is
+  executable, and can never be cited or make a score `sourced`.
+
 ## Production constraints
 
 - Do not add demo-only or mock providers to `src/`.
@@ -128,7 +137,7 @@ Use the current single-package structure:
 src/
   analysis/     synthetic score-benchmark reference set (labelled non-real, used by `interactive` /benchmark)
   cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall, status, templates, ensemble, gtm, compete, revenue, founder, interview, pitch, evolve, compliance, assumptions) + context (shared provider/onboarding/--lang resolution — every analysis command must use `resolveCliProvider`), welcome (getting-started, did-you-mean, next steps)
-  core/         shared types, report builder, scoring, provenance (score-basis verification), dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
+  core/         shared types, report builder, scoring, provenance (score-basis verification), founderContext (resources → prompt block), analysisError (loud failure), dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
   engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases, marketSizingEngine, unitEconomicsEngine, antiPatternDetector, gtmEngine, competitiveIntelligenceEngine, revenueModelEngine, founderMarketFitEngine, userInterviewEngine, pitchGenerator, evolutionCoach, complianceScanner, assumptionLedger)
   integrations/ Claude/Cursor/Codex/GitHub generators
   history/      report history store + score delta tracking

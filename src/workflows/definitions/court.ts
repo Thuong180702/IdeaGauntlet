@@ -1,4 +1,5 @@
 import type { WorkflowDefinition } from "../types.js";
+import { FOUNDER_INPUT_GUIDANCE, FOUNDER_OUTPUT_RULE } from "../../core/founderContext.js";
 
 export const courtWorkflow: WorkflowDefinition = {
   id: "court",
@@ -10,6 +11,7 @@ export const courtWorkflow: WorkflowDefinition = {
     "Target user segments (optional)",
     "Market context (optional)",
     "Idea stage: napkin / pre-mvp / mvp / growth (optional)",
+    FOUNDER_INPUT_GUIDANCE,
   ],
   roles: [
     {
@@ -467,6 +469,7 @@ export const courtWorkflow: WorkflowDefinition = {
     "The competitor landscape section MUST include at least 3 named competitors if they exist",
     "If saturation is high, the verdict MUST address niche strategy",
     "Cite competitors by name — do not say 'some competitors exist' without naming them",
+    FOUNDER_OUTPUT_RULE,
   ],
   requiredHeadings: [
     "Research Brief",

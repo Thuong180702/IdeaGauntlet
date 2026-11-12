@@ -1,5 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { resolveCliProvider } from "../context.js";
 import { printNextSteps } from "../welcome.js";
 import { runCourtEngine } from "../../engines/courtEngine.js";
@@ -15,6 +16,7 @@ export async function courtCommand(
   const ideaText = loadIdeaInput(ideaArg);
   const idea = parseIdeaInput({
     idea: ideaText,
+    founder: founderFromOptions(options),
     mode: "court",
     stage: options.stage as string,
   });

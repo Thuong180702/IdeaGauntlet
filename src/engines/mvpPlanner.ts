@@ -1,3 +1,4 @@
+import { isEmptyAnalysis } from "../core/analysisError.js";
 import { randomUUID } from "node:crypto";
 import type { LLMProvider, IdeaInput, GauntletReport, MVPPlan, Verdict, EnhancedMVPPlan } from "../core/types.js";
 import { mvpWorkflow } from "../workflows/definitions/mvp.js";
@@ -45,7 +46,7 @@ export async function runMvpPlanner(
   const researchContext = research?.summary ?? "";
   const structuredSystem = `You are the MVP Planner in IdeaGauntlet.\n${systemPrompt}\n\n${researchContext}\n\n${IDEA_INJECTION_SYSTEM}\n\nReturn a single valid JSON object only — no markdown fences, no extra text.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     `Return JSON with: coreHypothesis, riskiestAssumptions (array of {assumption, riskLevel}), nonGoals (array), mvpWedge (string), validationPlan (array of step strings), experimentBacklog (array), fakeDoorTest (string), conciergeTest (string), interviewScript (array of question strings), successMetrics (array of {metric, target}), killCriteria (array of strings), pivotOptions (array of strings), recommendedScope (string), timeline (string — realistic days/weeks to first validation, e.g. "7 days" or "3 weeks"), competitiveWedge (string — based on competitor analysis from research brief, cite competitors by name), nicheStrategy ({niche, whyUnderserved, howToReach} — identify a specific underserved niche to target first)`,
   ]);
 
@@ -61,7 +62,7 @@ export async function runMvpPlanner(
     }));
     const parsed = extractJSON<any>(response);
 
-    if (!parsed) throw new Error("Failed to parse MVP response");
+    if (isEmptyAnalysis(parsed)) throw new Error("The model did not return a usable MVP plan");
 
     // Use timeline from LLM output, fall back to default only if not provided.
     const llmTimeline = parsed.timeline?.trim();

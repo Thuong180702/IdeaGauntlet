@@ -1,4 +1,5 @@
 import type { WorkflowDefinition } from "../types.js";
+import { FOUNDER_INPUT_GUIDANCE, FOUNDER_OUTPUT_RULE } from "../../core/founderContext.js";
 
 export const quickWorkflow: WorkflowDefinition = {
   id: "quick",
@@ -10,6 +11,7 @@ export const quickWorkflow: WorkflowDefinition = {
     "Target user segments (optional)",
     "Market context (optional)",
     "Idea stage: napkin / pre-mvp / mvp / growth (optional)",
+    FOUNDER_INPUT_GUIDANCE,
   ],
   roles: [
     {
@@ -125,6 +127,7 @@ export const quickWorkflow: WorkflowDefinition = {
     "If the market is saturated, you MUST suggest at least 3 niche opportunities to enter",
     "Every risk must reference real competitor evidence where possible",
     "Cite competitors by name — do not say 'some competitors exist' without naming them",
+    FOUNDER_OUTPUT_RULE,
   ],
   requiredHeadings: [
     "One-Line Verdict",

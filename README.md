@@ -79,6 +79,31 @@ pbpaste | idea-gauntlet assumptions -
 export IDEAGAUNTLET_LANG=vi        # or "lang": "vi" in .ideagauntlet.json
 ```
 
+### Tell it what you have
+
+A plan is only useful if you can execute it. State your resources and every analysis is
+fitted to them — tests you can afford, calendar time at your real pace, your existing
+audience used first, and your skill gaps named as risks:
+
+```bash
+idea-gauntlet mvp idea.md \
+  --background "Backend dev, 6 years. No mobile, design or sales experience" \
+  --budget "$3000" --time "10h/week alongside a full-time job" \
+  --deadline "decide in 4 months whether to quit my job" \
+  --assets "Admin of a Facebook group of 2,000 cafe owners; sister runs two cafes and will pilot"
+```
+
+Or state it once in `.ideagauntlet.json` and every command picks it up:
+
+```json
+{ "founder": { "background": "...", "team": "solo", "budget": "$3000", "time": "10h/week", "deadline": "...", "assets": "..." } }
+```
+
+Founder context is self-reported, so it changes what is *feasible for you*, never what is
+*true about the market*: it cannot be cited as evidence and cannot make a score `sourced`.
+The report prints the context it was conditioned on. Via MCP, every idea tool takes the
+same fields as a `founder` object; in the TypeScript API it is `runGauntlet({ founder })`.
+
 `--lang` translates the prose only. Verdicts, score keys, numbers, and source citations stay
 verbatim, so score provenance is still verified against the research that was retrieved.
 
@@ -380,6 +405,7 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 | `--format card` | quick, court | Output a shareable 1200×630 verdict card (screenshot & post) |
 | `--output <file>` | Most commands | Save to file |
 | `--ollama` | Generation commands | Use local Ollama |
+| `--background`, `--team`, `--budget`, `--time`, `--deadline`, `--assets` | All generation commands | What you have to work with — advice is fitted to it (or set `founder` in `.ideagauntlet.json`) |
 | `--lang <code>` | All generation commands | Report language: `en`, `vi`, `es`, `fr`, `de`, `ja`, `zh`, `ko`, `pt`, `it`, `ru`, `ar` (default from `IDEAGAUNTLET_LANG`) |
 | `-` (as the idea) | All generation commands | Read the idea from stdin |
 | `--model <name>` | Generation commands | Override LLM model |

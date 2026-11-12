@@ -1,3 +1,4 @@
+import { AnalysisFailedError } from "../../src/core/analysisError.js";
 import { describe, it, expect } from "vitest";
 import { runUserInterviewEngine, formatUserInterviewReport } from "../../src/engines/userInterviewEngine.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
@@ -41,16 +42,14 @@ describe("userInterviewEngine", () => {
     expect(formatted).toContain("Key Behavioral Insights");
   });
 
-  it("handles provider failure gracefully with fallback dialogue", async () => {
+  it("fails loudly on provider failure instead of returning placeholder analysis", async () => {
     class FailingProvider implements import("../../src/core/types.js").LLMProvider {
       kind = "custom" as const;
       async complete(): Promise<string> { throw new Error("Simulated LLM failure"); }
     }
 
-    const result = await runUserInterviewEngine(IDEA, new FailingProvider());
-
-    expect(result).toBeDefined();
-    expect(result.dialogue.length).toBeGreaterThan(0);
-    expect(result.keyInsights.length).toBeGreaterThan(0);
+    // A placeholder result would read as a real finding — the engine must refuse instead.
+    await expect(runUserInterviewEngine(IDEA, new FailingProvider())).rejects.toThrow(AnalysisFailedError);
+    await expect(runUserInterviewEngine(IDEA, new FailingProvider())).rejects.toThrow(/Simulated LLM failure[\s\S]*Nothing was generated/);
   });
 });

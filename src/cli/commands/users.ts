@@ -1,5 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { resolveCliProvider } from "../context.js";
 import { runUserLab } from "../../engines/syntheticUserLab.js";
 import { buildReport } from "../../core/report.js";
@@ -14,6 +15,7 @@ export async function usersCommand(
   const ideaText = loadIdeaInput(ideaArg);
   const idea = parseIdeaInput({
     idea: ideaText,
+    founder: founderFromOptions(options),
     mode: "users",
     stage: options.stage as string,
   });

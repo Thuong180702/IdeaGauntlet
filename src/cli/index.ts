@@ -54,6 +54,25 @@ cli.option("--quiet", "Suppress warning messages (errors still shown)");
 
 const LANG_HELP = `Report language: ${listSupportedLanguages().join(", ")} (default: en, or IDEAGAUNTLET_LANG)`;
 
+// What the founder has to work with. Accepted by every analysis command so plans, tests and
+// costs fit real resources; can be set once under "founder" in .ideagauntlet.json.
+const FOUNDER_FLAGS: Array<[flag: string, help: string]> = [
+  ["--background <text>", "Your skills, experience, and domain knowledge"],
+  ["--team <text>", "Solo or team, and who covers what"],
+  ["--budget <amount>", "Money you can spend (e.g. '$3000')"],
+  ["--time <text>", "Time you can give (e.g. '10h/week alongside a job')"],
+  ["--deadline <text>", "Runway or decision deadline (e.g. 'decide in 4 months')"],
+  ["--assets <text>", "What you already have: audience, network, pilot customers, data"],
+];
+const founderOptions = (cmd: any) => {
+  const existing = new Set<string>((cmd.options ?? []).map((o: any) => o.name));
+  for (const [flag, help] of FOUNDER_FLAGS) {
+    const name = flag.slice(2).split(" ")[0];
+    if (!existing.has(name)) cmd.option(flag, help);
+  }
+  return cmd;
+};
+
 const providerOptions = (cmd: any, opts: { lang?: boolean } = {}) => {
   cmd
     .option("--model <model>", "LLM model override")
@@ -61,7 +80,10 @@ const providerOptions = (cmd: any, opts: { lang?: boolean } = {}) => {
     .option("--api-key <key>", "API key override")
     .option("--ollama", "Use local Ollama provider");
   // Every analysis command answers in the requested language; `serve` takes it per request instead.
-  if (opts.lang !== false) cmd.option("--lang <lang>", LANG_HELP);
+  if (opts.lang !== false) {
+    cmd.option("--lang <lang>", LANG_HELP);
+    founderOptions(cmd);
+  }
   return cmd;
 };
 

@@ -1,6 +1,6 @@
 import type { LLMProvider, IdeaInput, UserInterviewSession, InterviewTurn } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
-import { warnIfError } from "../utils/warn.js";
 import { buildSafeUserMessage, IDEA_INJECTION_SYSTEM } from "../utils/promptGuard.js";
 
 /**
@@ -63,7 +63,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
@@ -76,8 +76,7 @@ Return ONLY valid JSON.`;
       temperature: 0.5,
       maxTokens: 3500,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse user interview response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Simulated user interview", ["dialogue"]);
 
     const dialogue: InterviewTurn[] = (parsed.dialogue ?? []).map((t: any) => ({
       speaker: (t.speaker === "founder" ? "founder" : "persona") as InterviewTurn["speaker"],
@@ -101,30 +100,9 @@ Return ONLY valid JSON.`;
       maxWillingnessToPay: parsed.maxWillingnessToPay ?? "Unknown WTP",
       goldenQuote: parsed.goldenQuote ?? "I like the idea, but I have to see if it fits my daily routine.",
     };
-  } catch (err: any) {
-    warnIfError("userInterviewEngine: interview simulation failed", err);
-    return {
-      persona: {
-        name: "Morgan",
-        role: "Target User",
-        companyOrContext: "Target Industry",
-        archetype: options?.personaArchetype ?? "Pragmatic Buyer",
-        currentWorkaround: "Existing tools and manual process",
-        painLevel: 5,
-      },
-      dialogue: [
-        { speaker: "founder", message: "How do you currently handle this problem?" },
-        { speaker: "persona", message: "Honestly, we patch together a couple of free tools. It's clunky, but it gets the job done." },
-        { speaker: "founder", message: "If a dedicated tool solved this completely, would you pay for it?" },
-        { speaker: "persona", message: "Only if it saves me at least 2 hours a week without requiring new workflow habits." },
-      ],
-      keyInsights: ["Users rely on sticky zero-cost workarounds", "High switching friction requires clear 10x value"],
-      uncoveredNeeds: ["Seamless integration with existing daily stack"],
-      objectionAnalysis: "Reluctance to pay for another subscription without proven ROI.",
-      wouldBuyVerdict: "maybe",
-      maxWillingnessToPay: "$10-$20/month if proven valuable",
-      goldenQuote: "If it takes more than 5 minutes to set up, my team will never adopt it.",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Simulated user interview", err);
   }
 }
 

@@ -1,5 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { resolveCliProvider } from "../context.js";
 import { printNextSteps } from "../welcome.js";
 import { runImmuneEngine } from "../../engines/immuneEngine.js";
@@ -27,6 +28,7 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
 
   const idea = parseIdeaInput({
     idea: ideaText,
+    founder: founderFromOptions(options),
     mode: "quick",
     stage: templateStage,
     market: templateMarket,

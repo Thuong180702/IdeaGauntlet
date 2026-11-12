@@ -130,6 +130,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
           targetUsers: body.targetUsers,
           market: body.market,
           stage: body.stage,
+          founder: body.founder,
           mode: mode as any,
           provider: providerRes.provider,
           enableSearch: body.enableSearch !== false,

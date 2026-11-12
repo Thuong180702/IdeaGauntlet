@@ -2,6 +2,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { normalizeOptions } from "../../utils/parseInput.js";
 import { resolveCliProvider } from "../context.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { runBatchEngine } from "../../engines/batchEngine.js";
 import { buildReport } from "../../core/report.js";
 import type { GauntletMode, IdeaInput } from "../../core/types.js";
@@ -45,9 +46,11 @@ export async function batchCommand(
   const provider = await resolveCliProvider(options);
 
   // Parse each line as an idea
+  const founder = founderFromOptions(options);
   const ideas: IdeaInput[] = ideaLines.map((idea) => ({
     idea,
     mode,
+    founder,
   }));
 
   console.error(`\n🔄 Processing ${ideas.length} idea(s) in ${mode} mode...\n`);

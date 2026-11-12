@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, ComplianceReport, ComplianceRequirement, Severity } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
@@ -84,7 +85,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
@@ -99,8 +100,7 @@ Return ONLY valid JSON.`;
       temperature: 0.2,
       maxTokens: 3500,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse compliance scanner response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Compliance scan", ["overallRiskLevel", "requirements"]);
 
     const requirements: ComplianceRequirement[] = (parsed.requirements ?? []).map((r: any) => ({
       regulation: r.regulation ?? "Regulatory Requirement",
@@ -119,30 +119,9 @@ Return ONLY valid JSON.`;
       estimatedComplianceTimeline: parsed.estimatedComplianceTimeline ?? "1-2 weeks for standard SaaS",
       summary: parsed.summary ?? "Compliance scan completed.",
     };
-  } catch (err: any) {
-    warnIfError("complianceScanner: analysis failed", err);
-    return {
-      overallRiskLevel: "low",
-      applicableFrameworks: ["GDPR", "CCPA"],
-      requirements: [
-        {
-          regulation: "GDPR / CCPA",
-          applicable: true,
-          severity: "medium",
-          requirements: ["Clear Privacy Policy", "Cookie consent banner", "User right to erasure (data deletion endpoint)"],
-          penaltiesForNonCompliance: "Regulatory fines and consumer protection complaints",
-          recommendedAction: "Implement standard Termly/Iubenda privacy policy and cookie banner at launch.",
-        },
-      ],
-      dataPrivacyChecklist: [
-        "Store passwords with bcrypt/argon2 hashing",
-        "Encrypt database at rest and in transit via TLS 1.3",
-        "Publish transparent Privacy Policy and Terms of Service",
-        "Provide self-serve account and data deletion",
-      ],
-      estimatedComplianceTimeline: "1-2 weeks for baseline privacy compliance",
-      summary: "Standard consumer/B2B data privacy requirements apply. No exotic regulatory blockers identified.",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Compliance scan", err);
   }
 }
 

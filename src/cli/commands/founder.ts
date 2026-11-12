@@ -6,6 +6,7 @@ import { resolveCliProvider } from "../context.js";
 import { runFounderMarketFitEngine, formatFounderMarketFitReport } from "../../engines/founderMarketFitEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 
 export async function founderCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
@@ -15,15 +16,19 @@ export async function founderCommand(ideaArg: string, rawOptions: Record<string,
   }
 
   const options = normalizeOptions(rawOptions);
-  const background = (options.background as string) ?? (options.bg as string) ?? "";
+  const background = founderFromOptions(options)?.background ?? "";
   if (!background.trim()) {
-    console.error("Missing founder background. Please provide --background \"<your experience, domain knowledge, skills, network>\".");
+    console.error(
+      "Missing founder background. Pass --background \"<your experience, domain knowledge, skills, network>\"\n" +
+      "or set it once in .ideagauntlet.json: { \"founder\": { \"background\": \"...\" } }",
+    );
     process.exit(1);
   }
 
   const ideaText = loadIdeaInput(ideaArg);
   const idea = parseIdeaInput({
     idea: ideaText,
+    founder: founderFromOptions(options),
     mode: "quick",
     stage: options.stage as string | undefined,
     market: options.market as string | undefined,

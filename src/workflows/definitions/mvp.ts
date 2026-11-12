@@ -1,4 +1,5 @@
 import type { WorkflowDefinition } from "../types.js";
+import { FOUNDER_INPUT_GUIDANCE, FOUNDER_OUTPUT_RULE } from "../../core/founderContext.js";
 
 export const mvpWorkflow: WorkflowDefinition = {
   id: "mvp",
@@ -9,6 +10,7 @@ export const mvpWorkflow: WorkflowDefinition = {
     "A clear description of the product idea",
     "The riskiest assumption to test (if known)",
     "Available resources and timeline constraints (optional)",
+    FOUNDER_INPUT_GUIDANCE,
   ],
   roles: [
     {
@@ -126,6 +128,7 @@ export const mvpWorkflow: WorkflowDefinition = {
     "The MVP wedge MUST be informed by competitor analysis — don't build what already exists",
     "If competitors exist, the MVP must target a specific gap or underserved segment",
     "Cite competitors by name when explaining the competitive wedge",
+    FOUNDER_OUTPUT_RULE,
   ],
   requiredHeadings: [
     "Core Hypothesis",

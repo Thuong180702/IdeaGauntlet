@@ -31,6 +31,27 @@ import { warnIfError } from "../utils/warn.js";
 import { loadReport, listReports } from "../history/historyStore.js";
 
 import { withUpdateNotice } from "../utils/updateChecker.js";
+import { normalizeFounderContext } from "../core/founderContext.js";
+
+/** Optional on every idea tool: what the founder has, so advice fits their real resources. */
+const FOUNDER_SCHEMA = {
+  type: "object",
+  description:
+    "What the founder has to work with. Ask the user for this before analysing — it changes which plans are feasible. Self-reported; never treated as market evidence.",
+  properties: {
+    background: { type: "string", description: "Skills, experience, domain knowledge" },
+    team: { type: "string", description: "Solo or team, and who covers what" },
+    budget: { type: "string", description: "Money available, e.g. '$3,000 savings'" },
+    time: { type: "string", description: "Time available, e.g. '10 hours/week alongside a job'" },
+    deadline: { type: "string", description: "Runway or decision deadline" },
+    assets: { type: "string", description: "Audience, network, pilot customers, data already in hand" },
+    notes: { type: "string", description: "Any other constraint" },
+  },
+} as const;
+
+function founderArg(args: any) {
+  return normalizeFounderContext(args?.founder);
+}
 
 const reports = new Map<string, GauntletReport>();
 
@@ -71,7 +92,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
   switch (name) {
     case "quick_critique": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
-      const report = await runImmuneEngine({ idea: args.idea }, requireProvider());
+      const report = await runImmuneEngine({ idea: args.idea, founder: founderArg(args) }, requireProvider());
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
@@ -81,7 +102,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
 
     case "run_court": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
-      const report = await runCourtEngine({ idea: args.idea }, requireProvider());
+      const report = await runCourtEngine({ idea: args.idea, founder: founderArg(args) }, requireProvider());
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
@@ -92,7 +113,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "generate_users": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const report = await runUserLab(
-        { idea: args.idea },
+        { idea: args.idea, founder: founderArg(args) },
         requireProvider(),
         args.personas ?? 6,
       );
@@ -105,7 +126,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
 
     case "plan_mvp": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
-      const report = await runMvpPlanner({ idea: args.idea }, requireProvider());
+      const report = await runMvpPlanner({ idea: args.idea, founder: founderArg(args) }, requireProvider());
       report.markdown = buildReport(report);
       reports.set(report.id, report);
       notifyResourcesChanged();
@@ -127,7 +148,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
 
     case "estimate_market_size": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
-      const result = await runMarketSizingEngine({ idea: args.idea, market: args.market }, requireProvider());
+      const result = await runMarketSizingEngine({ idea: args.idea, market: args.market, founder: founderArg(args) }, requireProvider());
       const rawText = JSON.stringify(result, null, 2);
       const text = await withUpdateNotice(rawText, args.idea);
       return { type: "text", text };
@@ -135,7 +156,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
 
     case "analyze_unit_economics": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
-      const result = await runUnitEconomicsEngine({ idea: args.idea, market: args.market }, requireProvider());
+      const result = await runUnitEconomicsEngine({ idea: args.idea, market: args.market, founder: founderArg(args) }, requireProvider());
       const rawText = JSON.stringify(result, null, 2);
       const text = await withUpdateNotice(rawText, args.idea);
       return { type: "text", text };
@@ -143,7 +164,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
 
     case "detect_anti_patterns": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
-      const result = await runAntiPatternDetector({ idea: args.idea, market: args.market }, requireProvider());
+      const result = await runAntiPatternDetector({ idea: args.idea, market: args.market, founder: founderArg(args) }, requireProvider());
       const rawText = JSON.stringify(result, null, 2);
       const text = await withUpdateNotice(rawText, args.idea);
       return { type: "text", text };
@@ -219,7 +240,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "run_gtm_strategy": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runGTMEngine(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           enableSearch: args.enableSearch !== false,
@@ -235,7 +256,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "run_competitive_intelligence": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runCompetitiveIntelligenceEngine(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           enableSearch: args.enableSearch !== false,
@@ -250,7 +271,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "run_revenue_model_explorer": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runRevenueModelEngine(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           enableSearch: args.enableSearch !== false,
@@ -265,7 +286,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       if (!args.background) throw new Error("Founder background is required for run_founder_fit");
       const result = await runFounderMarketFitEngine(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         args.background
       );
@@ -277,7 +298,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "interview_synthetic_user": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runUserInterviewEngine(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           personaArchetype: args.persona,
@@ -292,7 +313,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "generate_pitch_deck": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runPitchGenerator(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           template: args.template ?? "yc",
@@ -308,7 +329,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
     case "evolve_idea": {
       if (!args.idea) throw new Error(t("mcp.idea_required"));
       const result = await runEvolutionCoach(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           focusDimension: args.focus,
@@ -325,7 +346,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       const regionsRaw: string = args.regions ?? "";
       const regions = regionsRaw ? regionsRaw.split(",").map((r: string) => r.trim()).filter(Boolean) : undefined;
       const result = await runComplianceScanner(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           regions,
@@ -342,7 +363,7 @@ export async function handleToolCall(name: string, args: any): Promise<any> {
       const maxRaw = args.maxAssumptions;
       const maxAssumptions = typeof maxRaw === "number" ? maxRaw : undefined;
       const result = await runAssumptionLedger(
-        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers },
+        { idea: args.idea, market: args.market, stage: args.stage, targetUsers: args.targetUsers, founder: founderArg(args) },
         requireProvider(),
         {
           maxAssumptions,
@@ -365,7 +386,7 @@ export const toolDefinitions = [
     description: mcpToolDescriptions().quick_critique,
     inputSchema: {
       type: "object",
-      properties: { idea: { type: "string" } },
+      properties: { idea: { type: "string" }, founder: FOUNDER_SCHEMA },
       required: ["idea"],
     },
   },
@@ -374,7 +395,7 @@ export const toolDefinitions = [
     description: mcpToolDescriptions().run_court,
     inputSchema: {
       type: "object",
-      properties: { idea: { type: "string" } },
+      properties: { idea: { type: "string" }, founder: FOUNDER_SCHEMA },
       required: ["idea"],
     },
   },
@@ -385,6 +406,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string" },
+        founder: FOUNDER_SCHEMA,
         personas: { type: "number" },
       },
       required: ["idea"],
@@ -395,7 +417,7 @@ export const toolDefinitions = [
     description: mcpToolDescriptions().plan_mvp,
     inputSchema: {
       type: "object",
-      properties: { idea: { type: "string" } },
+      properties: { idea: { type: "string" }, founder: FOUNDER_SCHEMA },
       required: ["idea"],
     },
   },
@@ -417,6 +439,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string" },
+        founder: FOUNDER_SCHEMA,
         market: { type: "string" },
       },
       required: ["idea"],
@@ -429,6 +452,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string" },
+        founder: FOUNDER_SCHEMA,
         market: { type: "string" },
       },
       required: ["idea"],
@@ -441,6 +465,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string" },
+        founder: FOUNDER_SCHEMA,
         market: { type: "string" },
       },
       required: ["idea"],
@@ -462,6 +487,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea to analyse" },
+        founder: FOUNDER_SCHEMA,
         models: { type: "string", description: "Comma-separated model names, e.g. 'gpt-4o,gpt-4o-mini'" },
         mode: { type: "string", description: "Gauntlet mode: quick (default) or court" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
@@ -487,6 +513,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         market: { type: "string", description: "Target market" },
         budget: { type: "string", description: "Available launch budget (e.g. '$5000')" },
         timeline: { type: "string", description: "Target launch timeline (e.g. '90 days')" },
@@ -502,6 +529,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         market: { type: "string", description: "Target market" },
         depth: { type: "string", description: "Depth of analysis: 'quick' or 'deep' (default: quick)" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
@@ -516,6 +544,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         market: { type: "string", description: "Target market" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
       },
@@ -529,6 +558,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         background: { type: "string", description: "Founder's background, past experience, domain expertise, skills, and industry network" },
         market: { type: "string", description: "Target market" },
       },
@@ -542,6 +572,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         persona: { type: "string", description: "Optional specific persona archetype to interview (e.g. 'Freelance Designer')" },
         market: { type: "string", description: "Target market" },
       },
@@ -555,6 +586,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         template: { type: "string", description: "Pitch framework: 'yc', 'sequoia', 'a16z' (default: yc)" },
         company: { type: "string", description: "Company name override" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
@@ -569,6 +601,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         focus: { type: "string", description: "Weak dimension to target: distribution, monetization, pain, differentiation, retention" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
       },
@@ -582,6 +615,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         regions: { type: "string", description: "Comma-separated target operating regions (e.g. 'us,eu')" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
       },
@@ -595,6 +629,7 @@ export const toolDefinitions = [
       type: "object",
       properties: {
         idea: { type: "string", description: "The product idea" },
+        founder: FOUNDER_SCHEMA,
         maxAssumptions: { type: "number", description: "How many assumptions to surface (3-10, default 6)" },
         enableSearch: { type: "boolean", description: "Enable web research before analysis (default: true)" },
       },

@@ -1,3 +1,4 @@
+import { isEmptyAnalysis } from "../core/analysisError.js";
 import { randomUUID } from "node:crypto";
 import type {
   LLMProvider,
@@ -82,7 +83,7 @@ Return a JSON object with keys: "users" (array), "synthesis" (object). Only vali
 IMPORTANT: These are fictional archetypes for hypothesis generation.
 ${IDEA_INJECTION_SYSTEM}`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     ``,
     `Generate ${safeCount} fictional user archetypes with synthesis as JSON.`,
@@ -100,7 +101,7 @@ ${IDEA_INJECTION_SYSTEM}`;
       maxTokens: 4096,
     });
     const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse users response");
+    if (isEmptyAnalysis(parsed)) throw new Error("The model did not return any synthetic users");
 
     // Build basic SyntheticPersona[] for backward compat
     const rawUsers: any[] = (parsed.users ?? []).slice(0, safeCount);

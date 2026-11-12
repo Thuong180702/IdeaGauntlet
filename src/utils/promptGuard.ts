@@ -1,3 +1,5 @@
+import type { IdeaInput } from "../core/types.js";
+import { formatFounderContextBlock } from "../core/founderContext.js";
 /**
  * SEC-2: Prompt injection guard.
  *
@@ -46,8 +48,21 @@ export function detectInjectionAttempts(idea: string): string[] {
   return hits;
 }
 
-export function buildSafeUserMessage(idea: string, extras?: string[]): string {
-  const lines: string[] = [wrapIdea(idea)];
+/**
+ * Idea block plus, when the caller passes the full input, the founder's
+ * stated resources and the rules for using them. Engines should pass the
+ * whole `IdeaInput` so every analysis is grounded in what the founder has.
+ */
+export function wrapIdeaWithContext(idea: Pick<IdeaInput, "idea" | "founder" | "constraints">): string {
+  const context = formatFounderContextBlock(idea);
+  return context ? `${wrapIdea(idea.idea)}\n\n${context}` : wrapIdea(idea.idea);
+}
+
+export function buildSafeUserMessage(
+  idea: string | Pick<IdeaInput, "idea" | "founder" | "constraints">,
+  extras?: string[],
+): string {
+  const lines: string[] = [typeof idea === "string" ? wrapIdea(idea) : wrapIdeaWithContext(idea)];
   if (extras) {
     for (const line of extras) {
       if (line) lines.push(line);

@@ -1,4 +1,5 @@
-import type { LLMProvider, IdeaInput, GauntletReport, GauntletMode, IdeaStage } from "./types.js";
+import type { LLMProvider, IdeaInput, GauntletReport, GauntletMode, IdeaStage, FounderContext } from "./types.js";
+import { normalizeFounderContext } from "./founderContext.js";
 import { IdeaStageSchema } from "./types.js";
 import { runImmuneEngine } from "../engines/immuneEngine.js";
 import { runCourtEngine } from "../engines/courtEngine.js";
@@ -15,6 +16,8 @@ export async function runGauntlet(params: {
   market?: string;
   stage?: string;
   constraints?: Record<string, unknown>;
+  /** What the founder has to work with (budget, time, skills, assets). Shapes feasibility, never evidence. */
+  founder?: FounderContext;
   mode?: GauntletMode;
   provider?: LLMProvider;
   /** Multiple ideas for compare mode (Bug A fix). */
@@ -56,6 +59,7 @@ export async function runGauntlet(params: {
     market: params.market,
     stage,
     constraints: params.constraints,
+    founder: normalizeFounderContext(params.founder),
     mode: params.mode ?? "quick",
   };
 

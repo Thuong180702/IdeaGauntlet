@@ -6,6 +6,7 @@ import { resolveCliProvider } from "../context.js";
 import { runUserInterviewEngine, formatUserInterviewReport } from "../../engines/userInterviewEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 
 export async function interviewCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
@@ -18,6 +19,7 @@ export async function interviewCommand(ideaArg: string, rawOptions: Record<strin
   const ideaText = loadIdeaInput(ideaArg);
   const idea = parseIdeaInput({
     idea: ideaText,
+    founder: founderFromOptions(options),
     mode: "users",
     stage: options.stage as string | undefined,
     market: options.market as string | undefined,

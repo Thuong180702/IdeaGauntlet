@@ -17,6 +17,7 @@ export function formatWelcome(version: string): string {
     "  users · mvp · compare · gtm · compete · revenue · founder · interview · pitch · evolve · compliance",
     "",
     "Input:   inline text, a .md/.txt file, or - to read from stdin",
+    'You:     --budget "$3000" --time "10h/week" --background "..." --assets "..."  (advice fits what you have)',
     "Output:  --output report.md · --format html · --json · --lang vi · --save (track score over time)",
     "",
     "First time?",

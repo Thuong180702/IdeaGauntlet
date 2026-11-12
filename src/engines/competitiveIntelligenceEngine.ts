@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, CompetitiveIntelligence, CompetitorProfile } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
@@ -76,7 +77,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",
@@ -89,8 +90,7 @@ Return ONLY valid JSON.`;
       temperature: 0.3,
       maxTokens: 4000,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse competitive intelligence response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "Competitive intelligence", ["summary"]);
 
     const competitors: CompetitorProfile[] = (parsed.competitors ?? []).map((c: any) => ({
       name: c.name ?? "Unknown",
@@ -118,27 +118,9 @@ Return ONLY valid JSON.`;
       marketTiming: parsed.marketTiming ?? "Timing assessment requires more market data.",
       summary: parsed.summary ?? "Competitive intelligence analysis completed.",
     };
-  } catch (err: any) {
-    warnIfError("competitiveIntelligenceEngine: analysis failed", err);
-    // Return minimal fallback with what we know from research
-    const fallbackCompetitors: CompetitorProfile[] = knownCompetitors.map((c) => ({
-      name: c.name,
-      url: c.url,
-      type: c.type as CompetitorProfile["type"],
-      strengths: ["Established market presence"],
-      weaknesses: ["Unknown — requires manual research"],
-      positioning: "Incumbents in this space",
-      pricing: c.pricing,
-    }));
-    return {
-      competitors: fallbackCompetitors,
-      positioningMap: { xAxis: "Price", yAxis: "Feature Depth", positions: [] },
-      strategicWindows: ["Market research needed to identify strategic windows"],
-      attackVectors: ["Niche focus", "Superior UX", "Better pricing"],
-      defensiveStrategies: ["Build switching costs", "Community moat", "Data network effects"],
-      marketTiming: "Unable to assess — LLM analysis failed",
-      summary: "Competitive intelligence fallback. Manual research required for full analysis.",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("Competitive intelligence", err);
   }
 }
 

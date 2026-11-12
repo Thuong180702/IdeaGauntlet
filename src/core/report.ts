@@ -1,3 +1,4 @@
+import { describeFounderContext } from "./founderContext.js";
 import type { GauntletReport, Risk, Assumption, KillTest, SyntheticPersona, Scorecard, ScoreRubricEntry, CourtSession, MVPPlan, ComparisonResult, MarketSizing, UnitEconomics, AntiPatternReport, CalibrationSummary, AssumptionLedger, LedgerAssumption, AssumptionCriticality } from "./types.js";
 import type { EnhancedCourtDebate, EnhancedQuickReport, EnhancedPersona, UserSynthesis, EnhancedMVPPlan, EnhancedComparisonResult } from "./types.js";
 import type { CompetitorLandscape, NicheOpportunity } from "../search/types.js";
@@ -13,6 +14,21 @@ export function buildReport(report: GauntletReport): string {
     lines.push(`**Generated:** ${report.createdAt}`);
     lines.push(`**Mode:** ${report.mode}`);
     lines.push(`**Idea:** ${report.input.idea}\n`);
+  }
+
+  // A saved report must say so itself — the stderr warning is gone by the time someone reads the file.
+  if (report.partial) {
+    lines.push("> ⚠ **Partial report.** The model's answer could not be fully used, so some sections below hold placeholder values rather than analysis. Re-run before acting on it.");
+    for (const w of report.warnings ?? []) lines.push(`> - ${w}`);
+    lines.push("");
+  }
+
+  const founderLines = report.input ? describeFounderContext(report.input) : [];
+  if (founderLines.length > 0) {
+    lines.push("## Founder Context\n");
+    lines.push("_Self-reported by the founder. Used to judge feasibility and tailor the plan — not treated as evidence._\n");
+    for (const l of founderLines) lines.push(`- ${l}`);
+    lines.push("");
   }
 
   lines.push(`## Verdict\n\n${report.verdict}\n`);

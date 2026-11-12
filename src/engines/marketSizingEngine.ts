@@ -48,7 +48,7 @@ Return a single JSON object with keys:
 
 Return ONLY valid JSON — no markdown code fences, no extra text.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     "",

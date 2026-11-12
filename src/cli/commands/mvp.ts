@@ -1,5 +1,6 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
+import { founderFromOptions } from "../../core/founderContext.js";
 import { resolveCliProvider } from "../context.js";
 import { runMvpPlanner } from "../../engines/mvpPlanner.js";
 import { buildReport } from "../../core/report.js";
@@ -10,7 +11,7 @@ export async function mvpCommand(ideaArg: string, rawOptions: Record<string, unk
   const options = normalizeOptions(rawOptions);
   const provider = await resolveCliProvider(options);
 
-  const idea = parseIdeaInput({ idea: loadIdeaInput(ideaArg), mode: "mvp", stage: options.stage as string });
+  const idea = parseIdeaInput({ idea: loadIdeaInput(ideaArg), mode: "mvp", stage: options.stage as string, founder: founderFromOptions(options) });
   const enableSearch = !options.noSearch;
   const report = await runMvpPlanner(idea, provider, { enableSearch });
   report.markdown = buildReport(report);

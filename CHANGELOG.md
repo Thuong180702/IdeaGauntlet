@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 A usability pass: the analysis was fine, but the first five minutes were not.
 
 ### Added
+- **Founder context — advice fitted to what you actually have.** `--background`, `--team`, `--budget`, `--time`, `--deadline`, `--assets` on every analysis command, a `founder` block in `.ideagauntlet.json` to state it once, a `founder` object on every MCP idea tool, the REST API, and `runGauntlet({ founder })`. All 17 engines now receive it with explicit rules: recommend only what is executable with these resources, convert effort to real calendar time, use the founder's existing assets first, and name skill/capital gaps as risks. Previously only `founder --background` and `gtm --budget` used any of this; `mvp` planned 14 days regardless of whether you had 10 hours a week, and the documented `constraints` field was silently dropped (it is now included). The report prints the context under a "Founder Context" heading. Founder claims are fenced as data and can never be cited as evidence or make a score `sourced`.
+- Agent-native instructions (Claude Code / Cursor / Codex) now ask for the founder's resources and, when none are given, must state which resources a plan assumes.
 - **`--lang` on every analysis command** (was `quick` only), plus `IDEAGAUNTLET_LANG` and a `lang` key in `.ideagauntlet.json` as defaults. Implemented as a provider decorator (`withResponseLanguage`), so engines stay language-agnostic. Only prose is translated — JSON keys, verdict/severity enums, numbers, and source citations are kept verbatim so provenance verification is unaffected. An unsupported code now fails with the supported list instead of silently answering in English.
 - **Read the idea from stdin** with `-`: `cat idea.md | idea-gauntlet court -`.
 - **Getting-started screen** when `idea-gauntlet` is run with no arguments (previously printed nothing).
@@ -17,9 +19,13 @@ A usability pass: the analysis was fine, but the first five minutes were not.
 - **First-run menu on every analysis command** in an interactive terminal (was `quick` only): use Ollama, paste a key for this run, or set up the agent-native integration. A pasted key is never written to disk.
 - **Next-step suggestions** after `quick` and `court` when run at a terminal (stderr only; silent when piped or `--quiet`).
 - `doctor` now reports which LLM provider analysis commands will actually use (Anthropic / Groq / OpenAI-compatible, never the key), validates `IDEAGAUNTLET_LANG`, and ends with the concrete next step.
-- New exports: `withResponseLanguage`, `UnsupportedLanguageError`, `buildLanguageInstruction`.
+- New exports: `withResponseLanguage`, `UnsupportedLanguageError`, `buildLanguageInstruction`, `FounderContextSchema`, `normalizeFounderContext`, `formatFounderContextBlock`, `AnalysisFailedError`.
 
 ### Fixed
+- **Eight commands returned invented findings when the model call failed.** `gtm`, `compete`, `revenue`, `founder`, `interview`, `pitch`, `evolve`, and `compliance` caught every error — a wrong API key, a timeout, an unparseable answer — and returned a hard-coded result with no warning: `founder` said "Moderate Fit", `compliance` said overall risk "low … no exotic regulatory blockers identified", `evolve` recommended pivoting to B2B. They now throw `AnalysisFailedError` and print what went wrong; nothing is generated. **Behaviour change for library users:** these functions reject instead of resolving with placeholders.
+- **An empty `{}` answer counted as a successful analysis** in `quick`, `court`, `users`, and `mvp` (`mvp` printed its built-in default plan as if it were the result). It is now flagged as a partial report.
+- **Partial reports did not say so in the report itself** — only on stderr, which is lost once the file is saved. The Markdown now opens with a warning banner.
+- **`court` crashed** (`Cannot read properties of undefined (reading 'map')`) when the cross-examination answer was valid JSON of the wrong shape.
 - **Usage errors printed a Node stack trace** — a missing idea or unknown option now prints one line and points at `<command> --help`.
 - **Provider/engine failures in `mvp`, `compare`, `batch`, `ensemble` surfaced as unhandled rejections** with a stack trace; they now print `Error: …` and exit 1 (set `IDEAGAUNTLET_DEBUG=1` for the stack).
 - **`--ollama` was ignored by `mvp`** — the flag was never passed to provider resolution.

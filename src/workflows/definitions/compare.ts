@@ -1,4 +1,5 @@
 import type { WorkflowDefinition } from "../types.js";
+import { FOUNDER_INPUT_GUIDANCE, FOUNDER_OUTPUT_RULE } from "../../core/founderContext.js";
 
 export const compareWorkflow: WorkflowDefinition = {
   id: "compare",
@@ -9,6 +10,7 @@ export const compareWorkflow: WorkflowDefinition = {
     "2-4 product ideas with clear descriptions",
     "Target user segments (optional)",
     "Market context (optional)",
+    FOUNDER_INPUT_GUIDANCE,
   ],
   roles: [
     {
@@ -103,6 +105,7 @@ export const compareWorkflow: WorkflowDefinition = {
     "You MUST research and name real competitors for each idea before scoring",
     "If a market is saturated, score niche-potential based on real gaps found",
     "Cite competitors by name — do not say 'some competitors exist' without naming them",
+    FOUNDER_OUTPUT_RULE,
   ],
   requiredHeadings: [
     "Comparison Matrix",

@@ -31,4 +31,5 @@ export { ClaudeProvider } from "./providers/claudeProvider.js";
 export { resolveProvider, getProvider, NoProviderError } from "./providers/providerUtils.js";
 export { withResponseLanguage, UnsupportedLanguageError } from "./providers/languageProvider.js";
 export { buildLanguageInstruction, listSupportedLanguages } from "./core/i18n.js";
-
+export { normalizeFounderContext, formatFounderContextBlock, describeFounderContext, hasFounderContext } from "./core/founderContext.js";
+export { AnalysisFailedError } from "./core/analysisError.js";

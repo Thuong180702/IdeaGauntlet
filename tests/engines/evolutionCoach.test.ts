@@ -1,3 +1,4 @@
+import { AnalysisFailedError } from "../../src/core/analysisError.js";
 import { describe, it, expect } from "vitest";
 import { runEvolutionCoach, formatIdeaEvolutionReport } from "../../src/engines/evolutionCoach.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
@@ -47,16 +48,14 @@ describe("evolutionCoach", () => {
     expect(formatted).toContain("48-Hour Validation Experiment");
   });
 
-  it("handles provider failure gracefully with fallback variants", async () => {
+  it("fails loudly on provider failure instead of returning placeholder analysis", async () => {
     class FailingProvider implements import("../../src/core/types.js").LLMProvider {
       kind = "custom" as const;
       async complete(): Promise<string> { throw new Error("Simulated LLM failure"); }
     }
 
-    const result = await runEvolutionCoach(IDEA, new FailingProvider(), { enableSearch: false });
-
-    expect(result).toBeDefined();
-    expect(result.variants.length).toBeGreaterThan(0);
-    expect(result.primaryBottleneck.length).toBeGreaterThan(0);
+    // A placeholder result would read as a real finding — the engine must refuse instead.
+    await expect(runEvolutionCoach(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(AnalysisFailedError);
+    await expect(runEvolutionCoach(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(/Simulated LLM failure[\s\S]*Nothing was generated/);
   });
 });

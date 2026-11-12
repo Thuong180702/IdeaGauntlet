@@ -1,3 +1,4 @@
+import { AnalysisFailedError } from "../../src/core/analysisError.js";
 import { describe, it, expect } from "vitest";
 import { runComplianceScanner, formatComplianceReport } from "../../src/engines/complianceScanner.js";
 import { StaticProvider } from "../helpers/staticProvider.js";
@@ -44,16 +45,14 @@ describe("complianceScanner", () => {
     expect(formatted).toContain("Pre-Launch Data Privacy Checklist");
   });
 
-  it("handles provider failure gracefully with fallback checklist", async () => {
+  it("fails loudly on provider failure instead of returning placeholder analysis", async () => {
     class FailingProvider implements import("../../src/core/types.js").LLMProvider {
       kind = "custom" as const;
       async complete(): Promise<string> { throw new Error("Simulated LLM failure"); }
     }
 
-    const result = await runComplianceScanner(IDEA, new FailingProvider(), { enableSearch: false });
-
-    expect(result).toBeDefined();
-    expect(result.overallRiskLevel).toBe("low");
-    expect(result.dataPrivacyChecklist.length).toBeGreaterThan(0);
+    // A placeholder result would read as a real finding — the engine must refuse instead.
+    await expect(runComplianceScanner(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(AnalysisFailedError);
+    await expect(runComplianceScanner(IDEA, new FailingProvider(), { enableSearch: false })).rejects.toThrow(/Simulated LLM failure[\s\S]*Nothing was generated/);
   });
 });

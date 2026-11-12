@@ -54,6 +54,22 @@ export const VerdictSchema = z.enum([
   "pivot_recommended",
 ]);
 
+/**
+ * What the founder has to work with. Free-text fields so people can write
+ * "10h/week alongside a full-time job" rather than fit a rigid schema.
+ * Self-reported: shapes feasibility, never counts as evidence.
+ */
+export const FounderContextSchema = z.object({
+  background: z.string().optional(),
+  team: z.string().optional(),
+  budget: z.string().optional(),
+  time: z.string().optional(),
+  deadline: z.string().optional(),
+  assets: z.string().optional(),
+  notes: z.string().optional(),
+});
+export type FounderContext = z.infer<typeof FounderContextSchema>;
+
 export const IdeaInputSchema = z.object({
   title: z.string().optional(),
   idea: z.string(),
@@ -61,6 +77,7 @@ export const IdeaInputSchema = z.object({
   market: z.string().optional(),
   stage: IdeaStageSchema.optional(),
   constraints: z.record(z.unknown()).optional(),
+  founder: FounderContextSchema.optional(),
   mode: GauntletModeSchema.optional(),
 });
 

@@ -1,3 +1,4 @@
+import { isEmptyAnalysis } from "../core/analysisError.js";
 import { randomUUID } from "node:crypto";
 import type {
   LLMProvider,
@@ -129,9 +130,11 @@ export async function runCourtEngine(
       temperature: 0.3,
       maxTokens: 2048,
     });
-    crossExam = extractJSON(crossResponse) ?? {
-      keyConflicts: [],
-      openQuestions: [],
+    // The model may return valid JSON of the wrong shape — normalise before later phases map over it.
+    const parsedCross = extractJSON<{ keyConflicts?: unknown; openQuestions?: unknown }>(crossResponse);
+    crossExam = {
+      keyConflicts: Array.isArray(parsedCross?.keyConflicts) ? parsedCross.keyConflicts : [],
+      openQuestions: Array.isArray(parsedCross?.openQuestions) ? (parsedCross.openQuestions as string[]) : [],
     };
   } catch (err: any) {
     warnIfError("courtEngine: cross-examination failed", err);
@@ -193,7 +196,7 @@ export async function runCourtEngine(
     });
 
     const parsed = extractJSON<any>(verdictResponse);
-    if (!parsed) throw new Error("Failed to parse verdict response");
+    if (isEmptyAnalysis(parsed)) throw new Error("The model did not return a usable verdict");
 
     // Build transcript for backward compat
     for (const o of openings) {

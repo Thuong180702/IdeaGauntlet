@@ -1,4 +1,5 @@
 import type { LLMProvider, IdeaInput, GTMStrategy, GTMChannel, GTMLaunchMilestone } from "../core/types.js";
+import { requireAnalysis, toAnalysisFailure } from "../core/analysisError.js";
 import { extractJSON } from "../utils/jsonRepair.js";
 import { performResearch } from "../search/searchOrchestrator.js";
 import type { ResearchBrief } from "../search/types.js";
@@ -72,7 +73,7 @@ Return a single JSON object with these keys:
 
 Return ONLY valid JSON.`;
 
-  const userMessage = buildSafeUserMessage(idea.idea, [
+  const userMessage = buildSafeUserMessage(idea, [
     idea.targetUsers ? `Target users: ${idea.targetUsers.join(", ")}` : "",
     idea.market ? `Market: ${idea.market}` : "",
     idea.stage ? `Stage: ${idea.stage}` : "",
@@ -86,8 +87,7 @@ Return ONLY valid JSON.`;
       temperature: 0.4,
       maxTokens: 3000,
     });
-    const parsed = extractJSON<any>(response);
-    if (!parsed) throw new Error("Failed to parse GTM strategy response");
+    const parsed = requireAnalysis(extractJSON<any>(response), "GTM strategy", ["targetSegment", "channels"]);
 
     const channels: GTMChannel[] = (parsed.channels ?? []).map((c: any) => ({
       name: c.name ?? "Unknown channel",
@@ -117,36 +117,9 @@ Return ONLY valid JSON.`;
       biggestGTMRisk: parsed.biggestGTMRisk ?? "Distribution channel saturation",
       confidence: (parsed.confidence ?? "medium") as any,
     };
-  } catch (err: any) {
-    warnIfError("gtmEngine: analysis failed", err);
-    return {
-      targetSegment: "Early adopters — to be validated",
-      positioningStatement: "GTM positioning requires deeper market research",
-      channels: [
-        {
-          name: "Direct outreach",
-          type: "organic",
-          priority: "primary",
-          estimatedCAC: "~$0-$100 (time cost only)",
-          timeToFirstCustomer: "2-4 weeks",
-          rationale: "Direct founder-led sales is fastest for initial validation",
-          risks: ["Time-intensive", "Doesn't scale"],
-        },
-      ],
-      first100CustomersStrategy: "Manual founder-led outreach to ideal customer profile",
-      launchPlaybook: [
-        { week: "Week 1-2", action: "Interview 20 target customers", goal: "Validate pain + WTP", successSignal: "10+ confirm they'd pay" },
-        { week: "Week 3-4", action: "Soft launch to beta list", goal: "First 10 active users", successSignal: "7-day retention >40%" },
-      ],
-      budgetAllocation: [
-        { channel: "Content/SEO", percentage: 40, note: "Long-term organic" },
-        { channel: "Direct outreach", percentage: 40, note: "Founder-led sales" },
-        { channel: "Experiments", percentage: 20, note: "A/B test paid channels" },
-      ],
-      keyMetrics: ["Weekly active users", "Trial-to-paid conversion", "CAC", "MRR growth"],
-      biggestGTMRisk: "Unable to validate distribution channel before runway runs out",
-      confidence: "low",
-    };
+  } catch (err) {
+    // No placeholder result: a made-up finding is worse than an explicit failure.
+    throw toAnalysisFailure("GTM strategy", err);
   }
 }
 
