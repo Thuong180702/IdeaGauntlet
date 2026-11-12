@@ -158,6 +158,12 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
   if (!options.apiToken) {
     console.warn("⚠ SEC-1: No --api-token set. Engine endpoints are unauthenticated.");
   }
+  if (!options.apiToken && host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
+    console.error(
+      `Warning: serving on ${host} without --api-token — anyone who can reach this port can spend your LLM credits.`,
+    );
+  }
+
   server.listen(port, host, () => {
     console.log(`IdeaGauntlet API server running on http://${host}:${port}`);
     console.log(`Endpoints: /api/quick, /api/court, /api/users, /api/mvp, /api/compare, /api/history, /api/templates, /health`);

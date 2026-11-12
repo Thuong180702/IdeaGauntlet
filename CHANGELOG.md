@@ -5,9 +5,10 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-11-12
 
-A usability pass: the analysis was fine, but the first five minutes were not.
+Advice fitted to the founder's real resources, no more placeholder findings, and a
+first-run experience that no longer dead-ends.
 
 ### Added
 - **Founder context — advice fitted to what you actually have.** `--background`, `--team`, `--budget`, `--time`, `--deadline`, `--assets` on every analysis command, a `founder` block in `.ideagauntlet.json` to state it once, a `founder` object on every MCP idea tool, the REST API, and `runGauntlet({ founder })`. All 17 engines now receive it with explicit rules: recommend only what is executable with these resources, convert effort to real calendar time, use the founder's existing assets first, and name skill/capital gaps as risks. Previously only `founder --background` and `gtm --budget` used any of this; `mvp` planned 14 days regardless of whether you had 10 hours a week, and the documented `constraints` field was silently dropped (it is now included). The report prints the context under a "Founder Context" heading. Founder claims are fenced as data and can never be cited as evidence or make a score `sourced`.
@@ -37,6 +38,12 @@ A usability pass: the analysis was fine, but the first five minutes were not.
 ### Changed
 - Provider resolution, onboarding, and language handling for all CLI commands live in one place (`src/cli/context.ts`) instead of being copy-pasted into 14 command files.
 - The update check no longer runs for `--help`, `--version`, or the welcome screen.
+- **README rewritten** — shorter, organised around the path a new user takes, and corrected where it documented options that did not work.
+
+### Fixed (documentation drift)
+- `-o` was documented throughout the README but did not exist; it is now an alias for `--output` on every command.
+- `serve --api-token` was documented (and implemented in the server) but the CLI never accepted the flag, so the REST server could not be protected. `--api-token` (or `IDEAGAUNTLET_API_TOKEN`), `--host`, and `--cors-origin` are now wired, and binding to a non-local host without a token prints a warning.
+- The documented custom court role format (`roleName` / `perspective`) was rejected by the loader; the README now shows the real schema.
 
 ## [0.7.0] - 2026-08-26
 

@@ -94,7 +94,7 @@ providerOptions(
     .option("--target-users <users>", "Comma-separated target users")
     .option("--template <id>", "Use a pre-built idea template: b2b-saas, devtool, marketplace, consumer-app, ai-ml, healthtech, fintech, ecommerce")
     .option("--json", "Output JSON instead of Markdown")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
     .option("--stream", "Stream LLM tokens to stderr in real-time")
@@ -105,7 +105,7 @@ providerOptions(
   cli.command("court <idea>", "Run a court-style debate")
     .option("--stage <stage>", "Idea stage")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--roles <file>", "Load custom court roles from JSON file")
     .option("--save", "Save report to history for evolution tracking")
@@ -117,7 +117,7 @@ providerOptions(
     .option("--personas <number>", "Number of personas", { default: "6" })
     .option("--stage <stage>", "Idea stage")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
@@ -127,7 +127,7 @@ providerOptions(
   cli.command("mvp <idea>", "Generate a validation/MVP plan")
     .option("--stage <stage>", "Idea stage")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
@@ -136,7 +136,7 @@ providerOptions(
 providerOptions(
   cli.command("compare <...ideas>", "Compare multiple product ideas")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
     .option("--save", "Save report to history for evolution tracking")
     .option("--format <format>", "Output format: md, html (default: md)")
@@ -190,7 +190,7 @@ cli.command("mcp", "Start the MCP stdio server")
 providerOptions(
   cli.command("batch <file>", "Run quick critique on multiple ideas from a file")
     .option("--mode <mode>", "Gauntlet mode: quick, court, users, mvp (default: quick)")
-    .option("--output <dir>", "Write all reports to directory")
+    .option("-o, --output <dir>", "Write all reports to directory")
     .option("--json", "Output JSON")
     .option("--no-search", "Disable web search before analysis")
     .option("--format <format>", "Output format: md, html (default: md)")
@@ -206,11 +206,22 @@ cli.command("interactive [idea]", "Interactive REPL — refine, re-run, drill-do
 
 providerOptions(
   cli.command("serve", "Start REST API server")
-    .option("--port <port>", "HTTP port (default: 3000)"),
+    .option("--port <port>", "HTTP port (default: 3000)")
+    .option("--api-token <token>", "Require Authorization: Bearer <token> on analysis endpoints (or IDEAGAUNTLET_API_TOKEN)")
+    .option("--host <host>", "Bind address (default: 127.0.0.1; use 0.0.0.0 to expose on your network)")
+    .option("--cors-origin <origin>", "Allowed CORS origin (default: none)"),
   { lang: false },
 ).action((options: Record<string, unknown>) => {
   import("./commands/serve.js").then(({ serveCommand }) =>
-    serveCommand({ port: options.port as string, apiKey: options.apiKey as string, baseUrl: options.baseUrl as string, model: options.model as string })
+    serveCommand({
+      port: options.port as string,
+      apiKey: options.apiKey as string,
+      baseUrl: options.baseUrl as string,
+      model: options.model as string,
+      apiToken: (options.apiToken as string | undefined) ?? process.env.IDEAGAUNTLET_API_TOKEN,
+      host: options.host as string | undefined,
+      corsOrigin: options.corsOrigin as string | undefined,
+    })
   );
 });
 
@@ -248,7 +259,7 @@ providerOptions(
     .option("--stage <stage>", "Idea stage")
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/ensemble.js").then(({ ensembleCommand }) =>
@@ -265,7 +276,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/gtm.js").then(({ gtmCommand }) =>
@@ -281,7 +292,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/compete.js").then(({ competeCommand }) =>
@@ -296,7 +307,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/revenue.js").then(({ revenueCommand }) =>
@@ -312,7 +323,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/founder.js").then(({ founderCommand }) =>
     founderCommand(idea, { ...fileConfig, ...options })
@@ -327,7 +338,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/interview.js").then(({ interviewCommand }) =>
     interviewCommand(idea, { ...fileConfig, ...options })
@@ -343,7 +354,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/pitch.js").then(({ pitchCommand }) =>
@@ -359,7 +370,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/evolve.js").then(({ evolveCommand }) =>
@@ -375,7 +386,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/compliance.js").then(({ complianceCommand }) =>
@@ -391,7 +402,7 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--json", "Output JSON")
-    .option("--output <file>", "Write to file")
+    .option("-o, --output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
 ).action((idea: string, options: Record<string, unknown>) => {
   import("./commands/assumptions.js").then(({ assumptionsCommand }) =>

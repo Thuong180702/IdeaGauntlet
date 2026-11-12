@@ -78,6 +78,13 @@ describe("CLI usability", () => {
     }
   }, 120_000);
 
+  it("accepts -o as an alias for --output and exposes serve's auth flags", () => {
+    expect(run(["quick", "an idea", "-o", "out.md"]).stderr).not.toContain("Unknown option");
+    const help = run(["serve", "--help"]).stdout;
+    expect(help).toContain("--api-token");
+    expect(help).toContain("--host");
+  }, 60_000);
+
   it("reads the idea from stdin with '-' and fails clearly when stdin is empty", () => {
     const r = run(["gtm", "-"], { env: { IDEAGAUNTLET_API_KEY: "test-key" } });
     expect(r.code).toBe(1);
