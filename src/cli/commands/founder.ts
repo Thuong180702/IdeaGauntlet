@@ -2,7 +2,7 @@
  * Phase 2: Founder-Market Fit CLI command
  * Usage: idea-gauntlet founder "Your idea" --background "10 years in enterprise cybersecurity, previously CTO at Series B startup"
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runFounderMarketFitEngine, formatFounderMarketFitReport } from "../../engines/founderMarketFitEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -30,21 +30,11 @@ export async function founderCommand(ideaArg: string, rawOptions: Record<string,
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Evaluating founder-market fit...");
-    const result = await runFounderMarketFitEngine(idea, providerRes.provider, background);
+    const result = await runFounderMarketFitEngine(idea, provider, background);
 
     const output = options.json
       ? JSON.stringify(result, null, 2)

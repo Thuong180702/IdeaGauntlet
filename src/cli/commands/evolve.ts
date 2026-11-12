@@ -2,7 +2,7 @@
  * Phase 3: Idea Evolution Coach CLI command
  * Usage: idea-gauntlet evolve "Your idea" [--focus distribution|monetization|pain]
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runEvolutionCoach, formatIdeaEvolutionReport } from "../../engines/evolutionCoach.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,21 +24,11 @@ export async function evolveCommand(ideaArg: string, rawOptions: Record<string, 
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Diagnosing weaknesses & evolving idea variants...");
-    const result = await runEvolutionCoach(idea, providerRes.provider, {
+    const result = await runEvolutionCoach(idea, provider, {
       focusDimension: options.focus as any,
       enableSearch: !options.noSearch,
     });

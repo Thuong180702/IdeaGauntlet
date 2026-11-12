@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { normalizeOptions } from "../../utils/parseInput.js";
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runBatchEngine } from "../../engines/batchEngine.js";
 import { buildReport } from "../../core/report.js";
 import type { GauntletMode, IdeaInput } from "../../core/types.js";
@@ -42,17 +42,7 @@ export async function batchCommand(
   const outputDir = options.output as string | undefined;
 
   // Resolve provider
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   // Parse each line as an idea
   const ideas: IdeaInput[] = ideaLines.map((idea) => ({
@@ -62,7 +52,7 @@ export async function batchCommand(
 
   console.error(`\n🔄 Processing ${ideas.length} idea(s) in ${mode} mode...\n`);
 
-  const result = await runBatchEngine(ideas, providerRes.provider, mode, {
+  const result = await runBatchEngine(ideas, provider, mode, {
     enableSearch,
     concurrency: 3,
     onProgress: (done, total) => {

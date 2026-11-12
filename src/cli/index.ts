@@ -19,6 +19,9 @@ import { batchCommand } from "./commands/batch.js";
 import { historyCommand } from "./commands/history.js";
 import { interactiveCommand } from "./interactive.js";
 import { setQuiet } from "../utils/warn.js";
+import { listSupportedLanguages } from "../core/i18n.js";
+import { STDIN_ARG } from "../utils/loadIdeaFile.js";
+import { formatWelcome, suggestCommand } from "./welcome.js";
 import { loadConfig } from "../utils/config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,11 +52,18 @@ if (process.argv.includes("--quiet") || process.argv.includes("-q")) {
 }
 cli.option("--quiet", "Suppress warning messages (errors still shown)");
 
-const providerOptions = (cmd: any) => cmd
-  .option("--model <model>", "LLM model override")
-  .option("--base-url <url>", "OpenAI-compatible API base URL override")
-  .option("--api-key <key>", "API key override")
-  .option("--ollama", "Use local Ollama provider");
+const LANG_HELP = `Report language: ${listSupportedLanguages().join(", ")} (default: en, or IDEAGAUNTLET_LANG)`;
+
+const providerOptions = (cmd: any, opts: { lang?: boolean } = {}) => {
+  cmd
+    .option("--model <model>", "LLM model override")
+    .option("--base-url <url>", "OpenAI-compatible API base URL override")
+    .option("--api-key <key>", "API key override")
+    .option("--ollama", "Use local Ollama provider");
+  // Every analysis command answers in the requested language; `serve` takes it per request instead.
+  if (opts.lang !== false) cmd.option("--lang <lang>", LANG_HELP);
+  return cmd;
+};
 
 providerOptions(
   cli.command("quick <idea>", "Run a fast adversarial critique")
@@ -61,7 +71,6 @@ providerOptions(
     .option("--market <market>", "Target market description")
     .option("--target-users <users>", "Comma-separated target users")
     .option("--template <id>", "Use a pre-built idea template: b2b-saas, devtool, marketplace, consumer-app, ai-ml, healthtech, fintech, ecommerce")
-    .option("--lang <lang>", "Output language: en, vi, es, fr, de, ja, zh, ko, pt, it, ru, ar (default: en)")
     .option("--json", "Output JSON instead of Markdown")
     .option("--output <file>", "Write to file")
     .option("--no-search", "Disable web search before analysis")
@@ -175,7 +184,8 @@ cli.command("interactive [idea]", "Interactive REPL — refine, re-run, drill-do
 
 providerOptions(
   cli.command("serve", "Start REST API server")
-    .option("--port <port>", "HTTP port (default: 3000)")
+    .option("--port <port>", "HTTP port (default: 3000)"),
+  { lang: false },
 ).action((options: Record<string, unknown>) => {
   import("./commands/serve.js").then(({ serveCommand }) =>
     serveCommand({ port: options.port as string, apiKey: options.apiKey as string, baseUrl: options.baseUrl as string, model: options.model as string })
@@ -369,14 +379,59 @@ providerOptions(
 
 import { checkForUpdate, formatCliUpdateBanner } from "../utils/updateChecker.js";
 
-// Set quiet mode before parsing commands
-const parsed = cli.parse();
-if (parsed.options?.quiet) {
-  setQuiet(true);
+// Unknown command: say so (cac is silent by default) and suggest the closest match.
+cli.on("command:*", () => {
+  const typed = cli.args[0] ?? "";
+  const known = cli.commands.map((c) => c.name).filter(Boolean);
+  const suggestion = suggestCommand(typed, known);
+  console.error(`Unknown command: ${typed}`);
+  if (suggestion) console.error(`Did you mean:   idea-gauntlet ${suggestion}`);
+  console.error("\nRun `idea-gauntlet --help` to list all commands.");
+  process.exit(1);
+});
+
+/** Engine/provider failures in commands without their own try/catch: message, not a stack trace. */
+function fail(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`Error: ${message}`);
+  if (process.env.IDEAGAUNTLET_DEBUG && err instanceof Error && err.stack) console.error(err.stack);
+  process.exit(1);
+}
+process.on("unhandledRejection", fail);
+
+// The arg parser drops a bare "-", so protect it: `idea-gauntlet quick -` reads the idea from stdin.
+const STDIN_PLACEHOLDER = "\u0000stdin";
+const argv = process.argv.map((a, i) => (i >= 2 && a === STDIN_ARG ? STDIN_PLACEHOLDER : a));
+
+let ranCommand = false;
+try {
+  const parsed = cli.parse(argv, { run: false });
+  if (parsed.options?.quiet) setQuiet(true);
+  for (let i = 0; i < cli.args.length; i++) {
+    if (cli.args[i] === STDIN_PLACEHOLDER) (cli.args as string[])[i] = STDIN_ARG;
+  }
+
+  const wantsHelpOrVersion = !!(parsed.options?.help || parsed.options?.version);
+  if (cli.matchedCommand) {
+    ranCommand = true;
+    Promise.resolve(cli.runMatchedCommand()).catch(fail);
+  } else if (!wantsHelpOrVersion && cli.args.length === 0) {
+    // Bare `idea-gauntlet`: a short getting-started screen beats silence.
+    console.log(formatWelcome(pkg.version));
+  }
+} catch (err: any) {
+  // Usage errors (missing argument, unknown option): one line plus where to look.
+  if (err?.name === "CACError") {
+    const name = cli.matchedCommandName;
+    console.error(`Error: ${err.message}`);
+    console.error(`Run \`idea-gauntlet ${name ? `${name} ` : ""}--help\` for usage.`);
+    process.exit(1);
+  }
+  fail(err);
 }
 
 // Background update check — shows update banner if newer version is published
-if (!process.argv.includes("--quiet") && !process.argv.includes("-q") && !process.argv.includes("serve")) {
+if (ranCommand && !process.argv.includes("--quiet") && !process.argv.includes("-q") && !process.argv.includes("serve")) {
   checkForUpdate().then((update) => {
     if (update.hasUpdate) {
       console.error(formatCliUpdateBanner(update));

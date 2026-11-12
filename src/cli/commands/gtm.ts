@@ -2,7 +2,7 @@
  * Phase 2: GTM Strategy CLI command
  * Usage: idea-gauntlet gtm "Your idea" [--budget "$5000"] [--timeline "3 months"]
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runGTMEngine, formatGTMReport } from "../../engines/gtmEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,21 +24,11 @@ export async function gtmCommand(ideaArg: string, rawOptions: Record<string, unk
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Generating GTM strategy...");
-    const result = await runGTMEngine(idea, providerRes.provider, {
+    const result = await runGTMEngine(idea, provider, {
       enableSearch: !options.noSearch,
       budget: options.budget as string | undefined,
       timeline: options.timeline as string | undefined,

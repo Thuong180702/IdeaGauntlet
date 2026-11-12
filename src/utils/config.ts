@@ -13,6 +13,8 @@ export interface IdeaGauntletConfig {
   baseUrl?: string;
   apiKey?: string;
   ollama?: boolean;
+  /** Default report language (same values as --lang). */
+  lang?: string;
   defaultMode?: string;
   defaultStage?: string;
   enableSearch?: boolean;

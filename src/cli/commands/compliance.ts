@@ -2,7 +2,7 @@
  * Phase 3: Regulatory & Compliance Scanner CLI command
  * Usage: idea-gauntlet compliance "Your idea" [--regions us,eu]
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runComplianceScanner, formatComplianceReport } from "../../engines/complianceScanner.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,24 +24,14 @@ export async function complianceCommand(ideaArg: string, rawOptions: Record<stri
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Scanning regulatory and privacy obligations...");
     const regionsRaw = options.regions as string | undefined;
     const regions = regionsRaw ? regionsRaw.split(",").map((r) => r.trim()).filter(Boolean) : undefined;
 
-    const result = await runComplianceScanner(idea, providerRes.provider, {
+    const result = await runComplianceScanner(idea, provider, {
       regions,
       enableSearch: !options.noSearch,
     });

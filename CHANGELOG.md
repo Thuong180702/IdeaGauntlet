@@ -5,6 +5,33 @@ All notable changes to IdeaGauntlet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+A usability pass: the analysis was fine, but the first five minutes were not.
+
+### Added
+- **`--lang` on every analysis command** (was `quick` only), plus `IDEAGAUNTLET_LANG` and a `lang` key in `.ideagauntlet.json` as defaults. Implemented as a provider decorator (`withResponseLanguage`), so engines stay language-agnostic. Only prose is translated — JSON keys, verdict/severity enums, numbers, and source citations are kept verbatim so provenance verification is unaffected. An unsupported code now fails with the supported list instead of silently answering in English.
+- **Read the idea from stdin** with `-`: `cat idea.md | idea-gauntlet court -`.
+- **Getting-started screen** when `idea-gauntlet` is run with no arguments (previously printed nothing).
+- **"Did you mean"** for mistyped commands (previously printed nothing and exited 0).
+- **First-run menu on every analysis command** in an interactive terminal (was `quick` only): use Ollama, paste a key for this run, or set up the agent-native integration. A pasted key is never written to disk.
+- **Next-step suggestions** after `quick` and `court` when run at a terminal (stderr only; silent when piped or `--quiet`).
+- `doctor` now reports which LLM provider analysis commands will actually use (Anthropic / Groq / OpenAI-compatible, never the key), validates `IDEAGAUNTLET_LANG`, and ends with the concrete next step.
+- New exports: `withResponseLanguage`, `UnsupportedLanguageError`, `buildLanguageInstruction`.
+
+### Fixed
+- **Usage errors printed a Node stack trace** — a missing idea or unknown option now prints one line and points at `<command> --help`.
+- **Provider/engine failures in `mvp`, `compare`, `batch`, `ensemble` surfaced as unhandled rejections** with a stack trace; they now print `Error: …` and exit 1 (set `IDEAGAUNTLET_DEBUG=1` for the stack).
+- **`--ollama` was ignored by `mvp`** — the flag was never passed to provider resolution.
+- **`ensemble idea.md` analysed the literal string `idea.md`** — it now loads the file like every other command.
+- `doctor` warned "CLI executable: Not found (run build first)" for every installed user (it looked for `dist/` in the current directory), warned about a missing `.codex/config.toml` in projects that don't use Codex, and printed raw `[warn] fetch failed` lines above the report. The network checks now time out instead of hanging.
+- The onboarding menu wrote to stdout, corrupting piped reports and `--json` output; it now uses stderr.
+- `tests/search/pageFetcher.test.ts` did a real DNS lookup and failed offline or behind a proxy.
+
+### Changed
+- Provider resolution, onboarding, and language handling for all CLI commands live in one place (`src/cli/context.ts`) instead of being copy-pasted into 14 command files.
+- The update check no longer runs for `--help`, `--version`, or the welcome screen.
+
 ## [0.7.0] - 2026-08-26
 
 Two capabilities aimed at the same thing: making the tool honest about what it

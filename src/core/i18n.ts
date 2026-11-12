@@ -151,3 +151,20 @@ export function withLanguagePrompt(systemPrompt: string, lang?: string): string 
   const labels = getLangLabels(lang);
   return `${systemPrompt}\n\n${labels.promptLangInstruction}`;
 }
+
+/**
+ * Full language instruction for structured (JSON) completions.
+ *
+ * Prose is translated, but everything the code parses or verifies stays
+ * verbatim: keys, enum values, numbers, and source citations (provenance
+ * verification matches citations against the retrieved research brief).
+ */
+export function buildLanguageInstruction(lang: string): string {
+  const labels = getLangLabels(lang);
+  return [
+    labels.promptLangInstruction,
+    "Language rules: write all human-readable prose values in that language.",
+    "Keep JSON keys, enum/identifier values (verdicts, severities, basis, categories), numbers, URLs,",
+    "and source titles/citations exactly as specified or as they appear in the research — do not translate them.",
+  ].join(" ");
+}

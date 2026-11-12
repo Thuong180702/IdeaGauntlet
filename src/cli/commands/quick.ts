@@ -1,22 +1,15 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
+import { printNextSteps } from "../welcome.js";
 import { runImmuneEngine } from "../../engines/immuneEngine.js";
 import { buildReport } from "../../core/report.js";
-import { showOnboardingMenu } from "../onboarding.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { saveReport } from "../../history/historyStore.js";
 
 export async function quickCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
   const options = normalizeOptions(rawOptions);
   const ideaText = loadIdeaInput(ideaArg);
-
-  // F-10: Multi-language support — prepend language instruction to LLM prompt.
-  let langInstruction: string | undefined;
-  if (options.lang && typeof options.lang === "string" && options.lang !== "en") {
-    const { withLanguagePrompt } = await import("../../core/i18n.js");
-    langInstruction = withLanguagePrompt("", options.lang).trim();
-  }
 
   // F-12: Apply template defaults (only if not already provided via flags).
   let templateMarket = options.market as string | undefined;
@@ -40,51 +33,13 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
     targetUsers: templateTargetUsers,
   });
 
-  let providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes && !process.stdin.isTTY) {
-    // Non-interactive (piped / CI / `npx ... | ...`): don't block on a menu.
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
-
-  if (!providerRes) {
-    const choice = await showOnboardingMenu();
-    switch (choice) {
-      case "configure_key": {
-        const rl = (await import("node:readline/promises")).createInterface({ input: process.stdin, output: process.stdout });
-        const key = await rl.question("Enter API key: ");
-        rl.close();
-        if (key.trim()) providerRes = resolveProvider({ apiKey: key.trim() });
-        break;
-      }
-      case "setup_agent_native": {
-        const { setupCommand } = await import("./setup.js");
-        await setupCommand({});
-        return;
-      }
-      case "ollama": {
-        providerRes = resolveProvider({ ollama: true, model: options.model as string });
-        break;
-      }
-    }
-  }
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     const enableSearch = !options.noSearch;
     // F-04: Streaming output — show LLM tokens in real-time.
     const onToken = options.stream ? (chunk: string) => process.stderr.write(chunk) : undefined;
-    const report = await runImmuneEngine(idea, providerRes.provider, { enableSearch, onToken, systemPromptExtra: langInstruction });
+    const report = await runImmuneEngine(idea, provider, { enableSearch, onToken });
     if (onToken) process.stderr.write("\n"); // newline after stream
     report.markdown = buildReport(report);
 
@@ -129,6 +84,7 @@ export async function quickCommand(ideaArg: string, rawOptions: Record<string, u
       const r = safeWriteOutput(output, report.markdown, "Report");
       if (!r.ok) { console.error(r.message); process.exit(2); }
     }
+    printNextSteps("quick", ideaArg);
   } catch (err: any) {
     console.error(`Error: ${err.message}`);
     process.exit(1);

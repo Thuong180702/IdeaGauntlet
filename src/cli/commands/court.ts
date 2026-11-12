@@ -1,6 +1,7 @@
 import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
+import { printNextSteps } from "../welcome.js";
 import { runCourtEngine } from "../../engines/courtEngine.js";
 import { buildReport } from "../../core/report.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
@@ -18,17 +19,7 @@ export async function courtCommand(
     stage: options.stage as string,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   // Load custom roles from file if provided
   let customRoles: import("../../engines/courtPhases.js").RoleDefinition[] | undefined;
@@ -44,7 +35,7 @@ export async function courtCommand(
 
   try {
     const enableSearch = !options.noSearch;
-    const report = await runCourtEngine(idea, providerRes.provider, { enableSearch, customRoles });
+    const report = await runCourtEngine(idea, provider, { enableSearch, customRoles });
     report.markdown = buildReport(report);
 
     if (options.save) {
@@ -79,6 +70,7 @@ export async function courtCommand(
       const r = safeWriteOutput(output, report.markdown, "Report");
       if (!r.ok) { console.error(r.message); process.exit(2); }
     }
+    printNextSteps("court", ideaArg);
   } catch (err: any) {
     console.error(`Error: ${err.message}`);
     process.exit(1);

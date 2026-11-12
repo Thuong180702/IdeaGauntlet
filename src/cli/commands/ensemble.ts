@@ -5,12 +5,19 @@ import { OpenAICompatibleProvider } from "../../providers/openaiCompatibleProvid
 import { runEnsemble, formatEnsembleResult } from "../../engines/ensembleEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { getApiKey } from "../../utils/env.js";
+import { loadIdeaInput } from "../../utils/loadIdeaFile.js";
+import { normalizeOptions } from "../../utils/parseInput.js";
+import { withResponseLanguage } from "../../providers/languageProvider.js";
+import { resolveLang } from "../context.js";
 
-export async function ensembleCommand(idea: string, options: Record<string, unknown>): Promise<void> {
-  if (!idea?.trim()) {
+export async function ensembleCommand(ideaArg: string, rawOptions: Record<string, unknown>): Promise<void> {
+  const options = normalizeOptions(rawOptions);
+  if (!ideaArg?.trim()) {
     console.error("Missing idea text");
     process.exit(1);
   }
+  // Accept a file path or "-" (stdin) like every other analysis command.
+  const idea = loadIdeaInput(ideaArg);
 
   const apiKeyRaw = (options.apiKey as string) ?? getApiKey();
   if (!apiKeyRaw) {
@@ -30,9 +37,10 @@ export async function ensembleCommand(idea: string, options: Record<string, unkn
     process.exit(1);
   }
 
+  const lang = resolveLang(options);
   const providers = modelList.map((m) => {
     try {
-      return new OpenAICompatibleProvider({ model: m, apiKey: apiKeyRaw, baseUrl });
+      return withResponseLanguage(new OpenAICompatibleProvider({ model: m, apiKey: apiKeyRaw, baseUrl }), lang);
     } catch (err: any) {
       console.error(`Failed to create provider for model "${m}": ${err.message}`);
       process.exit(2);

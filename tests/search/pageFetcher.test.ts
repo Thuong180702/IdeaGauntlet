@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { fetchPageContent, fetchPageContents } from "../../src/search/pageFetcher.js";
 
+// Keep the SSRF guard's DNS check hermetic — the suite must pass offline and behind proxies.
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(async () => [{ address: "93.184.216.34", family: 4 }]),
+}));
+
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 

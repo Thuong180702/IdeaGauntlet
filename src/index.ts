@@ -29,4 +29,6 @@ export { OpenAICompatibleProvider } from "./providers/openaiCompatibleProvider.j
 export { OllamaProvider } from "./providers/ollamaProvider.js";
 export { ClaudeProvider } from "./providers/claudeProvider.js";
 export { resolveProvider, getProvider, NoProviderError } from "./providers/providerUtils.js";
+export { withResponseLanguage, UnsupportedLanguageError } from "./providers/languageProvider.js";
+export { buildLanguageInstruction, listSupportedLanguages } from "./core/i18n.js";
 

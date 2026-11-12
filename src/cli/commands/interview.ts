@@ -2,7 +2,7 @@
  * Phase 3: AI-Simulated User Interview CLI command
  * Usage: idea-gauntlet interview "Your idea" [--persona "Freelance Designer"]
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runUserInterviewEngine, formatUserInterviewReport } from "../../engines/userInterviewEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,21 +24,11 @@ export async function interviewCommand(ideaArg: string, rawOptions: Record<strin
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Simulating customer discovery interview...");
-    const result = await runUserInterviewEngine(idea, providerRes.provider, {
+    const result = await runUserInterviewEngine(idea, provider, {
       personaArchetype: options.persona as string | undefined,
     });
 

@@ -116,6 +116,10 @@ idea-gauntlet interactive [idea]
 `cli.command(...)` in `src/cli/index.ts` is the source of truth — keep this list in
 sync when adding a command.
 
+Every command that takes an idea accepts inline text, a file path, or `-` (stdin) via
+`loadIdeaInput`, and `--lang` via `resolveCliProvider`. `--lang` must translate prose only:
+keys, enums, numbers, and citations stay verbatim so provenance verification still holds.
+
 ## Architecture
 
 Use the current single-package structure:
@@ -123,13 +127,13 @@ Use the current single-package structure:
 ```txt
 src/
   analysis/     synthetic score-benchmark reference set (labelled non-real, used by `interactive` /benchmark)
-  cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall, status, templates, ensemble, gtm, compete, revenue, founder, interview, pitch, evolve, compliance)
+  cli/          cac CLI commands (quick, court, users, mvp, compare, batch, serve, doctor, history, team, trend, interactive, install, uninstall, status, templates, ensemble, gtm, compete, revenue, founder, interview, pitch, evolve, compliance, assumptions) + context (shared provider/onboarding/--lang resolution — every analysis command must use `resolveCliProvider`), welcome (getting-started, did-you-mean, next steps)
   core/         shared types, report builder, scoring, provenance (score-basis verification), dispatch, workflowConfig, teamReview, templates, i18n, runGauntlet, verdictMapping
   engines/      mode orchestration (immuneEngine, courtEngine, syntheticUserLab, mvpPlanner, compareEngine, batchEngine, ensembleEngine, trendMonitor, courtPhases, marketSizingEngine, unitEconomicsEngine, antiPatternDetector, gtmEngine, competitiveIntelligenceEngine, revenueModelEngine, founderMarketFitEngine, userInterviewEngine, pitchGenerator, evolutionCoach, complianceScanner, assumptionLedger)
   integrations/ Claude/Cursor/Codex/GitHub generators
   history/      report history store + score delta tracking
   mcp/          MCP server, tools, resources
-  providers/    production providers (openaiCompatible, claude, ollama) + providerUtils
+  providers/    production providers (openaiCompatible, claude, ollama) + providerUtils + languageProvider (`--lang` decorator)
   search/       web research pipeline (searchOrchestrator, SSRF guard, providers, nicheDetector, competitorAnalyzer, pageFetcher, playwrightFetcher)
   setup/        onboarding + init wizard
   utils/        promptGuard, jsonRepair, warn, progress, env, safeOutput

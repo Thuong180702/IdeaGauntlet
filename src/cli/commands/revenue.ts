@@ -2,7 +2,7 @@
  * Phase 2: Revenue Model Explorer CLI command
  * Usage: idea-gauntlet revenue "Your idea"
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runRevenueModelEngine, formatRevenueModelReport } from "../../engines/revenueModelEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,21 +24,11 @@ export async function revenueCommand(ideaArg: string, rawOptions: Record<string,
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Exploring revenue models...");
-    const result = await runRevenueModelEngine(idea, providerRes.provider, {
+    const result = await runRevenueModelEngine(idea, provider, {
       enableSearch: !options.noSearch,
     });
 

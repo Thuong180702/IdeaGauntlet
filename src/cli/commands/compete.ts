@@ -2,7 +2,7 @@
  * Phase 2: Competitive Intelligence Deep Dive CLI command
  * Usage: idea-gauntlet compete "Your idea" [--depth deep]
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runCompetitiveIntelligenceEngine, formatCompetitiveIntelligenceReport } from "../../engines/competitiveIntelligenceEngine.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,21 +24,11 @@ export async function competeCommand(ideaArg: string, rawOptions: Record<string,
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Mapping competitor landscape...");
-    const result = await runCompetitiveIntelligenceEngine(idea, providerRes.provider, {
+    const result = await runCompetitiveIntelligenceEngine(idea, provider, {
       enableSearch: !options.noSearch,
       depth: (options.depth as "quick" | "deep") ?? "quick",
     });

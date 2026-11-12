@@ -1,4 +1,6 @@
-import { getApiKey, isNodeGte } from "../../utils/env.js";
+import { getBaseUrl, isNodeGte } from "../../utils/env.js";
+import { resolveProvider } from "../../providers/providerUtils.js";
+import { isSupportedLang, listSupportedLanguages } from "../../core/i18n.js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { warnIfError } from "../../utils/warn.js";
@@ -24,34 +26,43 @@ export async function doctorCommand(
     detail: verbose ? `Detected: ${process.version} at ${process.execPath}` : undefined,
   });
 
-  const hasKey = !!getApiKey();
+  // Report what analysis commands would actually use — never the key itself.
+  const provider = describeProvider();
   results.push({
-    label: "API key (IDEAGAUNTLET_API_KEY)",
-    status: hasKey ? "pass" : "warn",
-    message: hasKey ? "Set" : "Not set (setup/init/doctor still work)",
+    label: "LLM provider",
+    status: provider ? "pass" : "warn",
+    message: provider ?? "None configured (analysis commands need one; setup/init/doctor work without)",
+    detail: verbose && !provider
+      ? "Set ANTHROPIC_API_KEY, GROQ_API_KEY, or IDEAGAUNTLET_API_KEY (+ IDEAGAUNTLET_BASE_URL / IDEAGAUNTLET_MODEL), or pass --ollama"
+      : undefined,
   });
 
-  const executableOk = checkExecutable();
-  results.push({
-    label: "CLI executable",
-    status: executableOk ? "pass" : "warn",
-    message: executableOk ? "Found" : "Not found (run build first)",
-    detail: verbose ? `Checked: ${resolve(process.cwd(), "dist/cli/index.js")}` : undefined,
-  });
+  const lang = process.env.IDEAGAUNTLET_LANG;
+  if (lang) {
+    const ok = isSupportedLang(lang);
+    results.push({
+      label: "Report language (IDEAGAUNTLET_LANG)",
+      status: ok ? "pass" : "warn",
+      message: ok ? lang : `"${lang}" is not supported — use one of: ${listSupportedLanguages().join(", ")}`,
+    });
+  }
 
-  const codexConfigOk = checkPathExists(".codex/config.toml");
-  results.push({
-    label: ".codex/config.toml",
-    status: codexConfigOk ? "pass" : "warn",
-    message: codexConfigOk ? "Found" : "Not found (used by Codex integration)",
-    detail: verbose ? `Checked: ${resolve(process.cwd(), ".codex/config.toml")}` : undefined,
-  });
+  // Only relevant inside a project that uses the Codex integration.
+  if (checkPathExists(".codex")) {
+    const codexConfigOk = checkPathExists(".codex/config.toml");
+    results.push({
+      label: ".codex/config.toml",
+      status: codexConfigOk ? "pass" : "warn",
+      message: codexConfigOk ? "Found" : "Not found (run `idea-gauntlet setup` to generate it)",
+      detail: verbose ? `Checked: ${resolve(process.cwd(), ".codex/config.toml")}` : undefined,
+    });
+  }
 
-  const ollamaOk = await checkOllama();
+  const ollamaOk = await checkOllama(verbose);
   results.push({
     label: "Ollama availability",
     status: ollamaOk ? "pass" : "warn",
-    message: ollamaOk ? "Running at localhost:11434" : "Not detected",
+    message: ollamaOk ? "Running at localhost:11434" : "Not running (optional — only needed for --ollama)",
     detail: verbose && ollamaOk ? "API responded to /api/tags" : undefined,
   });
 
@@ -67,7 +78,7 @@ export async function doctorCommand(
       : undefined,
   });
 
-  const searchOk = await checkSearchLiveness();
+  const searchOk = await checkSearchLiveness(verbose);
   results.push({
     label: "Web search connectivity",
     status: searchOk ? "pass" : "warn",
@@ -104,26 +115,50 @@ export async function doctorCommand(
   const failures = results.filter((r) => r.status === "fail").length;
   if (failures > 0) console.log(`\n${failures} failure(s) found.`);
   else console.log("\nAll critical checks passed.");
+
+  if (!provider) {
+    console.log(
+      [
+        "",
+        "Next step — pick one way to run analyses:",
+        "  export ANTHROPIC_API_KEY=...        (or GROQ_API_KEY / IDEAGAUNTLET_API_KEY)",
+        ollamaOk
+          ? "  idea-gauntlet quick \"your idea\" --ollama --model <local-model>"
+          : "  install Ollama (https://ollama.com), then add --ollama --model <local-model>",
+        "  idea-gauntlet setup                 (no key: run inside Claude Code / Cursor / Codex)",
+      ].join("\n"),
+    );
+  } else {
+    console.log('\nReady. Try: idea-gauntlet quick "your idea"');
+  }
 }
 
-function checkExecutable(): boolean {
-  const paths = [
-    resolve(process.cwd(), "dist/cli/index.js"),
-    resolve(process.cwd(), "src/cli/index.ts"),
-  ];
-  return paths.some((p) => existsSync(p));
+/** Human-readable description of the provider analysis commands would resolve, or null. */
+function describeProvider(): string | null {
+  const resolved = resolveProvider({});
+  if (!resolved) return null;
+  const via: Record<string, string> = {
+    claude: "Anthropic",
+    groq: "Groq",
+    env: `OpenAI-compatible at ${getBaseUrl()}`,
+    flags: "OpenAI-compatible",
+    ollama: "Ollama",
+  };
+  const model = process.env.IDEAGAUNTLET_MODEL;
+  return `${via[resolved.source] ?? resolved.source}${model ? `, model ${model}` : " (default model)"}`;
 }
 
 function checkPathExists(relativePath: string): boolean {
   return existsSync(resolve(process.cwd(), relativePath));
 }
 
-async function checkOllama(): Promise<boolean> {
+async function checkOllama(verbose: boolean): Promise<boolean> {
   try {
-    const res = await fetch("http://localhost:11434/api/tags");
+    const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(3000) });
     return res.ok;
   } catch (err: any) {
-    warnIfError("doctor: Ollama check failed", err);
+    // Expected when Ollama isn't installed — the result line already says so.
+    if (verbose) warnIfError("doctor: Ollama check failed", err);
     return false;
   }
 }
@@ -138,17 +173,18 @@ async function checkMcpServer(): Promise<boolean> {
   }
 }
 
-async function checkSearchLiveness(): Promise<boolean> {
+async function checkSearchLiveness(verbose: boolean): Promise<boolean> {
   try {
     const res = await fetch("https://html.duckduckgo.com/html/?q=test", {
       method: "GET",
+      signal: AbortSignal.timeout(8000),
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
       }
     });
     return res.ok;
   } catch (err: any) {
-    warnIfError("doctor: search liveness check failed", err);
+    if (verbose) warnIfError("doctor: search liveness check failed", err);
     return false;
   }
 }

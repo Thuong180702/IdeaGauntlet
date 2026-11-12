@@ -2,7 +2,7 @@
  * Assumption Ledger CLI command — falsifiability over judgement.
  * Usage: idea-gauntlet assumptions "Your idea" [--max 6]
  */
-import { resolveProvider, formatNoProviderError } from "../../providers/providerUtils.js";
+import { resolveCliProvider } from "../context.js";
 import { runAssumptionLedger, formatAssumptionLedger } from "../../engines/assumptionLedger.js";
 import { safeWriteOutput } from "../../utils/safeWrite.js";
 import { parseIdeaInput, normalizeOptions } from "../../utils/parseInput.js";
@@ -24,17 +24,7 @@ export async function assumptionsCommand(ideaArg: string, rawOptions: Record<str
     targetUsers: options.targetUsers as string | undefined,
   });
 
-  const providerRes = resolveProvider({
-    apiKey: options.apiKey as string,
-    baseUrl: options.baseUrl as string,
-    model: options.model as string,
-    ollama: !!options.ollama,
-  });
-
-  if (!providerRes) {
-    console.error(formatNoProviderError());
-    process.exit(2);
-  }
+  const provider = await resolveCliProvider(options);
 
   try {
     console.error("Identifying what must be true, and how to prove it isn't...");
@@ -46,7 +36,7 @@ export async function assumptionsCommand(ideaArg: string, rawOptions: Record<str
       process.exit(1);
     }
 
-    const result = await runAssumptionLedger(idea, providerRes.provider, {
+    const result = await runAssumptionLedger(idea, provider, {
       maxAssumptions,
       enableSearch: !options.noSearch,
     });

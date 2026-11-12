@@ -65,6 +65,23 @@ ANTHROPIC_API_KEY=sk-ant-... npx idea-gauntlet quick "A focus-room app for remot
 Groq (`GROQ_API_KEY=gsk_...`), any OpenAI-compatible endpoint, or local Ollama (`--ollama`)
 work too — see [Provider setup](#provider-setup).
 
+Not sure where to start? Run `idea-gauntlet` with no arguments for a short getting-started
+screen, or `idea-gauntlet doctor` to see which provider will be used and what to fix. In a
+terminal with no provider configured, any analysis command offers a one-time menu (Ollama,
+paste a key for this run only, or agent-native setup) instead of just failing.
+
+The idea can be inline text, a `.md`/`.txt` file, or `-` to read from stdin, and every
+analysis command can answer in your language:
+
+```bash
+cat idea.md | idea-gauntlet court - --lang vi
+pbpaste | idea-gauntlet assumptions -
+export IDEAGAUNTLET_LANG=vi        # or "lang": "vi" in .ideagauntlet.json
+```
+
+`--lang` translates the prose only. Verdicts, score keys, numbers, and source citations stay
+verbatim, so score provenance is still verified against the research that was retrieved.
+
 ### Get a card you can actually post
 
 Add `--format card` to any command to render the verdict as a self-contained
@@ -363,6 +380,8 @@ Supports OpenAI, OpenRouter, Groq, Anthropic Claude, Together, Fireworks, LM Stu
 | `--format card` | quick, court | Output a shareable 1200×630 verdict card (screenshot & post) |
 | `--output <file>` | Most commands | Save to file |
 | `--ollama` | Generation commands | Use local Ollama |
+| `--lang <code>` | All generation commands | Report language: `en`, `vi`, `es`, `fr`, `de`, `ja`, `zh`, `ko`, `pt`, `it`, `ru`, `ar` (default from `IDEAGAUNTLET_LANG`) |
+| `-` (as the idea) | All generation commands | Read the idea from stdin |
 | `--model <name>` | Generation commands | Override LLM model |
 | `--stage <stage>` | Most generation commands | Idea maturity (`napkin`, `pre-mvp`, `mvp`, `growth`) |
 | `--target-users <list>` | Most generation commands | Comma-separated target users |
